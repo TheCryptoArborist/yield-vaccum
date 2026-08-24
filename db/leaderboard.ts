@@ -176,7 +176,17 @@ export async function saveScore(input: {
   const profile = await readProfile(input.playerKey);
   profile.nickname = input.nickname;
   profile.wallet = input.wallet;
-  profile.clearedMissions = [...new Set([...profile.clearedMissions, input.missionIndex])].sort();
+  const history = (await scoreRecords()).filter((saved) => saved.playerKey === input.playerKey);
+  profile.clearedMissions = [...new Set([...profile.clearedMissions, ...history.map((saved) => saved.missionIndex), input.missionIndex])].sort();
+  for (const saved of history) {
+    if (missionGrade(saved.score, saved.mistakes) === "S") {
+      profile.sGradeMissions = [...new Set([...profile.sGradeMissions, saved.missionIndex])].sort();
+    }
+    profile.epochClears[saved.epochStart] = [...new Set([...(profile.epochClears[saved.epochStart] ?? []), saved.missionIndex])].sort();
+    if (profile.epochClears[saved.epochStart].length === 7) {
+      profile.completedEpochs = [...new Set([...profile.completedEpochs, saved.epochStart])].sort();
+    }
+  }
   if (missionGrade(input.score, input.mistakes) === "S") {
     profile.sGradeMissions = [...new Set([...profile.sGradeMissions, input.missionIndex])].sort();
   }
@@ -186,6 +196,9 @@ export async function saveScore(input: {
   }
 
   const earned = new Set<AchievementId>(profile.unlocked);
+  for (const saved of history) {
+    if (saved.mistakes === 0) earned.add(MISSION_ACHIEVEMENTS[saved.missionIndex]);
+  }
   if (input.mistakes === 0) earned.add(MISSION_ACHIEVEMENTS[input.missionIndex]);
   if (profile.clearedMissions.length === 7) earned.add("topaz-scholar");
   if (profile.sGradeMissions.length === 7) earned.add("yield-champion");
