@@ -1345,7 +1345,7 @@ export default function YieldVacuumGame() {
           <small>POOL HEALTH</small>
           <div className="poolHud">
             {POOLS.map((pool, index) => (
-              <span key={pool.name}><i style={{ width: `${hud.pools[index]}%` }} /><img src={pool.src} alt="" />{pool.name}</span>
+              <span key={pool.name}><i style={{ width: `${hud.pools[index]}%` }} /><img src={pool.src} alt="" /><b>{pool.name}</b></span>
             ))}
           </div>
         </div>}
