@@ -55,3 +55,15 @@ button,input,summary{transition:transform .15s ease,filter .15s ease,border-colo
 .resultGrade span{grid-column:2;grid-row:2;color:#d4d4d8;font-size:9px;font-weight:700;line-height:1.35}
 @media(min-width:621px){.canvasWrap{height:min(74svh,740px)}}
 @media(max-width:620px){.resultScoreRow{grid-template-columns:1fr 1fr;gap:6px}.resultScore,.resultGrade{min-height:68px}.resultGrade{width:auto;height:auto;margin:0;padding:7px;grid-template-columns:38px 1fr;column-gap:6px}.resultGrade small{font-size:5px}.resultGrade strong{font-size:30px}.resultGrade span{font-size:7px;line-height:1.25}}
+
+/* High-contrast leaderboard control. */
+.leaderboardButton{min-width:230px;grid-template-columns:44px 1fr 18px;gap:11px;padding:9px 12px!important;border:2px solid var(--topaz-orange)!important;background:#111113!important;color:#fff!important;box-shadow:0 0 0 1px rgba(255,255,255,.04),0 8px 24px rgba(0,0,0,.45)!important}
+.leaderboardTrophy{width:42px;height:42px;border:2px solid var(--topaz-orange);background:var(--topaz-orange);color:#000;box-shadow:0 0 18px rgba(254,60,0,.3)}
+.leaderboardTrophy svg{width:25px;height:25px;display:block;fill:currentColor}
+.leaderboardButton>span:nth-child(2){gap:4px}
+.leaderboardButton strong{color:#fff;font-size:12px;line-height:1;letter-spacing:.09em}
+.leaderboardButton small{color:#d4d4d8;font-size:7px;line-height:1;letter-spacing:.1em}
+.leaderboardButton>i{color:var(--topaz-orange);font-size:30px;line-height:1}
+.leaderboardButton:hover{border-color:#ff7044!important;background:#1b1b1e!important;box-shadow:0 0 28px rgba(254,60,0,.28)!important}
+@media(max-width:900px){.leaderboardButton{min-width:210px}}
+@media(max-width:620px){.leaderboardButton{min-width:138px;grid-template-columns:36px 1fr;gap:8px;padding:6px 8px!important}.leaderboardTrophy{width:34px;height:34px}.leaderboardTrophy svg{width:21px;height:21px}.leaderboardButton>span:nth-child(2){display:flex}.leaderboardButton strong{font-size:9px}.leaderboardButton small,.leaderboardButton>i{display:none}}

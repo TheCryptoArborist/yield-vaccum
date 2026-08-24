@@ -1339,8 +1339,12 @@ export default function YieldVacuumGame() {
         </div>
         <div className="topbarActions">
           <button className="leaderboardButton" onClick={() => setLeaderboardOpen(true)}>
-            <span className="leaderboardTrophy" aria-hidden="true">♛</span>
-            <span><strong>EPOCH LEADERBOARD</strong><small>WEEKLY RANKINGS</small></span>
+            <span className="leaderboardTrophy" aria-hidden="true">
+              <svg viewBox="0 0 32 32" role="presentation">
+                <path d="M10 5h12v4h5v3c0 5-2.8 8-7.2 8.8A7.1 7.1 0 0 1 18 22v3h5v3H9v-3h5v-3a7.1 7.1 0 0 1-1.8-1.2C7.8 20 5 17 5 12V9h5V5Zm0 7H8c0 2.5 1 4.2 3 5-.6-1.5-1-3.2-1-5Zm12 0c0 1.8-.4 3.5-1 5 2-.8 3-2.5 3-5h-2Z" />
+              </svg>
+            </span>
+            <span><strong>LEADERBOARD</strong><small>WEEKLY EPOCH RANKINGS</small></span>
             <i aria-hidden="true">›</i>
           </button>
           <a className="topazDexLink" href="https://www.topazdex.com/" target="_blank" rel="noopener noreferrer"><span>OFFICIAL SITE</span><strong>VISIT TOPAZ DEX ↗</strong></a>
