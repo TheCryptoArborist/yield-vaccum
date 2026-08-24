@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -259,7 +260,8 @@ function drawMine(ctx: CanvasRenderingContext2D, x: number, y: number, size: num
     const radius = i % 2 ? size * 0.56 : size * 0.49;
     const px = Math.cos(a) * radius;
     const py = Math.sin(a) * radius;
-    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    if (i) ctx.lineTo(px, py);
+    else ctx.moveTo(px, py);
   }
   ctx.closePath();
   const mineGradient = ctx.createRadialGradient(-size * 0.18, -size * 0.2, 1, 0, 0, size * 0.62);
@@ -360,6 +362,43 @@ const CONTROL_HINTS = [
   "READ EACH PACKAGE · TAP ITS MATCHING GAUGE OR REJECT EXPIRED",
   "SELECT THE NEXT EVENT IN THE WEEKLY TOPAZ EPOCH",
 ];
+
+const MISSION_ENVIRONMENTS = [
+  "SWAP ROUTER",
+  "LP LABORATORY",
+  "LOCK FORGE",
+  "GAUGE COMMAND",
+  "FEE STORM",
+  "INCENTIVE TERMINAL",
+  "EPOCH CORE",
+];
+
+const ACCEPT_RULES = [
+  "BEST ROUTE quotes marked with a green check",
+  "In-range emissions on the left and swap fees on the right",
+  "An amount and duration that create at least 12 power",
+  "All 12 votes while meeting every gauge's stated need",
+  "The highest-volume pool that is still marked valid",
+  "The gauge named on each active incentive package",
+  "The next event in the weekly epoch sequence",
+];
+
+const AVOID_RULES = [
+  "HIGH IMPACT routes, red-X items, and mines",
+  "Out-of-range emissions, red-X items, and mines",
+  "Minting before the power preview reaches 12",
+  "Leaving votes unused or a gauge below its need",
+  "HIGH IMPACT activity and lower-volume valid choices",
+  "Expired packages and mismatched gauges",
+  "Choosing an event before its proper stage",
+];
+
+function scoreGrade(score: number, mistakes: number) {
+  if (mistakes === 0 && score >= 2500) return "S";
+  if (mistakes <= 1 && score >= 1800) return "A";
+  if (mistakes <= 3) return "B";
+  return "C";
+}
 
 const RESULT_RECAPS = [
   "Topaz compares pool types and multi-hop paths, then surfaces the chosen route, its fees, and price impact before you sign.",
@@ -644,7 +683,7 @@ function LeaderboardModal({
         <div className="leaderboardTable">
           <div className="leaderboardRow header"><span>RANK</span><span>PLAYER</span><span>SCORE</span><span>BADGE</span></div>
           {loading ? <div className="leaderboardEmpty">LOADING RANKINGS…</div> : error ? <div className="leaderboardEmpty">{error}</div> : entries.length === 0 ? <div className="leaderboardEmpty">THE EPOCH IS OPEN. COMPLETE A MISSION TO CLAIM THE FIRST RANK.</div> : entries.map((entry, index) => (
-            <div className="leaderboardRow" key={`${entry.nickname}-${index}`}>
+            <div className={`leaderboardRow ${index < 3 ? `podium rank${index + 1}` : ""}`} key={`${entry.nickname}-${index}`}>
               <span className="rank">#{index + 1}</span>
               <span className="leaderboardIdentity"><strong>{entry.nickname}</strong><small>{compactWallet(entry.wallet)} · {entry.missions} {view === "mission" ? "EPOCHS" : "MISSIONS"}</small></span>
               <span className="leaderboardScore">{Number(entry.score).toLocaleString()}</span>
@@ -670,13 +709,14 @@ export default function YieldVacuumGame() {
   const [phase, setPhase] = useState<Phase>("splash");
   const [missionIndex, setMissionIndex] = useState(0);
   const [lockLevel, setLockLevel] = useState(0);
-  const [hud, setHud] = useState({ score: 0, combo: 1, progress: 0, time: MISSIONS[0].time, shield: 0, pools: Array(POOLS.length).fill(100) });
+  const [hud, setHud] = useState({ score: 0, combo: 1, progress: 0, time: MISSIONS[0].time, shield: 0, mistakes: 0, pools: Array(POOLS.length).fill(100) });
   const [result, setResult] = useState<MissionResult>({ score: 0, progress: 0, fees: 0, emissions: 0, mistakes: 0, health: 100, lockLevel: 0, cleared: false });
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [nickname, setNickname] = useState("");
   const [wallet, setWallet] = useState("");
   const [playerKey, setPlayerKey] = useState("");
   const [scoreStatus, setScoreStatus] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
   const mission = MISSIONS[missionIndex];
 
   useEffect(() => {
@@ -705,12 +745,13 @@ export default function YieldVacuumGame() {
 
   const begin = () => {
     gameRef.current = freshGame(lockLevel);
-    setHud({ score: 0, combo: 1, progress: 0, time: mission.time, shield: lockLevel, pools: Array(POOLS.length).fill(100) });
+    setHud({ score: 0, combo: 1, progress: 0, time: mission.time, shield: lockLevel, mistakes: 0, pools: Array(POOLS.length).fill(100) });
+    setHelpOpen(false);
     setPhase("playing");
   };
 
   const updateSpecialHud = useCallback((progress: number, mistakes = 0) => {
-    setHud((current) => ({ ...current, progress, combo: Math.max(1, 1 + progress - mistakes) }));
+    setHud((current) => ({ ...current, progress, mistakes, combo: Math.max(1, 1 + progress - mistakes) }));
   }, []);
 
   const completeSpecial = useCallback((specialResult: MissionResult) => {
@@ -937,6 +978,7 @@ export default function YieldVacuumGame() {
         progress,
         time: Math.max(0, Math.ceil(mission.time - game.elapsed)),
         shield: game.shield,
+        mistakes: game.mistakes,
         pools: [...game.poolHealth],
       });
 
@@ -1291,20 +1333,22 @@ export default function YieldVacuumGame() {
         <div className="topbarActions"><div className="prototype">BNB CHAIN · MISSION {missionIndex + 1}/7 · LOCK LV.{lockLevel}</div><button className="leaderboardButton" onClick={() => setLeaderboardOpen(true)}>LEADERBOARD</button></div>
       </header>
 
-      <section className="gameFrame">
+      <section className={`gameFrame missionTheme missionTheme${missionIndex + 1}`}>
         <div className="hud">
-          <div><small>{mission.action}</small><strong>{hud.progress}/{mission.target}</strong></div>
-          <div><small>COMBO</small><strong className="gold">×{hud.combo}</strong></div>
-          <div><small>{missionIndex < 2 ? `EPOCH · L${lockLevel}` : "DECISION MODE"}</small><strong>{missionIndex < 2 ? `${hud.time}s` : "OPEN"}</strong></div>
+          <div><small>MISSION GOAL</small><strong>{hud.progress}/{mission.target}</strong></div>
+          <div><small>{missionIndex < 2 ? "TIME" : "MODE"}</small><strong>{missionIndex < 2 ? `${hud.time}s` : "DECIDE"}</strong></div>
+          <div><small>MISTAKES</small><strong className={hud.mistakes > 0 ? "dangerText" : ""}>{hud.mistakes}</strong></div>
+          <div><small>SCORE</small><strong className="gold">{hud.score.toLocaleString()}</strong></div>
+        </div>
+
+        {missionIndex < 2 && <div className="poolStrip" aria-label="Pool health">
+          <small>POOL HEALTH</small>
           <div className="poolHud">
             {POOLS.map((pool, index) => (
-              <span key={pool.name}>
-                <i style={{ width: `${hud.pools[index]}%` }} />
-                <img src={pool.src} alt="" /> {pool.name}
-              </span>
+              <span key={pool.name}><i style={{ width: `${hud.pools[index]}%` }} /><img src={pool.src} alt="" />{pool.name}</span>
             ))}
           </div>
-        </div>
+        </div>}
 
         <div className="legendBar" aria-label="Gameplay symbol key">
           {missionIndex < 2 ? <><span className="vacuumCue"><b>✓</b> SUCK INTO VACUUM</span><span className="avoidCue"><b>✕</b> AVOID</span><small>GREEN = ACCEPT · RED = REJECT</small></> : <><span className="vacuumCue"><b>◆</b> READ · DECIDE · ACT</span><span className="avoidCue"><b>!</b> WRONG CHOICES COST SCORE</span><small>EACH MISSION USES A DIFFERENT TOPAZ DECISION</small></>}
@@ -1312,7 +1356,8 @@ export default function YieldVacuumGame() {
 
         {phase === "playing" && (
           <div className="missionLiveLine" aria-label={`Mission ${missionIndex + 1} of 7: ${mission.title}`}>
-            <b>MISSION {missionIndex + 1} OF 7</b><span>{mission.title}</span><small>{mission.feature}</small>
+            <b>MISSION {missionIndex + 1} OF 7</b><span>{mission.title}</span><small>{MISSION_ENVIRONMENTS[missionIndex]}</small>
+            <button className="helpButton" onClick={() => setHelpOpen((open) => !open)} aria-expanded={helpOpen}>?</button>
           </div>
         )}
 
@@ -1328,18 +1373,25 @@ export default function YieldVacuumGame() {
             <SpecialMissionBoard missionIndex={missionIndex} lockLevel={lockLevel} onHud={updateSpecialHud} onComplete={completeSpecial} />
           )}
 
+          {phase === "playing" && helpOpen && (
+            <aside className="quickHelp" aria-label="Mission help">
+              <button onClick={() => setHelpOpen(false)} aria-label="Close help">✕</button>
+              <small>MISSION {missionIndex + 1} HELP</small>
+              <strong>{mission.title}</strong>
+              <p>{MISSION_GOALS[missionIndex]}</p>
+              <div><span>✓ {ACCEPT_RULES[missionIndex]}</span><span>✕ {AVOID_RULES[missionIndex]}</span></div>
+            </aside>
+          )}
+
           {phase === "briefing" && (
             <div className={`overlay briefing ${missionIndex < 2 ? "challengeBriefing" : ""} ${missionIndex === 1 ? "lpBriefing" : ""}`}>
               <div className="briefingContent">
-                <img className="heroLogo" src="/topaz-mark.png" alt="Topaz logo" />
-                <div className="chainBadge"><img src="/fee-bnb.png" alt="BNB" /> RELEASING ON BNB CHAIN</div>
-                <p className="eyebrow">MISSION {missionIndex + 1} OF 7 · {mission.title}</p>
-                <h1>YIELD<br /><em>VACUUM</em></h1>
-                <p>{mission.lesson}</p>
-                <div className="featureCallout"><b>{mission.feature}</b>{mission.mechanic}</div>
-                <div className="missionObjective"><b>ROUND GOAL</b>{MISSION_GOALS[missionIndex]}</div>
-                <div className="missionKey">
-                  {missionIndex < 2 ? <><span className="vacuumCue"><b>✓</b> VACUUM: {mission.action}</span><span className="avoidCue"><b>✕</b> AVOID: RED-X ITEMS & MINES</span></> : <><span className="vacuumCue"><b>◆</b> DECISION MISSION</span><span className="avoidCue"><b>!</b> READ BEFORE ACTING</span></>}
+                <div className="briefingMissionBadge"><span>{missionIndex + 1}</span><div><small>MISSION {missionIndex + 1} OF 7 · {MISSION_ENVIRONMENTS[missionIndex]}</small><strong>{mission.title}</strong></div></div>
+                <p className="briefingLead">{mission.lesson}</p>
+                <div className="briefingCards">
+                  <article className="objectiveCard"><small>OBJECTIVE</small><p>{MISSION_GOALS[missionIndex]}</p></article>
+                  <article className="acceptCard"><small>✓ ACCEPT</small><p>{ACCEPT_RULES[missionIndex]}</p></article>
+                  <article className="avoidCard"><small>✕ AVOID</small><p>{AVOID_RULES[missionIndex]}</p></article>
                 </div>
                 {missionIndex === 1 && (
                   <div className="lpCompare">
@@ -1352,7 +1404,10 @@ export default function YieldVacuumGame() {
                   <span><b>{missionIndex < 2 ? `${mission.time}s` : "OPEN"}</b>{missionIndex < 2 ? "EPOCH TIMER" : "NO TIMER"}</span>
                   <span><b>{missionIndex < 2 ? mission.minPools : "NEW"}</b>{missionIndex < 2 ? "POOLS SURVIVE" : "GAMEPLAY MODE"}</span>
                 </div>
-                <div className="positionLabel">LOCKED veTOPAZ POSITION · LOCK LV.{lockLevel} · VACUUM ALWAYS ONLINE</div>
+                <details className="learnWhy">
+                  <summary>LEARN WHY THIS MATTERS ON TOPAZ</summary>
+                  <p><b>{mission.feature}</b> · {mission.mechanic}</p>
+                </details>
               </div>
               <div className="briefingAction">
                 <button onClick={begin}>START MISSION</button>
@@ -1370,6 +1425,7 @@ export default function YieldVacuumGame() {
               </div>
               <h2>{result.score.toLocaleString()}</h2>
               <label>FINAL SCORE</label>
+              <div className="resultGrade" aria-label={`Mission grade ${scoreGrade(result.score, result.mistakes)}`}><small>MISSION GRADE</small><strong>{scoreGrade(result.score, result.mistakes)}</strong></div>
               <div className="campaignProgress" aria-label={`${missionIndex + 1} of 7 missions reached`}>
                 <div className="campaignProgressLabel">
                   <b>CAMPAIGN PROGRESS</b>
