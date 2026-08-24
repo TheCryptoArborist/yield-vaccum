@@ -984,9 +984,9 @@ export default function YieldVacuumGame() {
       });
 
       const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, "#210b04");
-      gradient.addColorStop(0.58, "#100503");
-      gradient.addColorStop(1, "#050201");
+      gradient.addColorStop(0, "#111113");
+      gradient.addColorStop(0.58, "#070708");
+      gradient.addColorStop(1, "#000000");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "rgba(255,90,25,.22)";
@@ -1057,15 +1057,7 @@ export default function YieldVacuumGame() {
         ctx.fillText(pool.name, x, poolY + 37);
       });
 
-      const beamColors = [
-        ["rgba(55,205,255,.42)", "rgba(55,205,255,0)"],
-        ["rgba(67,236,196,.4)", "rgba(67,236,196,0)"],
-        ["rgba(255,86,20,.44)", "rgba(255,86,20,0)"],
-        ["rgba(94,177,255,.43)", "rgba(94,177,255,0)"],
-        ["rgba(255,126,26,.5)", "rgba(255,126,26,0)"],
-        ["rgba(190,83,255,.46)", "rgba(190,83,255,0)"],
-        ["rgba(255,206,73,.52)", "rgba(255,83,16,0)"],
-      ];
+      const beamColors = Array.from({ length: 7 }, () => ["rgba(254,60,0,.46)", "rgba(254,60,0,0)"]);
       const baseWidths = [118, 150, 135, 174, 192, 178, 218];
       const beamWidth = baseWidths[missionIndex] * (1 + liveLockLevel * 0.07);
       const beamTop = height * 0.18;
@@ -1344,6 +1336,7 @@ export default function YieldVacuumGame() {
             <span><strong>EPOCH LEADERBOARD</strong><small>WEEKLY RANKINGS</small></span>
             <i aria-hidden="true">›</i>
           </button>
+          <a className="topazDexLink" href="https://www.topazdex.com/" target="_blank" rel="noopener noreferrer"><span>OFFICIAL SITE</span><strong>VISIT TOPAZ DEX ↗</strong></a>
         </div>
       </header>
 
