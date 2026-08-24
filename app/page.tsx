@@ -718,6 +718,7 @@ export default function YieldVacuumGame() {
   const [scoreStatus, setScoreStatus] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const mission = MISSIONS[missionIndex];
+  const completedMissions = Math.min(MISSIONS.length, missionIndex + (phase === "results" && result.cleared ? 1 : 0));
 
   useEffect(() => {
     const storedKey = window.localStorage.getItem("yield-vacuum-player") || crypto.randomUUID();
@@ -1330,7 +1331,20 @@ export default function YieldVacuumGame() {
           <img src="/topaz-mark.png" alt="Topaz" />
           YIELD VACUUM <b>TOPAZ DEX</b>
         </div>
-        <div className="topbarActions"><div className="prototype">BNB CHAIN · MISSION {missionIndex + 1}/7 · LOCK LV.{lockLevel}</div><button className="leaderboardButton" onClick={() => setLeaderboardOpen(true)}>LEADERBOARD</button></div>
+        <div className="campaignHeader" aria-label={`${completedMissions} of 7 missions completed. Current mission ${missionIndex + 1}: ${mission.title}`}>
+          <div className="campaignHeaderTitle"><small>MISSION {missionIndex + 1} OF 7</small><strong>{mission.title}</strong><span>BNB CHAIN · LOCK LV.{lockLevel}</span></div>
+          <div className="campaignHeaderTrack" aria-hidden="true">
+            {MISSIONS.map((item, index) => <i key={item.title} className={index < completedMissions ? "complete" : index === missionIndex ? "current" : ""}><b>{index < completedMissions ? "✓" : index + 1}</b></i>)}
+          </div>
+          <p><b>{completedMissions} CLEARED</b><span>{MISSIONS.length - completedMissions} TO GO</span></p>
+        </div>
+        <div className="topbarActions">
+          <button className="leaderboardButton" onClick={() => setLeaderboardOpen(true)}>
+            <span className="leaderboardTrophy" aria-hidden="true">♛</span>
+            <span><strong>EPOCH LEADERBOARD</strong><small>WEEKLY RANKINGS</small></span>
+            <i aria-hidden="true">›</i>
+          </button>
+        </div>
       </header>
 
       <section className={`gameFrame missionTheme missionTheme${missionIndex + 1}`}>
