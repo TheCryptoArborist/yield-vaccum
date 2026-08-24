@@ -99,3 +99,14 @@ button,input,summary{transition:transform .15s ease,filter .15s ease,border-colo
 .badgeUnlockToast>small{display:block;color:var(--topaz-orange);font-size:7px;font-weight:1000;letter-spacing:.16em}.badgeUnlockToast>div{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:7px 0}.badgeUnlockToast>div span{display:inline-flex;align-items:center;gap:7px;color:#fff;font-size:10px}.badgeUnlockToast>div i{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--topaz-orange);border-radius:50%;color:var(--topaz-orange);font-style:normal;font-weight:1000}.badgeUnlockToast p{margin:0;color:#c7c7ce;font-size:8px;line-height:1.35}
 @keyframes badgeReveal{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
 @media(max-width:620px){.leaderboardRow{grid-template-columns:34px minmax(110px,1fr) 72px}.leaderboardName{gap:5px}.badgeMark{width:21px;height:21px;font-size:10px}.badgeCabinetSummary{grid-template-columns:1fr;margin-left:12px;margin-right:12px}.badgeCabinetSummary>button{grid-template-columns:1fr auto}.badgeCabinetSummary>button em{display:none}.badgeCabinetSummary>div{min-width:0}.badgeCabinet{margin-left:12px;margin-right:12px;padding:9px}.badgeGrid{grid-template-columns:1fr}.badgeGrid>button{min-height:62px}.leaderboardIdentity small{font-size:6px}}
+
+/* Home navigation and lower official-site placement. */
+.homeBrand{position:relative;padding:4px 38px 4px 0;border:0;background:transparent;color:#fff;text-align:left;cursor:pointer}
+.homeBrand>span{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.homeBrand>small{position:absolute;right:0;top:50%;transform:translateY(-50%);padding:4px 5px;border:1px solid var(--topaz-border);color:var(--topaz-muted);font-size:6px;font-weight:1000;letter-spacing:.1em}
+.homeBrand:hover img{filter:brightness(1.2);box-shadow:0 0 24px rgba(254,60,0,.5)}
+.homeBrand:hover>small,.homeBrand:focus-visible>small{border-color:var(--topaz-orange);color:#fff;background:rgba(254,60,0,.16)}
+.officialDexCta{width:min(1040px,100%);display:flex;justify-content:center;margin:14px auto 0}
+.officialDexCta .topazDexLink{width:auto;min-width:280px;min-height:42px;flex-direction:row;gap:10px;padding:10px 18px;border:1px solid var(--topaz-orange);background:#111113;box-shadow:0 8px 28px rgba(0,0,0,.42);font-size:9px}
+.officialDexCta .topazDexLink span{font-size:7px}.officialDexCta .topazDexLink strong{color:#fff;font-size:10px}
+@media(max-width:620px){.homeBrand{padding-right:0}.homeBrand>span b,.homeBrand>small{display:none}.officialDexCta{margin-top:9px}.officialDexCta .topazDexLink{width:min(320px,100%);min-width:0;min-height:40px;flex-direction:row;padding:9px 12px}.officialDexCta .topazDexLink span{font-size:6px}.officialDexCta .topazDexLink strong{font-size:9px}}

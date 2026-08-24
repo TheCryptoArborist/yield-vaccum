@@ -1388,6 +1388,12 @@ export default function YieldVacuumGame() {
     gameRef.current.playerX = Math.max(0.08, Math.min(0.92, (event.clientX - rect.left) / rect.width));
   };
 
+  const returnHome = () => {
+    setLeaderboardOpen(false);
+    setHelpOpen(false);
+    setPhase("splash");
+  };
+
   return (
     <main className="shell">
       {phase === "splash" && (
@@ -1406,10 +1412,11 @@ export default function YieldVacuumGame() {
         </section>
       )}
       <header className="topbar">
-        <div className="brand">
+        <button className="brand homeBrand" onClick={returnHome} aria-label="Return to the Yield Vacuum home screen" title="Return to home screen">
           <img src="/topaz-mark.png" alt="Topaz" />
-          YIELD VACUUM <b>TOPAZ DEX</b>
-        </div>
+          <span>YIELD VACUUM <b>TOPAZ DEX</b></span>
+          <small>HOME</small>
+        </button>
         <div className="campaignHeader" aria-label={`${completedMissions} of 7 missions completed. Current mission ${missionIndex + 1}: ${mission.title}`}>
           <div className="campaignHeaderTitle"><small>MISSION {missionIndex + 1} OF 7</small><strong>{mission.title}</strong><span>BNB CHAIN · LOCK LV.{lockLevel}</span></div>
           <div className="campaignHeaderTrack" aria-hidden="true">
@@ -1427,7 +1434,6 @@ export default function YieldVacuumGame() {
             <span><strong>LEADERBOARD</strong><small>WEEKLY EPOCH RANKINGS</small></span>
             <i aria-hidden="true">›</i>
           </button>
-          <a className="topazDexLink" href="https://www.topazdex.com/" target="_blank" rel="noopener noreferrer"><span>OFFICIAL SITE</span><strong>VISIT TOPAZ DEX ↗</strong></a>
         </div>
       </header>
 
@@ -1638,6 +1644,10 @@ export default function YieldVacuumGame() {
           )}
         </div>
       </section>
+
+      <div className="officialDexCta">
+        <a className="topazDexLink" href="https://www.topazdex.com/" target="_blank" rel="noopener noreferrer"><span>OFFICIAL TOPAZ DEX WEBSITE</span><strong>VISIT TOPAZ DEX ↗</strong></a>
+      </div>
 
       <footer>
         <b>VACUUM = ALWAYS ON</b>
