@@ -350,6 +350,14 @@ type PlayerProfile = {
 
 type LeaderboardView = "epoch" | "mission" | "all";
 
+const SUPPORT_WALLET = "0x90f9c1c0c675A0ce9D539c540DB7F4A1f7e583AE";
+const SUPPORT_TOKENS = [
+  { symbol: "BNB", label: "BNB", contract: "NATIVE BNB" },
+  { symbol: "TOPAZ", label: "TOPAZ", contract: "0xdf002282C1474C9592780618Adda7EaA99998Abd" },
+  { symbol: "USDT", label: "USDT", contract: "0x55d398326f99059fF775485246999027B3197955" },
+  { symbol: "USDC", label: "USDC", contract: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d" },
+] as const;
+
 function compactWallet(wallet: string | null) {
   return wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : "NICKNAME PLAYER";
 }
@@ -785,6 +793,36 @@ function LeaderboardModal({
   );
 }
 
+function SupportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(SUPPORT_WALLET);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2200);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  if (!open) return null;
+  return (
+    <div className="supportBackdrop" role="dialog" aria-modal="true" aria-label="Optional creator support">
+      <section className="supportPanel">
+        <header><div><small>OPTIONAL CREATOR SUPPORT</small><h2>SUPPORT THE CRYPTO ARBORIST</h2></div><button onClick={onClose} aria-label="Close support panel">✕</button></header>
+        <p>Yield Vacuum is free to play. If you enjoyed it, an optional tip can help fund hosting, artwork, and future educational missions.</p>
+        <div className="supportNetwork"><b>NETWORK</b><strong>BNB SMART CHAIN · CHAIN ID 56</strong></div>
+        <div className="supportTokens">{SUPPORT_TOKENS.map((token) => <span key={token.symbol} title={token.contract}><b>{token.symbol}</b><small>{token.symbol === "BNB" ? "NATIVE TOKEN" : "VERIFIED BEP-20"}</small></span>)}</div>
+        <div className="supportAddress"><small>RECIPIENT ADDRESS</small><code>{SUPPORT_WALLET}</code><button onClick={copyAddress}>{copied ? "ADDRESS COPIED ✓" : "COPY ADDRESS"}</button></div>
+        <a className="supportExplorer" href={`https://bscscan.com/address/${SUPPORT_WALLET}`} target="_blank" rel="noopener noreferrer">VERIFY RECIPIENT ON BSCSCAN ↗</a>
+        <div className="supportDisclosure"><b>PLEASE CHECK BEFORE SENDING</b><span>Use BNB Smart Chain only. Verify the address in your wallet. Tips are optional, final, and do not unlock access, improve scores, or affect badges. This is creator support—not a Topaz DEX fee or a tax-deductible charitable donation.</span></div>
+        <button className="supportContinue" onClick={onClose}>CONTINUE PLAYING FREE</button>
+      </section>
+    </div>
+  );
+}
+
 export default function YieldVacuumGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameState>(freshGame());
@@ -801,6 +839,7 @@ export default function YieldVacuumGame() {
   const [scoreStatus, setScoreStatus] = useState("");
   const [badgeUnlocks, setBadgeUnlocks] = useState<AchievementId[]>([]);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const mission = MISSIONS[missionIndex];
   const completedMissions = Math.min(MISSIONS.length, missionIndex + (phase === "results" && result.cleared ? 1 : 0));
@@ -1678,12 +1717,14 @@ export default function YieldVacuumGame() {
         <span>✕ RED X = AVOID</span>
         <p>Presented by The Crypto Arborist · Independent educational game, not an official Topaz DEX product.</p>
       </footer>
+      <button className="supportLauncher" onClick={() => setSupportOpen(true)}><span>ENJOYING THE GAME?</span><strong>SUPPORT THIS FREE PROJECT</strong><i>♥</i></button>
       <div className="visitorCounter" aria-label={visitorCount === null ? "Visitor counter loading" : `${visitorCount} unique visitors`}>
         <span>YIELD VACUUM VISITORS</span>
         <strong>{visitorCount === null ? "— — — — — —" : visitorCount.toLocaleString().padStart(6, "0")}</strong>
         <small>APPROXIMATE UNIQUE BROWSERS</small>
       </div>
       <LeaderboardModal open={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} nickname={nickname} setNickname={setNickname} wallet={wallet} setWallet={setWallet} playerKey={playerKey} />
+      <SupportModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </main>
   );
 }
