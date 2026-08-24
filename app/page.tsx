@@ -1018,6 +1018,15 @@ export default function YieldVacuumGame() {
     });
   }, []);
 
+  const prepareBriefing = (index = missionIndex, briefingLockLevel = lockLevel) => {
+    const nextMission = MISSIONS[index];
+    gameRef.current = freshGame(briefingLockLevel);
+    setHud({ score: 0, combo: 1, progress: 0, time: nextMission.time, shield: briefingLockLevel, mistakes: 0, pools: Array(POOLS.length).fill(100) });
+    setHelpOpen(false);
+    setScoreStatus("");
+    setPhase("briefing");
+  };
+
   const begin = () => {
     gameRef.current = freshGame(lockLevel);
     setHud({ score: 0, combo: 1, progress: 0, time: mission.time, shield: lockLevel, mistakes: 0, pools: Array(POOLS.length).fill(100) });
@@ -1042,9 +1051,11 @@ export default function YieldVacuumGame() {
       begin();
       return;
     }
+    const nextLockLevel = missionIndex === MISSIONS.length - 1 ? 0 : lockLevel;
     if (missionIndex === MISSIONS.length - 1) setLockLevel(0);
-    setMissionIndex((current) => (current + 1) % MISSIONS.length);
-    setPhase("briefing");
+    const nextIndex = (missionIndex + 1) % MISSIONS.length;
+    setMissionIndex(nextIndex);
+    prepareBriefing(nextIndex, nextLockLevel);
   };
 
   const submitScore = async () => {
@@ -1598,7 +1609,7 @@ export default function YieldVacuumGame() {
           </div>
           <h1 className="splashTitle"><span>YIELD</span><strong>VACUUM</strong></h1>
           <p className="splashNetwork">AN INDEPENDENT GAME ABOUT TOPAZ DEX · BNB CHAIN</p>
-          <button className="splashEnter" onClick={() => setPhase("briefing")}>ENTER THE VACUUM</button>
+          <button className="splashEnter" onClick={() => prepareBriefing()}>ENTER THE VACUUM</button>
         </section>
       )}
       <header className="topbar">
