@@ -1335,7 +1335,7 @@ export default function YieldVacuumGame() {
 
       <section className={`gameFrame missionTheme missionTheme${missionIndex + 1}`}>
         <div className="hud">
-          <div><small>MISSION GOAL</small><strong>{hud.progress}/{mission.target}</strong></div>
+          <div><small>MISSION GOAL</small><strong>{Math.min(hud.progress, mission.target)}/{mission.target}</strong></div>
           <div><small>{missionIndex < 2 ? "TIME" : "MODE"}</small><strong>{missionIndex < 2 ? `${hud.time}s` : "DECIDE"}</strong></div>
           <div><small>MISTAKES</small><strong className={hud.mistakes > 0 ? "dangerText" : ""}>{hud.mistakes}</strong></div>
           <div><small>SCORE</small><strong className="gold">{hud.score.toLocaleString()}</strong></div>
@@ -1441,15 +1441,15 @@ export default function YieldVacuumGame() {
               <div className="resultGrid">
                 {missionIndex === 0 ? (
                   <>
-                    <span><b>{result.progress}/{mission.target}</b>BEST ROUTES</span>
+                    <span><b>{Math.min(result.progress, mission.target)}/{mission.target}</b>BEST ROUTES</span>
                     <span className={result.mistakes > 5 ? "dangerStat" : undefined}><b>{result.mistakes}/5</b>BAD ROUTES</span>
                     <span><b>{result.fees}</b>POOL FEES</span>
                   </>
                 ) : missionIndex === 1 ? (
                   <>
-                    <span><b>{result.progress}/{mission.target}</b>BALANCE LEVEL</span>
-                    <span><b>{result.emissions}/{mission.target}</b>IN-RANGE EMISSIONS</span>
-                    <span><b>{result.fees}/{mission.target}</b>UNSTAKED FEES</span>
+                    <span><b>{Math.min(result.progress, mission.target)}/{mission.target}</b>BALANCE LEVEL</span>
+                    <span><b>{Math.min(result.emissions, mission.target)}/{mission.target}</b>IN-RANGE EMISSIONS</span>
+                    <span><b>{Math.min(result.fees, mission.target)}/{mission.target}</b>UNSTAKED FEES</span>
                   </>
                 ) : missionIndex === 2 ? (
                   <>
