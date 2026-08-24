@@ -1646,7 +1646,12 @@ export default function YieldVacuumGame() {
       </section>
 
       <div className="officialDexCta">
-        <a className="topazDexLink" href="https://www.topazdex.com/" target="_blank" rel="noopener noreferrer"><span>OFFICIAL TOPAZ DEX WEBSITE</span><strong>VISIT TOPAZ DEX ↗</strong></a>
+        <div className="officialDexCopy">
+          <small>READY TO SEE IT IN ACTION?</small>
+          <strong>Explore the real exchange behind the missions.</strong>
+          <span>See swaps, liquidity, gauges, and veTOPAZ on the official site.</span>
+        </div>
+        <a className="topazDexLink" href="https://www.topazdex.com/" target="_blank" rel="noopener noreferrer"><span>OFFICIAL WEBSITE</span><strong>VISIT TOPAZ DEX ↗</strong></a>
       </div>
 
       <footer>
