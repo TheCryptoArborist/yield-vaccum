@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ACHIEVEMENTS, achievementById, missionGrade, type AchievementId } from "../lib/achievements";
+import { ACHIEVEMENTS, achievementById, missionGrade, nextGradeRequirement, type AchievementId } from "../lib/achievements";
 
 type Phase = "splash" | "briefing" | "playing" | "results";
 type DropKind = "route" | "emission" | "fee" | "crystal" | "vote" | "incentive" | "hazard";
@@ -442,15 +442,38 @@ const AVOID_RULES = [
   "Choosing an event before its proper stage",
 ];
 
-function scoreGrade(score: number, mistakes: number) {
-  return missionGrade(score, mistakes);
+function scoreGrade(score: number, mistakes: number, missionIndex: number) {
+  return missionGrade(score, mistakes, missionIndex);
 }
 
 function gradeExplanation(grade: string) {
-  if (grade === "S") return "Elite clear · zero mistakes and 2,500+ points";
-  if (grade === "A") return "Excellent clear · one mistake or fewer and 1,800+ points";
+  if (grade === "S") return "Elite clear · mission score target reached with zero mistakes";
+  if (grade === "A") return "Excellent clear · mission score target reached with one mistake or fewer";
   if (grade === "B") return "Solid clear · three mistakes or fewer";
   return "Clear complete · replay to improve accuracy and score";
+}
+
+const MISSION_GRADE_TITLES = ["ROUTE MASTER", "LIQUIDITY SPECIALIST", "LOCK ARCHITECT", "GAUGE STRATEGIST", "FEE HUNTER", "INCENTIVE ROUTER", "EPOCH EXPERT"];
+
+function AnimatedScore({ value }: { value: number }) {
+  const [displayed, setDisplayed] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setDisplayed(value);
+      return;
+    }
+    let frame = 0;
+    const started = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - started) / 950);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayed(Math.round(value * eased));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+  return <>{displayed.toLocaleString()}</>;
 }
 
 const RESULT_RECAPS = [
@@ -937,8 +960,12 @@ export default function YieldVacuumGame() {
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [supportOpen, setSupportOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [previousBest, setPreviousBest] = useState(0);
+  const [isNewBest, setIsNewBest] = useState(false);
   const mission = MISSIONS[missionIndex];
   const completedMissions = Math.min(MISSIONS.length, missionIndex + (phase === "results" && result.cleared ? 1 : 0));
+  const currentGrade = scoreGrade(result.score, result.mistakes, missionIndex);
+  const gradeGoal = nextGradeRequirement(result.score, result.mistakes, missionIndex);
 
   useEffect(() => {
     const storedKey = window.localStorage.getItem("yield-vacuum-player") || crypto.randomUUID();
@@ -954,6 +981,16 @@ export default function YieldVacuumGame() {
     if (nickname) window.localStorage.setItem("yield-vacuum-nickname", nickname);
     if (wallet) window.localStorage.setItem("yield-vacuum-wallet", wallet);
   }, [nickname, wallet]);
+
+  useEffect(() => {
+    if (phase !== "results" || !result.cleared) return;
+    const key = `yield-vacuum-best-mission-${missionIndex}`;
+    const storedBest = Number(window.localStorage.getItem(key) || 0);
+    setPreviousBest(storedBest);
+    const improved = result.score > storedBest;
+    setIsNewBest(improved);
+    if (improved) window.localStorage.setItem(key, String(result.score));
+  }, [phase, missionIndex, result.cleared, result.score]);
 
   useEffect(() => {
     const storageKey = "yield-vacuum-visitor-id";
@@ -1682,17 +1719,24 @@ export default function YieldVacuumGame() {
               </div>
               <div className={`resultScoreRow ${result.cleared ? "" : "solo"}`}>
                 <div className="resultScore">
-                  <h2>{result.score.toLocaleString()}</h2>
+                  <h2><AnimatedScore value={result.score} /></h2>
                   <span>FINAL SCORE</span>
+                  {result.cleared && <small className={isNewBest ? "newBest" : "bestComparison"}>{isNewBest ? previousBest > 0 ? `NEW PERSONAL BEST · +${(result.score - previousBest).toLocaleString()}` : "FIRST PERSONAL BEST RECORDED" : `PERSONAL BEST · ${previousBest.toLocaleString()}`}</small>}
                 </div>
                 {result.cleared && (
-                  <div className="resultGrade" aria-label={`Mission grade ${scoreGrade(result.score, result.mistakes)}. ${gradeExplanation(scoreGrade(result.score, result.mistakes))}`}>
+                  <div className={`resultGrade grade${currentGrade}`} aria-label={`Mission grade ${currentGrade}. ${gradeExplanation(currentGrade)}`}>
                     <small>MISSION GRADE</small>
-                    <strong>{scoreGrade(result.score, result.mistakes)}</strong>
-                    <span>{gradeExplanation(scoreGrade(result.score, result.mistakes))}</span>
+                    <strong>{currentGrade}</strong>
+                    <div className="gradeCopy"><b>{MISSION_GRADE_TITLES[missionIndex]}</b><span>{gradeExplanation(currentGrade)}</span></div>
                   </div>
                 )}
               </div>
+              {result.cleared && (
+                <div className="gradeChase">
+                  <div className="gradeLadder" aria-label={`Current grade ${currentGrade}`}>{["C", "B", "A", "S"].map((grade) => <span key={grade} className={grade === currentGrade ? "current" : ""}>{grade}</span>)}</div>
+                  <p><b>{gradeGoal.next ? `NEXT TARGET · GRADE ${gradeGoal.next}` : "TOP GRADE EARNED"}</b>{gradeGoal.message}</p>
+                </div>
+              )}
               <div className="campaignProgress" aria-label={`${missionIndex + 1} of 7 missions reached`}>
                 <div className="campaignProgressLabel">
                   <b>CAMPAIGN PROGRESS</b>
@@ -1758,6 +1802,11 @@ export default function YieldVacuumGame() {
                   </>
                 )}
               </div>
+              <div className="scoreFactors">
+                <span><small>OBJECTIVE</small><b>{result.cleared ? "COMPLETE" : "MISSED"}</b></span>
+                <span><small>ACCURACY</small><b>{Math.max(0, 100 - result.mistakes * 10)}%</b></span>
+                <span><small>MISTAKES</small><b>{result.mistakes === 0 ? "PERFECT" : result.mistakes}</b></span>
+              </div>
               {!result.cleared && (
                 <p className="resultMessage">
                   {missionIndex === 0
@@ -1790,9 +1839,10 @@ export default function YieldVacuumGame() {
                 <p>{mission.fact}</p>
                 <a href={mission.factUrl} target="_blank" rel="noreferrer">READ THE OFFICIAL TOPAZ DOCS ↗</a>
               </aside>
-              <button onClick={advance}>
-                {!result.cleared ? "RETRY MISSION" : missionIndex === MISSIONS.length - 1 ? "RESTART CAMPAIGN" : "NEXT MISSION"}
-              </button>
+              <div className="resultActions">
+                <button className="retryAction" onClick={begin}>{result.cleared ? "↻ RETRY FOR A HIGHER GRADE" : "↻ RETRY MISSION"}</button>
+                {result.cleared && <button className="continueAction" onClick={advance}>{missionIndex === MISSIONS.length - 1 ? "RESTART CAMPAIGN" : "NEXT MISSION →"}</button>}
+              </div>
             </div>
           )}
         </div>
