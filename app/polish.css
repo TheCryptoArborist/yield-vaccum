@@ -130,3 +130,82 @@ button,input,summary{transition:transform .15s ease,filter .15s ease,border-colo
 .supportAddress{display:grid;grid-template-columns:1fr auto;gap:7px;margin:0 20px;padding:11px;border:1px solid var(--topaz-orange);background:rgba(254,60,0,.08)}.supportAddress small{grid-column:1/-1;color:var(--topaz-orange);font-size:7px;font-weight:1000;letter-spacing:.13em}.supportAddress code{min-width:0;overflow:hidden;text-overflow:ellipsis;padding:9px;background:#050506;color:#fff;font-size:11px;white-space:nowrap}.supportAddress button{border:0;background:var(--topaz-orange);color:#000;padding:9px 13px;font-size:8px;font-weight:1000;letter-spacing:.08em;cursor:pointer}
 .supportExplorer{display:block;margin:8px 20px 0;color:#ff764d;font-size:8px;font-weight:900;letter-spacing:.09em;text-align:center;text-decoration:none}.supportDisclosure{display:flex;flex-direction:column;gap:5px;margin:13px 20px 10px;padding:10px 12px;border-left:3px solid var(--topaz-orange);background:#111113}.supportDisclosure b{color:#fff;font-size:7px;letter-spacing:.12em}.supportDisclosure span{color:#a1a1aa;font-size:8px;line-height:1.45}.supportContinue{display:block;margin:0 auto 18px;border:1px solid var(--topaz-border);background:#111113;color:#fff;padding:10px 16px;font-size:8px;font-weight:1000;letter-spacing:.1em;cursor:pointer}
 @media(max-width:620px){.supportLauncher{grid-template-columns:1fr auto;margin-top:7px}.supportLauncher span{display:none}.supportPanel>header{padding:14px}.supportPanel>header h2{font-size:18px}.supportPanel>p{padding:12px 14px;font-size:10px}.supportNetwork,.supportTokens,.supportTransaction,.supportAddress,.supportExplorer,.supportDisclosure{margin-left:14px;margin-right:14px}.supportTokens{grid-template-columns:1fr 1fr}.supportReview{grid-template-columns:1fr 1fr}.supportReview>span:last-child{grid-column:1/-1}.supportAddress{grid-template-columns:1fr}.supportAddress button{width:100%}.supportAddress code{font-size:8px}.supportContinue{margin-bottom:14px}}
+
+/* Mission briefings use a fully opaque reading surface. Gameplay imagery is
+   hidden until play begins so token routes never compete with instructions. */
+.canvasWrap.briefingActive{background:#050506}
+.canvasWrap.briefingActive canvas{visibility:hidden}
+.overlay.briefing{
+  background:
+    radial-gradient(circle at 50% 10%,#23100b 0,#0d0d0f 38%,#050506 76%),
+    #050506;
+}
+.overlay.briefing .briefingContent{
+  background:linear-gradient(180deg,rgba(17,17,19,.58),rgba(5,5,6,.18));
+}
+
+/* Every mission result uses the same opaque, spacious information hierarchy. */
+.canvasWrap.resultsActive{background:#050506}
+.canvasWrap.resultsActive canvas{visibility:hidden}
+.overlay.results{
+  gap:0;
+  padding:16px 24px 20px;
+  background:#050506;
+}
+.overlay.results .missionResultHeading{
+  width:min(720px,100%);
+  margin:0 0 9px;
+  padding:10px 14px;
+  border:1px solid var(--topaz-border);
+  border-top:3px solid var(--topaz-orange);
+  background:#111113;
+}
+.overlay.results .missionResultHeading strong{font-size:clamp(28px,4vw,42px);line-height:1.05}
+.overlay.results .missionResultHeading.cleared strong{color:#fff;text-shadow:none}
+.overlay.results .missionResultHeading.missed strong{color:#ff704d;text-shadow:none}
+.resultScoreRow{
+  width:min(720px,100%);
+  grid-template-columns:minmax(0,1fr) minmax(250px,280px);
+  gap:9px;
+  margin:0 0 9px;
+}
+.resultScoreRow.solo{grid-template-columns:1fr}
+.resultScore,.resultGrade{min-height:94px;padding:11px 14px;background:#111113}
+.resultGrade{grid-template-columns:64px 1fr;column-gap:14px}
+.resultGrade small{font-size:8px}.resultGrade strong{font-size:48px}.resultGrade span{font-size:11px;line-height:1.4}
+.overlay.results .campaignProgress,
+.overlay.results .resultGrid,
+.overlay.results .missionRecap,
+.overlay.results .scoreSubmit,
+.overlay.results .badgeUnlockToast,
+.overlay.results .dexFact{width:min(720px,100%)}
+.overlay.results .campaignProgress{margin:0 0 9px;padding:10px 13px;background:#111113}
+.overlay.results .campaignProgressLabel{font-size:8px}
+.overlay.results .campaignProgress>small{font-size:9px;line-height:1.35}
+.overlay.results .resultGrid{gap:8px;margin:0 0 8px}
+.overlay.results .resultGrid span{min-height:62px;padding:10px 8px;background:#111113;font-size:9px;line-height:1.3}
+.overlay.results .resultGrid b{font-size:22px;margin-bottom:5px}
+.overlay.results .resultMessage{width:min(720px,100%);margin:0 0 8px;padding:10px 12px;border:1px solid #6a281b;background:#1a0b08;color:#ffb09a;font-size:11px;line-height:1.4;text-align:left}
+.overlay.results .missionRecap{max-height:none;margin:0 0 8px!important;padding:10px 12px!important;overflow:visible;background:#111113;color:#e2e2e5!important;font-size:11px!important;line-height:1.5!important}
+.overlay.results .scoreSubmit{margin:0 0 8px;padding:9px;background:#111113}
+.overlay.results .badgeUnlockToast{margin:0 0 8px}
+.overlay.results .dexFact{margin:0 0 9px;padding:11px 13px}
+.overlay.results .dexFact p{font-size:11px;line-height:1.45}
+.overlay.results>button:last-of-type{min-width:230px;margin-top:0;padding:13px 28px}
+@media(max-width:620px){
+  .overlay.results{padding:9px 10px 13px}
+  .overlay.results .missionResultHeading{margin-bottom:6px;padding:8px 9px}
+  .overlay.results .missionResultHeading strong{font-size:23px}
+  .resultScoreRow,.resultScoreRow.solo{grid-template-columns:1fr;gap:5px;margin-bottom:6px}
+  .resultScore,.resultGrade{min-height:64px;padding:7px 9px}
+  .resultGrade{grid-template-columns:45px 1fr;column-gap:9px}
+  .resultGrade small{font-size:6px}.resultGrade strong{font-size:34px}.resultGrade span{font-size:8px;line-height:1.35}
+  .overlay.results .campaignProgress{margin-bottom:6px;padding:8px 9px}
+  .overlay.results .resultGrid{gap:4px;margin-bottom:6px}
+  .overlay.results .resultGrid span{min-height:52px;padding:7px 4px;font-size:7px}
+  .overlay.results .resultGrid b{font-size:17px;margin-bottom:3px}
+  .overlay.results .resultMessage{margin-bottom:6px;padding:8px 9px;font-size:9px}
+  .overlay.results .missionRecap{margin-bottom:6px!important;padding:8px 9px!important;font-size:9px!important;line-height:1.4!important}
+  .overlay.results .dexFact{margin-bottom:7px;padding:9px 10px}
+  .overlay.results .dexFact p{font-size:9px;line-height:1.4}
+}
