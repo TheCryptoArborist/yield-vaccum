@@ -1618,7 +1618,7 @@ export default function YieldVacuumGame() {
           </div>
         )}
 
-        <div className={`canvasWrap ${phase === "briefing" ? "briefingActive" : ""}`}>
+        <div className={`canvasWrap ${phase === "briefing" ? "briefingActive" : phase === "results" ? "resultsActive" : ""}`}>
           <canvas
             ref={canvasRef}
             onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); movePlayer(event); }}
@@ -1680,7 +1680,7 @@ export default function YieldVacuumGame() {
                 <strong>{result.cleared ? "MISSION CLEARED" : "MISSION MISSED"}</strong>
                 <span>{mission.title}</span>
               </div>
-              <div className="resultScoreRow">
+              <div className={`resultScoreRow ${result.cleared ? "" : "solo"}`}>
                 <div className="resultScore">
                   <h2>{result.score.toLocaleString()}</h2>
                   <span>FINAL SCORE</span>
