@@ -400,6 +400,13 @@ function scoreGrade(score: number, mistakes: number) {
   return "C";
 }
 
+function gradeExplanation(grade: string) {
+  if (grade === "S") return "Elite clear · zero mistakes and 2,500+ points";
+  if (grade === "A") return "Excellent clear · one mistake or fewer and 1,800+ points";
+  if (grade === "B") return "Solid clear · three mistakes or fewer";
+  return "Clear complete · replay to improve accuracy and score";
+}
+
 const RESULT_RECAPS = [
   "Topaz compares pool types and multi-hop paths, then surfaces the chosen route, its fees, and price impact before you sign.",
   "A staked gauge position trades swap fees for TOPAZ emissions and must stay in range. An unstaked Slipstream position keeps swap fees but earns no emissions.",
@@ -1430,9 +1437,19 @@ export default function YieldVacuumGame() {
                 <strong>{result.cleared ? "MISSION CLEARED" : "MISSION MISSED"}</strong>
                 <span>{mission.title}</span>
               </div>
-              <h2>{result.score.toLocaleString()}</h2>
-              <label>FINAL SCORE</label>
-              <div className="resultGrade" aria-label={`Mission grade ${scoreGrade(result.score, result.mistakes)}`}><small>MISSION GRADE</small><strong>{scoreGrade(result.score, result.mistakes)}</strong></div>
+              <div className="resultScoreRow">
+                <div className="resultScore">
+                  <h2>{result.score.toLocaleString()}</h2>
+                  <span>FINAL SCORE</span>
+                </div>
+                {result.cleared && (
+                  <div className="resultGrade" aria-label={`Mission grade ${scoreGrade(result.score, result.mistakes)}. ${gradeExplanation(scoreGrade(result.score, result.mistakes))}`}>
+                    <small>MISSION GRADE</small>
+                    <strong>{scoreGrade(result.score, result.mistakes)}</strong>
+                    <span>{gradeExplanation(scoreGrade(result.score, result.mistakes))}</span>
+                  </div>
+                )}
+              </div>
               <div className="campaignProgress" aria-label={`${missionIndex + 1} of 7 missions reached`}>
                 <div className="campaignProgressLabel">
                   <b>CAMPAIGN PROGRESS</b>
