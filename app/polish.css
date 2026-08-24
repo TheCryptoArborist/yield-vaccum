@@ -67,3 +67,35 @@ button,input,summary{transition:transform .15s ease,filter .15s ease,border-colo
 .leaderboardButton:hover{border-color:#ff7044!important;background:#1b1b1e!important;box-shadow:0 0 28px rgba(254,60,0,.28)!important}
 @media(max-width:900px){.leaderboardButton{min-width:210px}}
 @media(max-width:620px){.leaderboardButton{min-width:138px;grid-template-columns:36px 1fr;gap:8px;padding:6px 8px!important}.leaderboardTrophy{width:34px;height:34px}.leaderboardTrophy svg{width:21px;height:21px}.leaderboardButton>span:nth-child(2){display:flex}.leaderboardButton strong{font-size:9px}.leaderboardButton small,.leaderboardButton>i{display:none}}
+
+/* Persistent achievement badges and player badge cabinet. */
+.leaderboardPanel{width:min(880px,100%)}
+.leaderboardRow{grid-template-columns:45px minmax(220px,1fr) 120px}
+.leaderboardName{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.leaderboardName>strong{font-size:12px}
+.equippedBadges{display:inline-flex;align-items:center;gap:4px}
+.badgeMark{width:24px;height:24px;display:inline-grid;place-items:center;border:1px solid var(--topaz-orange);border-radius:50%;background:#111113;color:#fff;font-size:12px;font-style:normal;font-weight:1000;box-shadow:0 0 10px rgba(254,60,0,.18);cursor:help}
+.badgeMark.epic{border-color:#b770ff;color:#d6aaff;box-shadow:0 0 10px rgba(183,112,255,.24)}
+.badgeMark.legendary{border-color:#ffd15c;color:#ffd15c;box-shadow:0 0 12px rgba(255,209,92,.28)}
+.noBadges{color:#71717a;font-size:6px;font-weight:900;letter-spacing:.08em}
+.badgeCabinetSummary{display:grid;grid-template-columns:1fr auto;gap:8px;margin:0 20px 12px}
+.badgeCabinetSummary>button{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--topaz-orange);background:#111113;color:#fff;text-align:left;cursor:pointer}
+.badgeCabinetSummary>button span{font-size:10px;font-weight:1000;letter-spacing:.11em}
+.badgeCabinetSummary>button b{color:var(--topaz-orange);font-size:8px;letter-spacing:.08em}
+.badgeCabinetSummary>button em{color:#a1a1aa;font-size:7px;font-style:normal;font-weight:900}
+.badgeCabinetSummary>div{min-width:128px;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:7px 10px;border:1px solid var(--topaz-border);background:#09090a}
+.badgeCabinetSummary>div small{color:#a1a1aa;font-size:6px;font-weight:900;letter-spacing:.12em}
+.badgeCabinet{margin:0 20px 14px;padding:13px;border:1px solid var(--topaz-border);background:#09090a}
+.badgeCabinet>header{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;color:#f2f2f3;font-size:8px;letter-spacing:.1em}
+.badgeCabinet>header span{color:var(--topaz-orange);font-weight:900}
+.badgeGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.badgeGrid>button{min-height:70px;display:grid;grid-template-columns:42px 1fr;gap:9px;align-items:center;padding:9px;border:1px solid var(--topaz-border);background:#111113;color:#fff;text-align:left;cursor:pointer}
+.badgeGrid>button>i{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--topaz-orange);border-radius:50%;color:var(--topaz-orange);font-size:18px;font-style:normal;font-weight:1000}
+.badgeGrid>button>span{display:flex;min-width:0;flex-direction:column;gap:3px}
+.badgeGrid strong{font-size:10px}.badgeGrid small{color:#b4b4bc;font-size:8px;line-height:1.3}.badgeGrid em{color:var(--topaz-orange);font-size:6px;font-style:normal;font-weight:900;letter-spacing:.08em}
+.badgeGrid>button.locked{opacity:.43;cursor:not-allowed}.badgeGrid>button.locked>i{border-color:#52525b;color:#71717a}.badgeGrid>button.equipped{border-color:var(--topaz-orange);background:rgba(254,60,0,.11);box-shadow:inset 3px 0 var(--topaz-orange)}
+.badgeGrid>button.epic.unlocked>i{border-color:#b770ff;color:#d6aaff}.badgeGrid>button.legendary.unlocked>i{border-color:#ffd15c;color:#ffd15c}
+.badgeUnlockToast{width:min(560px,100%);margin:4px 0 6px;padding:10px 12px;border:1px solid var(--topaz-orange);background:linear-gradient(135deg,rgba(254,60,0,.2),#111113);box-shadow:0 0 24px rgba(254,60,0,.18);animation:badgeReveal .45s ease-out}
+.badgeUnlockToast>small{display:block;color:var(--topaz-orange);font-size:7px;font-weight:1000;letter-spacing:.16em}.badgeUnlockToast>div{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:7px 0}.badgeUnlockToast>div span{display:inline-flex;align-items:center;gap:7px;color:#fff;font-size:10px}.badgeUnlockToast>div i{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--topaz-orange);border-radius:50%;color:var(--topaz-orange);font-style:normal;font-weight:1000}.badgeUnlockToast p{margin:0;color:#c7c7ce;font-size:8px;line-height:1.35}
+@keyframes badgeReveal{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+@media(max-width:620px){.leaderboardRow{grid-template-columns:34px minmax(110px,1fr) 72px}.leaderboardName{gap:5px}.badgeMark{width:21px;height:21px;font-size:10px}.badgeCabinetSummary{grid-template-columns:1fr;margin-left:12px;margin-right:12px}.badgeCabinetSummary>button{grid-template-columns:1fr auto}.badgeCabinetSummary>button em{display:none}.badgeCabinetSummary>div{min-width:0}.badgeCabinet{margin-left:12px;margin-right:12px;padding:9px}.badgeGrid{grid-template-columns:1fr}.badgeGrid>button{min-height:62px}.leaderboardIdentity small{font-size:6px}}

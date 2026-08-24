@@ -1,4 +1,5 @@
-import { currentTopazEpoch, readLeaderboard, saveScore, type LeaderboardView } from "../../../db/leaderboard";
+import { currentTopazEpoch, equipBadges, readLeaderboard, readProfile, saveScore, type LeaderboardView } from "../../../db/leaderboard";
+import { ACHIEVEMENTS, achievementById, type AchievementId } from "../../../lib/achievements";
 
 const BADGES = ["ROUTE ACE", "LP BALANCER", "LOCK BUILDER", "GAUGE STRATEGIST", "FEE SCANNER", "INCENTIVE ROUTER", "EPOCH EXPERT"];
 
@@ -18,7 +19,9 @@ export async function GET(request: Request) {
     const view: LeaderboardView = requested === "mission" || requested === "all" ? requested : "epoch";
     const missionIndex = Math.max(0, Math.min(6, Number(url.searchParams.get("mission") ?? 0) || 0));
     const result = await readLeaderboard(view, missionIndex);
-    return Response.json({ entries: result.results ?? [], epochStart: currentTopazEpoch() });
+    const playerKey = String(url.searchParams.get("playerKey") ?? "").trim();
+    const profile = /^[a-zA-Z0-9-]{16,80}$/.test(playerKey) ? await readProfile(playerKey) : null;
+    return Response.json({ entries: result.results ?? [], epochStart: currentTopazEpoch(), profile, achievements: ACHIEVEMENTS });
   } catch {
     return Response.json({ error: "The leaderboard is temporarily unavailable." }, { status: 503 });
   }
@@ -41,9 +44,25 @@ export async function POST(request: Request) {
     }
 
     const badge = mistakes === 0 ? `PERFECT ${BADGES[missionIndex]}` : BADGES[missionIndex];
-    const epochStart = await saveScore({ playerKey, nickname, wallet: cleanWallet(payload.wallet), missionIndex, score, mistakes, badge });
-    return Response.json({ saved: true, badge, epochStart });
+    const saved = await saveScore({ playerKey, nickname, wallet: cleanWallet(payload.wallet), missionIndex, score, mistakes, badge });
+    return Response.json({ saved: true, badge, ...saved });
   } catch {
     return Response.json({ error: "The score could not be saved right now." }, { status: 503 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const payload = await request.json() as Record<string, unknown>;
+    const playerKey = String(payload.playerKey ?? "").trim();
+    if (!/^[a-zA-Z0-9-]{16,80}$/.test(playerKey)) {
+      return Response.json({ error: "Player profile could not be verified." }, { status: 400 });
+    }
+    const requested = Array.isArray(payload.equipped) ? payload.equipped.map(String) : [];
+    const equipped = requested.filter((id): id is AchievementId => Boolean(achievementById(id))).slice(0, 3);
+    const profile = await equipBadges(playerKey, equipped);
+    return Response.json({ saved: true, profile });
+  } catch {
+    return Response.json({ error: "Badges could not be updated right now." }, { status: 503 });
   }
 }

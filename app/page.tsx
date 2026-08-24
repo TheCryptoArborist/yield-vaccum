@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ACHIEVEMENTS, achievementById, missionGrade, type AchievementId } from "../lib/achievements";
 
 type Phase = "splash" | "briefing" | "playing" | "results";
 type DropKind = "route" | "emission" | "fee" | "crystal" | "vote" | "incentive" | "hazard";
@@ -335,12 +336,34 @@ type LeaderboardEntry = {
   score: number;
   missions: number;
   badge: string;
+  badges: AchievementId[];
+  unlockedCount: number;
+};
+
+type PlayerProfile = {
+  unlocked: AchievementId[];
+  equipped: AchievementId[];
+  clearedMissions: number[];
+  sGradeMissions: number[];
+  completedEpochs: string[];
 };
 
 type LeaderboardView = "epoch" | "mission" | "all";
 
 function compactWallet(wallet: string | null) {
   return wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : "NICKNAME PLAYER";
+}
+
+function BadgeMarks({ ids }: { ids: AchievementId[] }) {
+  if (!ids?.length) return <span className="noBadges">NO BADGES YET</span>;
+  return (
+    <span className="equippedBadges" aria-label={`${ids.length} equipped achievement badges`}>
+      {ids.slice(0, 3).map((id) => {
+        const achievement = achievementById(id);
+        return achievement ? <i key={id} className={`badgeMark ${achievement.rarity.toLowerCase()}`} title={`${achievement.name}: ${achievement.description}`}>{achievement.icon}</i> : null;
+      })}
+    </span>
+  );
 }
 
 const MISSION_GOALS = [
@@ -394,10 +417,7 @@ const AVOID_RULES = [
 ];
 
 function scoreGrade(score: number, mistakes: number) {
-  if (mistakes === 0 && score >= 2500) return "S";
-  if (mistakes <= 1 && score >= 1800) return "A";
-  if (mistakes <= 3) return "B";
-  return "C";
+  return missionGrade(score, mistakes);
 }
 
 function gradeExplanation(grade: string) {
@@ -622,6 +642,7 @@ function LeaderboardModal({
   setNickname,
   wallet,
   setWallet,
+  playerKey,
 }: {
   open: boolean;
   onClose: () => void;
@@ -629,6 +650,7 @@ function LeaderboardModal({
   setNickname: (value: string) => void;
   wallet: string;
   setWallet: (value: string) => void;
+  playerKey: string;
 }) {
   const [view, setView] = useState<LeaderboardView>("epoch");
   const [mission, setMission] = useState(0);
@@ -636,26 +658,56 @@ function LeaderboardModal({
   const [epochStart, setEpochStart] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const [cabinetOpen, setCabinetOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     let active = true;
     setLoading(true);
     setError("");
-    fetch(`/api/leaderboard?view=${view}&mission=${mission}`)
+    fetch(`/api/leaderboard?view=${view}&mission=${mission}&playerKey=${encodeURIComponent(playerKey)}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Leaderboard unavailable");
-        return response.json() as Promise<{ entries: LeaderboardEntry[]; epochStart: string }>;
+        return response.json() as Promise<{ entries: LeaderboardEntry[]; epochStart: string; profile: PlayerProfile | null }>;
       })
       .then((data) => {
         if (!active) return;
         setEntries(data.entries);
         setEpochStart(data.epochStart);
+        setProfile(data.profile);
       })
       .catch(() => active && setError("Rankings could not be loaded. Please try again."))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [open, view, mission]);
+  }, [open, view, mission, playerKey]);
+
+  const toggleBadge = async (id: AchievementId) => {
+    if (!profile?.unlocked.includes(id)) return;
+    const equipped = profile.equipped.includes(id)
+      ? profile.equipped.filter((badge) => badge !== id)
+      : profile.equipped.length < 3
+        ? [...profile.equipped, id]
+        : profile.equipped;
+    if (!profile.equipped.includes(id) && profile.equipped.length >= 3) {
+      setError("You can display three badges. Unequip one before choosing another.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/leaderboard", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ playerKey, equipped }),
+      });
+      const data = await response.json() as { error?: string; profile?: PlayerProfile };
+      if (!response.ok || !data.profile) throw new Error(data.error || "Badges could not be updated.");
+      setProfile(data.profile);
+      setEntries((current) => current.map((entry) => entry.nickname === nickname ? { ...entry, badges: data.profile!.equipped, unlockedCount: data.profile!.unlocked.length } : entry));
+      setError("");
+    } catch (badgeError) {
+      setError(badgeError instanceof Error ? badgeError.message : "Badges could not be updated.");
+    }
+  };
 
   const connectWallet = async () => {
     const ethereum = (window as Window & { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
@@ -687,14 +739,38 @@ function LeaderboardModal({
           <button className={view === "all" ? "active" : ""} onClick={() => setView("all")}>ALL-TIME</button>
         </div>
         {view === "mission" && <div className="missionPicker">{MISSIONS.map((item, index) => <button key={item.title} className={mission === index ? "active" : ""} onClick={() => setMission(index)} aria-label={`Mission ${index + 1}: ${item.title}`}>{index + 1}</button>)}</div>}
+        <div className="badgeCabinetSummary">
+          <button onClick={() => setCabinetOpen((current) => !current)} aria-expanded={cabinetOpen}>
+            <span>MY BADGE CABINET</span>
+            <b>{profile?.unlocked.length ?? 0}/{ACHIEVEMENTS.length} UNLOCKED</b>
+            <em>{cabinetOpen ? "HIDE" : "OPEN"} ›</em>
+          </button>
+          <div><small>DISPLAYING</small><BadgeMarks ids={profile?.equipped ?? []} /></div>
+        </div>
+        {cabinetOpen && (
+          <div className="badgeCabinet">
+            <header><strong>CHOOSE UP TO THREE DISPLAY BADGES</strong><span>{profile?.equipped.length ?? 0}/3 EQUIPPED</span></header>
+            <div className="badgeGrid">
+              {ACHIEVEMENTS.map((achievement) => {
+                const unlocked = profile?.unlocked.includes(achievement.id) ?? false;
+                const equipped = profile?.equipped.includes(achievement.id) ?? false;
+                return (
+                  <button key={achievement.id} className={`${unlocked ? "unlocked" : "locked"} ${equipped ? "equipped" : ""} ${achievement.rarity.toLowerCase()}`} disabled={!unlocked} onClick={() => toggleBadge(achievement.id)}>
+                    <i>{unlocked ? achievement.icon : "?"}</i>
+                    <span><strong>{achievement.name}</strong><small>{achievement.description}</small><em>{equipped ? "EQUIPPED" : unlocked ? `UNLOCKED · ${achievement.rarity}` : `LOCKED · ${achievement.rarity}`}</em></span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="leaderboardTable">
-          <div className="leaderboardRow header"><span>RANK</span><span>PLAYER</span><span>SCORE</span><span>BADGE</span></div>
+          <div className="leaderboardRow header"><span>RANK</span><span>PLAYER & ACHIEVEMENTS</span><span>SCORE</span></div>
           {loading ? <div className="leaderboardEmpty">LOADING RANKINGS…</div> : error ? <div className="leaderboardEmpty">{error}</div> : entries.length === 0 ? <div className="leaderboardEmpty">THE EPOCH IS OPEN. COMPLETE A MISSION TO CLAIM THE FIRST RANK.</div> : entries.map((entry, index) => (
             <div className={`leaderboardRow ${index < 3 ? `podium rank${index + 1}` : ""}`} key={`${entry.nickname}-${index}`}>
               <span className="rank">#{index + 1}</span>
-              <span className="leaderboardIdentity"><strong>{entry.nickname}</strong><small>{compactWallet(entry.wallet)} · {entry.missions} {view === "mission" ? "EPOCHS" : "MISSIONS"}</small></span>
+              <span className="leaderboardIdentity"><span className="leaderboardName"><strong>{entry.nickname}</strong><BadgeMarks ids={entry.badges ?? []} /></span><small>{compactWallet(entry.wallet)} · {entry.missions} {view === "mission" ? "EPOCHS" : "MISSIONS"} · {entry.unlockedCount ?? 0} BADGES</small></span>
               <span className="leaderboardScore">{Number(entry.score).toLocaleString()}</span>
-              <span className="leaderboardBadge">{entry.badge}</span>
             </div>
           ))}
         </div>
@@ -723,6 +799,7 @@ export default function YieldVacuumGame() {
   const [wallet, setWallet] = useState("");
   const [playerKey, setPlayerKey] = useState("");
   const [scoreStatus, setScoreStatus] = useState("");
+  const [badgeUnlocks, setBadgeUnlocks] = useState<AchievementId[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
   const mission = MISSIONS[missionIndex];
   const completedMissions = Math.min(MISSIONS.length, missionIndex + (phase === "results" && result.cleared ? 1 : 0));
@@ -755,6 +832,7 @@ export default function YieldVacuumGame() {
     gameRef.current = freshGame(lockLevel);
     setHud({ score: 0, combo: 1, progress: 0, time: mission.time, shield: lockLevel, mistakes: 0, pools: Array(POOLS.length).fill(100) });
     setHelpOpen(false);
+    setBadgeUnlocks([]);
     setPhase("playing");
   };
 
@@ -791,9 +869,11 @@ export default function YieldVacuumGame() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ playerKey, nickname, wallet, missionIndex, score: result.score, mistakes: result.mistakes }),
       });
-      const data = await response.json() as { error?: string; badge?: string };
+      const data = await response.json() as { error?: string; badge?: string; newBadges?: AchievementId[] };
       if (!response.ok) throw new Error(data.error || "Score unavailable");
-      setScoreStatus(`SCORE SAVED · ${data.badge}`);
+      const newBadges = data.newBadges ?? [];
+      setBadgeUnlocks(newBadges);
+      setScoreStatus(newBadges.length ? `${newBadges.length} ACHIEVEMENT${newBadges.length === 1 ? "" : "S"} UNLOCKED` : `SCORE SAVED · ${data.badge}`);
     } catch (error) {
       setScoreStatus(error instanceof Error ? error.message : "The score could not be saved.");
     }
@@ -1539,6 +1619,13 @@ export default function YieldVacuumGame() {
                   <small className={scoreStatus.startsWith("SCORE SAVED") ? "scoreStatus" : ""}>{scoreStatus || "Free entry · best score per mission counts each epoch · wallet not required"}</small>
                 </div>
               )}
+              {badgeUnlocks.length > 0 && (
+                <div className="badgeUnlockToast" role="status">
+                  <small>ACHIEVEMENT UNLOCKED</small>
+                  <div>{badgeUnlocks.map((id) => { const achievement = achievementById(id); return achievement ? <span key={id}><i>{achievement.icon}</i><b>{achievement.name}</b></span> : null; })}</div>
+                  <p>Your new badge is saved permanently. Open the leaderboard to choose which three appear beside your name.</p>
+                </div>
+              )}
               <aside className="dexFact">
                 <div className="factHeading"><span>◆</span> REAL TOPAZ DEX FACT</div>
                 <p>{mission.fact}</p>
@@ -1558,7 +1645,7 @@ export default function YieldVacuumGame() {
         <span>✕ RED X = AVOID</span>
         <p>Presented by The Crypto Arborist · Independent educational game, not an official Topaz DEX product.</p>
       </footer>
-      <LeaderboardModal open={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} nickname={nickname} setNickname={setNickname} wallet={wallet} setWallet={setWallet} />
+      <LeaderboardModal open={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} nickname={nickname} setNickname={setNickname} wallet={wallet} setWallet={setWallet} playerKey={playerKey} />
     </main>
   );
 }

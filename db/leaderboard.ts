@@ -1,4 +1,5 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
+import { ACHIEVEMENTS, MISSION_ACHIEVEMENTS, missionGrade, type AchievementId } from "../lib/achievements";
 
 export type LeaderboardView = "epoch" | "mission" | "all";
 
@@ -20,6 +21,21 @@ type LeaderboardEntry = {
   score: number;
   missions: number;
   badge: string;
+  badges: AchievementId[];
+  unlockedCount: number;
+  updatedAt: string;
+};
+
+export type PlayerProfile = {
+  playerKey: string;
+  nickname: string;
+  wallet: string | null;
+  unlocked: AchievementId[];
+  equipped: AchievementId[];
+  clearedMissions: number[];
+  sGradeMissions: number[];
+  epochClears: Record<string, number[]>;
+  completedEpochs: string[];
   updatedAt: string;
 };
 
@@ -42,6 +58,36 @@ async function scoreRecords() {
     blobs.map((blob) => store.get(blob.key, { type: "json" }) as Promise<ScoreRecord | null>),
   );
   return records.filter((record): record is ScoreRecord => Boolean(record));
+}
+
+function emptyProfile(playerKey: string, nickname = "", wallet: string | null = null): PlayerProfile {
+  return { playerKey, nickname, wallet, unlocked: [], equipped: [], clearedMissions: [], sGradeMissions: [], epochClears: {}, completedEpochs: [], updatedAt: new Date(0).toISOString() };
+}
+
+export async function readProfile(playerKey: string) {
+  const profile = await leaderboardStore().get(`profiles/${playerKey}.json`, { type: "json" }) as PlayerProfile | null;
+  const fallback = emptyProfile(playerKey);
+  if (!profile) return fallback;
+  return {
+    ...fallback,
+    ...profile,
+    unlocked: profile.unlocked ?? [],
+    equipped: profile.equipped ?? [],
+    clearedMissions: profile.clearedMissions ?? [],
+    sGradeMissions: profile.sGradeMissions ?? [],
+    epochClears: profile.epochClears ?? {},
+    completedEpochs: profile.completedEpochs ?? [],
+  };
+}
+
+export async function equipBadges(playerKey: string, equipped: AchievementId[]) {
+  const store = leaderboardStore();
+  const profile = await readProfile(playerKey);
+  const valid = equipped.filter((id, index) => profile.unlocked.includes(id) && equipped.indexOf(id) === index).slice(0, 3);
+  profile.equipped = valid;
+  profile.updatedAt = new Date().toISOString();
+  await store.setJSON(`profiles/${playerKey}.json`, profile);
+  return profile;
 }
 
 function newestRecord(records: ScoreRecord[]) {
@@ -67,6 +113,7 @@ export async function readLeaderboard(view: LeaderboardView, missionIndex: numbe
   const results: LeaderboardEntry[] = [];
   for (const playerRecords of byPlayer.values()) {
     const newest = newestRecord(playerRecords);
+    const profile = await readProfile(newest.playerKey);
     if (view === "mission") {
       const best = playerRecords.reduce((leader, record) => record.score > leader.score ? record : leader);
       results.push({
@@ -75,6 +122,8 @@ export async function readLeaderboard(view: LeaderboardView, missionIndex: numbe
         score: best.score,
         missions: new Set(playerRecords.map((record) => record.epochStart)).size,
         badge: best.badge,
+        badges: profile.equipped,
+        unlockedCount: profile.unlocked.length,
         updatedAt: best.updatedAt,
       });
       continue;
@@ -87,6 +136,8 @@ export async function readLeaderboard(view: LeaderboardView, missionIndex: numbe
       score: playerRecords.reduce((total, record) => total + record.score, 0),
       missions: playerRecords.length,
       badge: latestBadge,
+      badges: profile.equipped,
+      unlockedCount: profile.unlocked.length,
       updatedAt: newest.updatedAt,
     });
   }
@@ -121,5 +172,32 @@ export async function saveScore(input: {
     updatedAt: new Date().toISOString(),
   };
   await store.setJSON(key, record);
-  return epochStart;
+
+  const profile = await readProfile(input.playerKey);
+  profile.nickname = input.nickname;
+  profile.wallet = input.wallet;
+  profile.clearedMissions = [...new Set([...profile.clearedMissions, input.missionIndex])].sort();
+  if (missionGrade(input.score, input.mistakes) === "S") {
+    profile.sGradeMissions = [...new Set([...profile.sGradeMissions, input.missionIndex])].sort();
+  }
+  profile.epochClears[epochStart] = [...new Set([...(profile.epochClears[epochStart] ?? []), input.missionIndex])].sort();
+  if (profile.epochClears[epochStart].length === 7) {
+    profile.completedEpochs = [...new Set([...profile.completedEpochs, epochStart])].sort();
+  }
+
+  const earned = new Set<AchievementId>(profile.unlocked);
+  if (input.mistakes === 0) earned.add(MISSION_ACHIEVEMENTS[input.missionIndex]);
+  if (profile.clearedMissions.length === 7) earned.add("topaz-scholar");
+  if (profile.sGradeMissions.length === 7) earned.add("yield-champion");
+  if (profile.completedEpochs.length >= 3) earned.add("epoch-veteran");
+  const unlocked = ACHIEVEMENTS.map((achievement) => achievement.id).filter((id) => earned.has(id));
+  const newBadges = unlocked.filter((id) => !profile.unlocked.includes(id));
+  profile.unlocked = unlocked;
+  for (const id of newBadges) {
+    if (profile.equipped.length < 3) profile.equipped.push(id);
+  }
+  profile.equipped = profile.equipped.filter((id) => profile.unlocked.includes(id)).slice(0, 3);
+  profile.updatedAt = new Date().toISOString();
+  await store.setJSON(`profiles/${input.playerKey}.json`, profile);
+  return { epochStart, profile, newBadges };
 }
