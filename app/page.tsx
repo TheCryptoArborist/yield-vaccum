@@ -352,11 +352,29 @@ type LeaderboardView = "epoch" | "mission" | "all";
 
 const SUPPORT_WALLET = "0x90f9c1c0c675A0ce9D539c540DB7F4A1f7e583AE";
 const SUPPORT_TOKENS = [
-  { symbol: "BNB", label: "BNB", contract: "NATIVE BNB" },
+  { symbol: "BNB", label: "BNB", contract: null },
   { symbol: "TOPAZ", label: "TOPAZ", contract: "0xdf002282C1474C9592780618Adda7EaA99998Abd" },
   { symbol: "USDT", label: "USDT", contract: "0x55d398326f99059fF775485246999027B3197955" },
   { symbol: "USDC", label: "USDC", contract: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d" },
 ] as const;
+
+type SupportSymbol = (typeof SUPPORT_TOKENS)[number]["symbol"];
+type InjectedWallet = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
+
+function parseTokenAmount(input: string, decimals: number) {
+  if (!/^\d+(\.\d+)?$/.test(input)) throw new Error("Enter a valid amount.");
+  const [whole, fraction = ""] = input.split(".");
+  if (fraction.length > decimals) throw new Error(`This token supports up to ${decimals} decimal places.`);
+  const units = BigInt(whole) * (BigInt(10) ** BigInt(decimals)) + BigInt((fraction + "0".repeat(decimals)).slice(0, decimals) || "0");
+  if (units <= BigInt(0)) throw new Error("Enter an amount greater than zero.");
+  return units;
+}
+
+function transferData(recipient: string, amount: bigint) {
+  const addressWord = recipient.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+  const amountWord = amount.toString(16).padStart(64, "0");
+  return `0xa9059cbb${addressWord}${amountWord}`;
+}
 
 function compactWallet(wallet: string | null) {
   return wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : "NICKNAME PLAYER";
@@ -795,6 +813,75 @@ function LeaderboardModal({
 
 function SupportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [selectedSymbol, setSelectedSymbol] = useState<SupportSymbol>("BNB");
+  const [amount, setAmount] = useState("");
+  const [account, setAccount] = useState("");
+  const [transactionStatus, setTransactionStatus] = useState("");
+  const [transactionHash, setTransactionHash] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const selectedToken = SUPPORT_TOKENS.find((token) => token.symbol === selectedSymbol)!;
+  const presets = selectedSymbol === "BNB" ? ["0.005", "0.01", "0.025"] : selectedSymbol === "TOPAZ" ? ["100", "500", "1000"] : ["2", "5", "10"];
+
+  const walletProvider = () => (window as Window & { ethereum?: InjectedWallet }).ethereum;
+
+  const connectWallet = async () => {
+    const ethereum = walletProvider();
+    if (!ethereum) throw new Error("Open this page inside MetaMask, Trust Wallet, Coinbase Wallet, Rabby, or another BNB-compatible wallet browser.");
+    const accounts = await ethereum.request({ method: "eth_requestAccounts" }) as string[];
+    if (!accounts[0]) throw new Error("No wallet account was selected.");
+    try {
+      await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x38" }] });
+    } catch (switchError) {
+      const errorCode = typeof switchError === "object" && switchError && "code" in switchError ? Number((switchError as { code: unknown }).code) : 0;
+      if (errorCode !== 4902) throw switchError;
+      await ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: "0x38", chainName: "BNB Smart Chain", nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 }, rpcUrls: ["https://bsc-dataseed.bnbchain.org"], blockExplorerUrls: ["https://bscscan.com"] }] });
+    }
+    setAccount(accounts[0]);
+    return { ethereum, account: accounts[0] };
+  };
+
+  const connectOnly = async () => {
+    setBusy(true);
+    setTransactionStatus("CONNECTING WALLET…");
+    try {
+      await connectWallet();
+      setTransactionStatus("WALLET CONNECTED · BNB SMART CHAIN");
+    } catch (walletError) {
+      setTransactionStatus(walletError instanceof Error ? walletError.message : "Wallet connection was cancelled.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sendSupport = async () => {
+    setBusy(true);
+    setTransactionHash("");
+    setTransactionStatus("PREPARING TRANSACTION…");
+    try {
+      const connected = await connectWallet();
+      let transaction: Record<string, string>;
+      if (!selectedToken.contract) {
+        const value = parseTokenAmount(amount, 18);
+        transaction = { from: connected.account, to: SUPPORT_WALLET, value: `0x${value.toString(16)}` };
+      } else {
+        const decimalsHex = await connected.ethereum.request({ method: "eth_call", params: [{ to: selectedToken.contract, data: "0x313ce567" }, "latest"] }) as string;
+        const decimals = Number.parseInt(decimalsHex, 16);
+        if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) throw new Error("The token decimal setting could not be verified.");
+        const value = parseTokenAmount(amount, decimals);
+        transaction = { from: connected.account, to: selectedToken.contract, data: transferData(SUPPORT_WALLET, value) };
+      }
+      setTransactionStatus("REVIEW AND APPROVE IN YOUR WALLET…");
+      const hash = await connected.ethereum.request({ method: "eth_sendTransaction", params: [transaction] }) as string;
+      setTransactionHash(hash);
+      setTransactionStatus("TRANSACTION SUBMITTED · THANK YOU FOR SUPPORTING THE PROJECT");
+    } catch (sendError) {
+      const errorCode = typeof sendError === "object" && sendError && "code" in sendError ? Number((sendError as { code: unknown }).code) : 0;
+      setTransactionStatus(errorCode === 4001 ? "TRANSACTION CANCELLED · NOTHING WAS SENT" : sendError instanceof Error ? sendError.message : "The transaction could not be prepared.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const copyAddress = async () => {
     try {
@@ -813,10 +900,19 @@ function SupportModal({ open, onClose }: { open: boolean; onClose: () => void })
         <header><div><small>OPTIONAL CREATOR SUPPORT</small><h2>SUPPORT THE CRYPTO ARBORIST</h2></div><button onClick={onClose} aria-label="Close support panel">✕</button></header>
         <p>Yield Vacuum is free to play. If you enjoyed it, an optional tip can help fund hosting, artwork, and future educational missions.</p>
         <div className="supportNetwork"><b>NETWORK</b><strong>BNB SMART CHAIN · CHAIN ID 56</strong></div>
-        <div className="supportTokens">{SUPPORT_TOKENS.map((token) => <span key={token.symbol} title={token.contract}><b>{token.symbol}</b><small>{token.symbol === "BNB" ? "NATIVE TOKEN" : "VERIFIED BEP-20"}</small></span>)}</div>
+        <div className="supportTokens">{SUPPORT_TOKENS.map((token) => <button key={token.symbol} className={selectedSymbol === token.symbol ? "active" : ""} onClick={() => { setSelectedSymbol(token.symbol); setAmount(""); setTransactionHash(""); setTransactionStatus(""); }} title={token.contract ?? "Native BNB"}><b>{token.symbol}</b><small>{token.symbol === "BNB" ? "NATIVE TOKEN" : "VERIFIED BEP-20"}</small></button>)}</div>
+        <div className="supportTransaction">
+          <div className="supportAmount"><label htmlFor="supportAmount">AMOUNT IN {selectedSymbol}</label><input id="supportAmount" inputMode="decimal" autoComplete="off" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g, ""))} placeholder={`Enter ${selectedSymbol} amount`} /></div>
+          <div className="supportPresets">{presets.map((preset) => <button key={preset} onClick={() => setAmount(preset)}>{preset} {selectedSymbol}</button>)}</div>
+          <div className="supportWalletState"><span>{account ? `CONNECTED · ${compactWallet(account)}` : "WALLET NOT CONNECTED"}</span>{!account && <button onClick={connectOnly} disabled={busy}>CONNECT WALLET</button>}</div>
+          <div className="supportReview"><span><small>YOU ARE SENDING</small><b>{amount || "—"} {selectedSymbol}</b></span><span><small>TO</small><b>{compactWallet(SUPPORT_WALLET)}</b></span><span><small>NETWORK</small><b>BNB CHAIN</b></span></div>
+          <button className="supportSend" onClick={sendSupport} disabled={busy || !amount}>{busy ? "CHECK YOUR WALLET…" : `REVIEW & SEND ${selectedSymbol}`}</button>
+          {transactionStatus && <p className={`supportStatus ${transactionHash ? "success" : ""}`}>{transactionStatus}</p>}
+          {transactionHash && <a className="supportTxLink" href={`https://bscscan.com/tx/${transactionHash}`} target="_blank" rel="noopener noreferrer">VIEW TRANSACTION ON BSCSCAN ↗</a>}
+        </div>
         <div className="supportAddress"><small>RECIPIENT ADDRESS</small><code>{SUPPORT_WALLET}</code><button onClick={copyAddress}>{copied ? "ADDRESS COPIED ✓" : "COPY ADDRESS"}</button></div>
         <a className="supportExplorer" href={`https://bscscan.com/address/${SUPPORT_WALLET}`} target="_blank" rel="noopener noreferrer">VERIFY RECIPIENT ON BSCSCAN ↗</a>
-        <div className="supportDisclosure"><b>PLEASE CHECK BEFORE SENDING</b><span>Use BNB Smart Chain only. Verify the address in your wallet. Tips are optional, final, and do not unlock access, improve scores, or affect badges. This is creator support—not a Topaz DEX fee or a tax-deductible charitable donation.</span></div>
+        <div className="supportDisclosure"><b>PLEASE CHECK BEFORE SENDING</b><span>Your wallet shows the final transaction before anything is sent. Confirm the token, amount, BNB Smart Chain network, and recipient address there. Tips are optional, final, and do not unlock access, improve scores, or affect badges. This is creator support—not a Topaz DEX fee or a tax-deductible charitable donation.</span></div>
         <button className="supportContinue" onClick={onClose}>CONTINUE PLAYING FREE</button>
       </section>
     </div>
