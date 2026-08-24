@@ -112,3 +112,9 @@ button,input,summary{transition:transform .15s ease,filter .15s ease,border-colo
 .officialDexCta .topazDexLink{width:auto;min-width:300px;min-height:64px;flex-direction:column;gap:5px;padding:13px 24px;border:2px solid var(--topaz-orange);background:#111113;box-shadow:0 0 20px rgba(254,60,0,.13);font-size:12px}
 .officialDexCta .topazDexLink span{font-size:8px}.officialDexCta .topazDexLink strong{color:#fff;font-size:15px;letter-spacing:.12em}
 @media(max-width:620px){.homeBrand{padding-right:0}.homeBrand>span b,.homeBrand>small{display:none}.officialDexCta{width:min(360px,100%);grid-template-columns:1fr;margin:12px auto 10px}.officialDexCopy{padding:11px 13px;text-align:center}.officialDexCopy small{font-size:6px}.officialDexCopy strong{font-size:11px}.officialDexCopy span{font-size:7px}.officialDexCta .topazDexLink{width:100%;min-width:0;min-height:54px;flex-direction:column;gap:3px;padding:10px 14px}.officialDexCta .topazDexLink span{font-size:7px}.officialDexCta .topazDexLink strong{font-size:12px}}
+
+/* Privacy-friendly approximate unique-browser counter. */
+.visitorCounter{width:min(1040px,100%);display:flex;align-items:center;justify-content:center;gap:10px;margin:8px auto 0;color:#71717a;font-size:7px;font-weight:900;letter-spacing:.12em}
+.visitorCounter strong{padding:5px 8px;border:1px solid var(--topaz-border);background:#09090a;color:var(--topaz-orange);font-size:11px;font-variant-numeric:tabular-nums;letter-spacing:.16em}
+.visitorCounter small{color:#52525b;font-size:6px;letter-spacing:.08em}
+@media(max-width:620px){.visitorCounter{flex-wrap:wrap;gap:6px;margin:8px auto 3px;font-size:6px}.visitorCounter strong{font-size:10px}.visitorCounter small{width:100%;text-align:center;font-size:5px}}

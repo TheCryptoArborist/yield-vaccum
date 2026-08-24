@@ -800,6 +800,7 @@ export default function YieldVacuumGame() {
   const [playerKey, setPlayerKey] = useState("");
   const [scoreStatus, setScoreStatus] = useState("");
   const [badgeUnlocks, setBadgeUnlocks] = useState<AchievementId[]>([]);
+  const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const mission = MISSIONS[missionIndex];
   const completedMissions = Math.min(MISSIONS.length, missionIndex + (phase === "results" && result.cleared ? 1 : 0));
@@ -818,6 +819,23 @@ export default function YieldVacuumGame() {
     if (nickname) window.localStorage.setItem("yield-vacuum-nickname", nickname);
     if (wallet) window.localStorage.setItem("yield-vacuum-wallet", wallet);
   }, [nickname, wallet]);
+
+  useEffect(() => {
+    const storageKey = "yield-vacuum-visitor-id";
+    const visitorId = window.localStorage.getItem(storageKey) || crypto.randomUUID();
+    window.localStorage.setItem(storageKey, visitorId);
+    fetch("/api/visitors", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ visitorId }),
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Visitor count unavailable");
+        return response.json() as Promise<{ count: number }>;
+      })
+      .then((data) => setVisitorCount(data.count))
+      .catch(() => setVisitorCount(null));
+  }, []);
 
   const images = useMemo(() => {
     if (typeof window === "undefined") return [] as HTMLImageElement[];
@@ -1660,6 +1678,11 @@ export default function YieldVacuumGame() {
         <span>✕ RED X = AVOID</span>
         <p>Presented by The Crypto Arborist · Independent educational game, not an official Topaz DEX product.</p>
       </footer>
+      <div className="visitorCounter" aria-label={visitorCount === null ? "Visitor counter loading" : `${visitorCount} unique visitors`}>
+        <span>YIELD VACUUM VISITORS</span>
+        <strong>{visitorCount === null ? "— — — — — —" : visitorCount.toLocaleString().padStart(6, "0")}</strong>
+        <small>APPROXIMATE UNIQUE BROWSERS</small>
+      </div>
       <LeaderboardModal open={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} nickname={nickname} setNickname={setNickname} wallet={wallet} setWallet={setWallet} playerKey={playerKey} />
     </main>
   );
