@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.netlify/
+.openai/
+.env*
+npm-debug.log*
+*.tsbuildinfo
