@@ -1618,7 +1618,7 @@ export default function YieldVacuumGame() {
           </div>
         )}
 
-        <div className="canvasWrap">
+        <div className={`canvasWrap ${phase === "briefing" ? "briefingActive" : ""}`}>
           <canvas
             ref={canvasRef}
             onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); movePlayer(event); }}
