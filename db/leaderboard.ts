@@ -179,7 +179,7 @@ export async function saveScore(input: {
   const history = (await scoreRecords()).filter((saved) => saved.playerKey === input.playerKey);
   profile.clearedMissions = [...new Set([...profile.clearedMissions, ...history.map((saved) => saved.missionIndex), input.missionIndex])].sort();
   for (const saved of history) {
-    if (missionGrade(saved.score, saved.mistakes) === "S") {
+    if (missionGrade(saved.score, saved.mistakes, saved.missionIndex) === "S") {
       profile.sGradeMissions = [...new Set([...profile.sGradeMissions, saved.missionIndex])].sort();
     }
     profile.epochClears[saved.epochStart] = [...new Set([...(profile.epochClears[saved.epochStart] ?? []), saved.missionIndex])].sort();
@@ -187,7 +187,7 @@ export async function saveScore(input: {
       profile.completedEpochs = [...new Set([...profile.completedEpochs, saved.epochStart])].sort();
     }
   }
-  if (missionGrade(input.score, input.mistakes) === "S") {
+  if (missionGrade(input.score, input.mistakes, input.missionIndex) === "S") {
     profile.sGradeMissions = [...new Set([...profile.sGradeMissions, input.missionIndex])].sort();
   }
   profile.epochClears[epochStart] = [...new Set([...(profile.epochClears[epochStart] ?? []), input.missionIndex])].sort();
