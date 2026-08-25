@@ -236,3 +236,20 @@ button,input,summary{transition:transform .15s ease,filter .15s ease,border-colo
   .scoreFactors{gap:3px;margin-bottom:6px}.scoreFactors span{padding:6px 5px;flex-direction:column;gap:3px}.scoreFactors small{font-size:5px}.scoreFactors b{font-size:8px}
   .resultActions{gap:5px;padding-top:7px}.resultActions button{min-height:40px;padding:9px 7px;font-size:7px;letter-spacing:.06em}
 }
+
+
+/* Official Topaz DEX weekly AMA and automatic live indicator. */
+.topazLivePanel{width:min(1040px,calc(100% - 28px));display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:18px;margin:18px auto 10px;padding:16px 18px;border:1px solid var(--topaz-border);border-left:4px solid var(--topaz-orange);background:linear-gradient(110deg,#151517,#09090a 65%);box-shadow:0 14px 40px rgba(0,0,0,.35)}
+.topazLiveSignal{position:relative;width:58px;height:58px;display:grid;place-items:center;border:1px solid #552113;background:#190804;color:#fff}
+.youtubePlay{position:relative;z-index:2;width:36px;height:26px;display:grid;place-items:center;border-radius:7px;background:#ff3c00;font-size:12px;padding-left:2px;box-shadow:0 0 18px rgba(255,60,0,.24)}
+.topazLiveSignal>i{position:absolute;inset:5px;border:1px solid rgba(255,60,0,.22);border-radius:50%}
+.topazLiveCopy{min-width:0;display:flex;flex-direction:column;gap:5px}.topazLiveCopy small{color:var(--topaz-orange);font-size:7px;font-weight:1000;letter-spacing:.16em}.topazLiveCopy strong{color:#fff;font-size:17px;letter-spacing:.035em}.topazLiveCopy span{color:#a1a1aa;font-size:9px;line-height:1.45}
+.topazLiveAction{display:flex;flex-direction:column;align-items:stretch;gap:7px;min-width:210px}.topazLiveBadge{display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 12px;border:1px solid #5b2b1e;background:#1b0b07;color:#ff8a64;font-size:8px;letter-spacing:.13em}.topazLiveBadge>i{width:8px;height:8px;border-radius:50%;background:#ff3c00;box-shadow:0 0 11px rgba(255,60,0,.6)}
+.topazLiveAction>a{display:grid;min-height:42px;place-items:center;padding:10px 15px;border:2px solid var(--topaz-orange);background:#111113;color:#fff;font-size:9px;font-weight:1000;letter-spacing:.1em;text-decoration:none}.topazLiveAction>a:hover{background:var(--topaz-orange);color:#000}
+.topazLivePanel.live{border-color:#ff3c00;background:linear-gradient(110deg,#260b05,#0a0909 68%);box-shadow:0 0 34px rgba(255,60,0,.22),0 18px 45px rgba(0,0,0,.48)}
+.topazLivePanel.live .topazLiveSignal>i{animation:liveRing 1.25s ease-out infinite}.topazLivePanel.live .topazLiveBadge{border-color:#ff3c00;background:#ff3c00;color:#070707;box-shadow:0 0 22px rgba(255,60,0,.36)}.topazLivePanel.live .topazLiveBadge>i{background:#fff;box-shadow:0 0 12px #fff;animation:livePulse .9s ease-in-out infinite alternate}
+.topazLivePanel.upcoming{border-left-color:#ff9a3c}.topazLivePanel.upcoming .topazLiveBadge{border-color:#8a4c20;color:#ffb06b}.topazLivePanel.checking{opacity:.86}
+@keyframes livePulse{to{opacity:.42;transform:scale(.72)}}
+@keyframes liveRing{from{opacity:.9;transform:scale(.7)}to{opacity:0;transform:scale(1.45)}}
+@media(max-width:720px){.topazLivePanel{grid-template-columns:52px 1fr;gap:12px;padding:13px}.topazLiveSignal{width:46px;height:46px}.youtubePlay{width:31px;height:23px}.topazLiveCopy strong{font-size:13px}.topazLiveCopy span{font-size:8px}.topazLiveAction{grid-column:1/-1;min-width:0;display:grid;grid-template-columns:1fr 1.4fr}.topazLiveBadge{font-size:7px}.topazLiveAction>a{min-height:38px;font-size:8px}}
+@media(max-width:430px){.topazLivePanel{width:calc(100% - 16px);margin-top:12px}.topazLiveAction{grid-template-columns:1fr}.topazLiveCopy strong{font-size:12px}.topazLiveAction>a{font-size:7px}}
