@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ACHIEVEMENTS, achievementById, missionGrade, nextGradeRequirement, type AchievementId } from "../lib/achievements";
+import TopazLivePanel from "./topaz-live";
 
 type Phase = "splash" | "briefing" | "playing" | "results";
 type DropKind = "route" | "emission" | "fee" | "crystal" | "vote" | "incentive" | "hazard";
@@ -1858,6 +1859,8 @@ export default function YieldVacuumGame() {
           )}
         </div>
       </section>
+
+      <TopazLivePanel />
 
       <div className="officialDexCta">
         <div className="officialDexCopy">
