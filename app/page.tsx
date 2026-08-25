@@ -1874,13 +1874,18 @@ export default function YieldVacuumGame() {
         <a className="topazDexLink" href="https://www.topazdex.com/" target="_blank" rel="noopener noreferrer"><span>OFFICIAL WEBSITE</span><strong>VISIT TOPAZ DEX ↗</strong></a>
       </div>
 
+      <button className="supportLauncher" onClick={() => setSupportOpen(true)} aria-label="Open the optional creator support panel">
+        <span className="supportLauncherIcon" aria-hidden="true">♥</span>
+        <span className="supportLauncherCopy"><small>YIELD VACUUM IS FREE TO PLAY</small><strong>SUPPORT THE CRYPTO ARBORIST</strong><em>Optional creator support · no gameplay or leaderboard advantage</em></span>
+        <span className="supportLauncherAction">SUPPORT PROJECT <i aria-hidden="true">→</i></span>
+      </button>
+
       <footer>
         <b>VACUUM = ALWAYS ON</b>
         <span>✓ GREEN CHECK = VACUUM</span>
         <span>✕ RED X = AVOID</span>
         <p>Presented by The Crypto Arborist · Independent educational game, not an official Topaz DEX product.</p>
       </footer>
-      <button className="supportLauncher" onClick={() => setSupportOpen(true)}><span>ENJOYING THE GAME?</span><strong>SUPPORT THIS FREE PROJECT</strong><i>♥</i></button>
       <div className="visitorCounter" aria-label={visitorCount === null ? "Visitor counter loading" : `${visitorCount} unique visitors`}>
         <span>YIELD VACUUM VISITORS</span>
         <strong>{visitorCount === null ? "— — — — — —" : visitorCount.toLocaleString().padStart(6, "0")}</strong>
