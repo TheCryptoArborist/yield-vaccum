@@ -62,7 +62,7 @@ export default function TopazLivePanel() {
         </span>
       </div>
       <div className="topazLiveAction">
-        <b className="topazLiveBadge"><i></i>{isLive ? "LIVE NOW" : isUpcoming ? "UPCOMING" : status.state === "checking" ? "CHECKING" : "WEEKLY AMA"}</b>
+        <b className="topazLiveBadge"><i></i>{isLive ? "ON THE AIR" : isUpcoming ? "COMING UP" : status.state === "checking" ? "TUNING IN…" : "WEEKLY AMA"}</b>
         <a href={watchUrl} target="_blank" rel="noopener noreferrer">
           {isLive ? "WATCH LIVE ↗" : isUpcoming ? "VIEW & SET REMINDER ↗" : "VISIT TOPAZ YOUTUBE ↗"}
         </a>
