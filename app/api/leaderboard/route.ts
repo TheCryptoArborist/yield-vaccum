@@ -1,7 +1,7 @@
 import { currentTopazEpoch, equipBadges, readLeaderboard, readProfile, saveScore, type LeaderboardView } from "../../../db/leaderboard";
 import { ACHIEVEMENTS, achievementById, type AchievementId } from "../../../lib/achievements";
 
-const BADGES = ["ROUTE ACE", "LP BALANCER", "LOCK BUILDER", "GAUGE STRATEGIST", "FEE SCANNER", "INCENTIVE ROUTER", "EPOCH EXPERT"];
+const BADGES = ["ROUTE ACE", "LP BALANCER", "LOCK BUILDER", "GAUGE STRATEGIST", "FEE SCANNER", "INCENTIVE ROUTER", "EPOCH EXPERT", "POOL ARCHITECT", "RANGE KEEPER", "IL DEFENDER", "CHAIN NAVIGATOR"];
 
 function cleanNickname(value: unknown) {
   return String(value ?? "").replace(/[^a-zA-Z0-9 _.-]/g, "").trim().slice(0, 22);
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const requested = url.searchParams.get("view");
     const view: LeaderboardView = requested === "mission" || requested === "all" ? requested : "epoch";
-    const missionIndex = Math.max(0, Math.min(6, Number(url.searchParams.get("mission") ?? 0) || 0));
+    const missionIndex = Math.max(0, Math.min(10, Number(url.searchParams.get("mission") ?? 0) || 0));
     const result = await readLeaderboard(view, missionIndex);
     const playerKey = String(url.searchParams.get("playerKey") ?? "").trim();
     const profile = /^[a-zA-Z0-9-]{16,80}$/.test(playerKey) ? await readProfile(playerKey) : null;
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     if (!/^[a-zA-Z0-9-]{16,80}$/.test(playerKey) || nickname.length < 2) {
       return Response.json({ error: "Choose a nickname with at least two letters or numbers." }, { status: 400 });
     }
-    if (!Number.isInteger(missionIndex) || missionIndex < 0 || missionIndex > 6 || !Number.isInteger(score) || score < 0 || score > 100_000) {
+    if (!Number.isInteger(missionIndex) || missionIndex < 0 || missionIndex > 10 || !Number.isInteger(score) || score < 0 || score > 100_000) {
       return Response.json({ error: "That score could not be verified." }, { status: 400 });
     }
 

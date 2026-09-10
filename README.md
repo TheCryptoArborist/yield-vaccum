@@ -1,6 +1,6 @@
 # Topaz: Yield Vacuum
 
-An independent educational arcade game about Topaz DEX on BNB Chain, presented by The Crypto Arborist.
+An independent eleven-mission educational arcade game about Topaz DEX, its BNB Chain economic core, and expansion toward Robinhood Chain, presented by The Crypto Arborist.
 
 ## Development
 

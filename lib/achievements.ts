@@ -6,8 +6,14 @@ export const ACHIEVEMENTS = [
   { id: "volume-hunter", icon: "≈", name: "Volume Hunter", description: "Clear Fee Vacuum with every decision correct.", rarity: "RARE" },
   { id: "incentive-inspector", icon: "▣", name: "Incentive Inspector", description: "Clear Incentive Rush with zero misroutes.", rarity: "RARE" },
   { id: "epoch-expert", icon: "↻", name: "Epoch Expert", description: "Clear Epoch Flip with zero order errors.", rarity: "RARE" },
+  { id: "pool-architect", icon: "⬡", name: "Pool Architect", description: "Clear Pool Architect with zero mistakes.", rarity: "RARE" },
+  { id: "range-keeper", icon: "↔", name: "Range Keeper", description: "Clear Range Keeper with zero mistakes.", rarity: "RARE" },
+  { id: "il-defender", icon: "◇", name: "IL Defender", description: "Clear IL Defense with zero mistakes.", rarity: "RARE" },
+  { id: "chain-navigator", icon: "∞", name: "Chain Navigator", description: "Clear One Topaz with zero mistakes.", rarity: "RARE" },
   { id: "topaz-scholar", icon: "✦", name: "Topaz Scholar", description: "Clear all seven educational missions.", rarity: "EPIC" },
+  { id: "advanced-scholar", icon: "XI", name: "Advanced Scholar", description: "Clear all eleven educational missions.", rarity: "EPIC" },
   { id: "yield-champion", icon: "★", name: "Yield Champion", description: "Earn an S grade on all seven missions.", rarity: "LEGENDARY" },
+  { id: "vacuum-master", icon: "V", name: "Vacuum Master", description: "Earn an S grade on all eleven missions.", rarity: "LEGENDARY" },
   { id: "epoch-veteran", icon: "III", name: "Epoch Veteran", description: "Complete the campaign in three weekly epochs.", rarity: "LEGENDARY" },
 ] as const;
 
@@ -21,6 +27,10 @@ export const MISSION_ACHIEVEMENTS: AchievementId[] = [
   "volume-hunter",
   "incentive-inspector",
   "epoch-expert",
+  "pool-architect",
+  "range-keeper",
+  "il-defender",
+  "chain-navigator",
 ];
 
 export function achievementById(id: string) {
@@ -35,6 +45,10 @@ export const MISSION_GRADE_TARGETS = [
   { s: 3_200, a: 3_000 },
   { s: 3_500, a: 3_250 },
   { s: 4_200, a: 3_900 },
+  { s: 4_600, a: 4_300 },
+  { s: 5_050, a: 4_750 },
+  { s: 5_500, a: 5_200 },
+  { s: 5_950, a: 5_650 },
 ] as const;
 
 export type MissionGrade = "S" | "A" | "B" | "C";

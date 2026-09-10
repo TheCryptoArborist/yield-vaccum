@@ -9,12 +9,12 @@ import "./polish.css";
 
 export const metadata: Metadata = {
   title: "Topaz: Yield Vacuum",
-  description: "Learn the Topaz DEX liquidity flywheel through seven free arcade missions. Presented independently by The Crypto Arborist.",
+  description: "Learn the Topaz DEX liquidity flywheel, LP risk, and multichain expansion through eleven free arcade missions. Presented independently by The Crypto Arborist.",
   applicationName: "Yield Vacuum",
   manifest: "/manifest.webmanifest",
   openGraph: {
     title: "Topaz: Yield Vacuum",
-    description: "Seven free missions. Learn swaps, liquidity, veTOPAZ, gauges, incentives, and epochs.",
+    description: "Eleven free missions covering swaps, liquidity, veTOPAZ, LP risk, epochs, and Robinhood Chain expansion.",
     type: "website",
   },
   icons: {

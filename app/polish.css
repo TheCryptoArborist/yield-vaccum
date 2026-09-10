@@ -131,6 +131,11 @@ button,input,summary{transition:transform .15s ease,filter .15s ease,border-colo
 .supportExplorer{display:block;margin:8px 20px 0;color:#ff764d;font-size:8px;font-weight:900;letter-spacing:.09em;text-align:center;text-decoration:none}.supportDisclosure{display:flex;flex-direction:column;gap:5px;margin:13px 20px 10px;padding:10px 12px;border-left:3px solid var(--topaz-orange);background:#111113}.supportDisclosure b{color:#fff;font-size:7px;letter-spacing:.12em}.supportDisclosure span{color:#a1a1aa;font-size:8px;line-height:1.45}.supportContinue{display:block;margin:0 auto 18px;border:1px solid var(--topaz-border);background:#111113;color:#fff;padding:10px 16px;font-size:8px;font-weight:1000;letter-spacing:.1em;cursor:pointer}
 @media(max-width:620px){.supportLauncher{grid-template-columns:36px minmax(0,1fr) auto;gap:8px;margin:8px auto 14px;padding:8px}.supportLauncherIcon{width:34px;height:34px;font-size:16px}.supportLauncherCopy small{font-size:5px}.supportLauncherCopy strong{font-size:9px}.supportLauncherCopy em{display:none}.supportLauncherAction{min-height:36px;padding:8px 9px;font-size:6px}.supportPanel>header{padding:14px}.supportPanel>header h2{font-size:18px}.supportPanel>p{padding:12px 14px;font-size:10px}.supportNetwork,.supportTokens,.supportTransaction,.supportAddress,.supportExplorer,.supportDisclosure{margin-left:14px;margin-right:14px}.supportTokens{grid-template-columns:1fr 1fr}.supportReview{grid-template-columns:1fr 1fr}.supportReview>span:last-child{grid-column:1/-1}.supportAddress{grid-template-columns:1fr}.supportAddress button{width:100%}.supportAddress code{font-size:8px}.supportContinue{margin-bottom:14px}}
 
+/* Eleven-mission campaign expansion. */
+.campaignHeaderTrack,.campaignProgressTrack{grid-template-columns:repeat(11,1fr)}
+.missionTheme8,.missionTheme9,.missionTheme10,.missionTheme11{--mission-accent:#fe3c00;--mission-soft:rgba(254,60,0,.13)}
+@media(max-width:620px){.campaignHeaderTrack{gap:3px}.campaignProgressTrack{gap:3px}.campaignProgressTrack em{font-size:6px}}
+
 /* Mission briefings use a fully opaque reading surface. Gameplay imagery is
    hidden until play begins so token routes never compete with instructions. */
 .canvasWrap.briefingActive{background:#050506}

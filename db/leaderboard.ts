@@ -183,7 +183,7 @@ export async function saveScore(input: {
       profile.sGradeMissions = [...new Set([...profile.sGradeMissions, saved.missionIndex])].sort();
     }
     profile.epochClears[saved.epochStart] = [...new Set([...(profile.epochClears[saved.epochStart] ?? []), saved.missionIndex])].sort();
-    if (profile.epochClears[saved.epochStart].length === 7) {
+    if ([0, 1, 2, 3, 4, 5, 6].every((mission) => profile.epochClears[saved.epochStart].includes(mission))) {
       profile.completedEpochs = [...new Set([...profile.completedEpochs, saved.epochStart])].sort();
     }
   }
@@ -191,7 +191,7 @@ export async function saveScore(input: {
     profile.sGradeMissions = [...new Set([...profile.sGradeMissions, input.missionIndex])].sort();
   }
   profile.epochClears[epochStart] = [...new Set([...(profile.epochClears[epochStart] ?? []), input.missionIndex])].sort();
-  if (profile.epochClears[epochStart].length === 7) {
+  if ([0, 1, 2, 3, 4, 5, 6].every((mission) => profile.epochClears[epochStart].includes(mission))) {
     profile.completedEpochs = [...new Set([...profile.completedEpochs, epochStart])].sort();
   }
 
@@ -200,8 +200,10 @@ export async function saveScore(input: {
     if (saved.mistakes === 0) earned.add(MISSION_ACHIEVEMENTS[saved.missionIndex]);
   }
   if (input.mistakes === 0) earned.add(MISSION_ACHIEVEMENTS[input.missionIndex]);
-  if (profile.clearedMissions.length === 7) earned.add("topaz-scholar");
-  if (profile.sGradeMissions.length === 7) earned.add("yield-champion");
+  if ([0, 1, 2, 3, 4, 5, 6].every((mission) => profile.clearedMissions.includes(mission))) earned.add("topaz-scholar");
+  if ([0, 1, 2, 3, 4, 5, 6].every((mission) => profile.sGradeMissions.includes(mission))) earned.add("yield-champion");
+  if ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].every((mission) => profile.clearedMissions.includes(mission))) earned.add("advanced-scholar");
+  if ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].every((mission) => profile.sGradeMissions.includes(mission))) earned.add("vacuum-master");
   if (profile.completedEpochs.length >= 3) earned.add("epoch-veteran");
   const unlocked = ACHIEVEMENTS.map((achievement) => achievement.id).filter((id) => earned.has(id));
   const newBadges = unlocked.filter((id) => !profile.unlocked.includes(id));

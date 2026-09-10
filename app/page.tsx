@@ -153,6 +153,58 @@ const MISSIONS: Mission[] = [
     fact: "Topaz uses seven-day epochs. Fees and incentives earned in one epoch become claimable after the next epoch begins, while rebases auto-compound for active locks.",
     factUrl: "https://www.topazdex.com/docs/gauges",
   },
+  {
+    title: "POOL ARCHITECT",
+    feature: "STABLE, VOLATILE & SLIPSTREAM POOLS",
+    action: "POOL MATCHES",
+    mechanic: "Read each pair and management goal, then choose the pool design that best fits the scenario.",
+    time: 45,
+    target: 6,
+    minPools: 0,
+    metric: "claims",
+    lesson: "Topaz uses different pool designs because stable pairs, volatile pairs, and actively managed ranges have different needs.",
+    fact: "Topaz supports stable v2 pools, volatile v2 pools, and Slipstream concentrated-liquidity pools. The appropriate design depends on how the assets move and how actively the position will be managed.",
+    factUrl: "https://www.topazdex.com/docs/concepts/amm",
+  },
+  {
+    title: "RANGE KEEPER",
+    feature: "CONCENTRATED LIQUIDITY RANGES",
+    action: "RANGE DECISIONS",
+    mechanic: "Choose narrow, wide, or full-range liquidity based on volatility and the amount of active management available.",
+    time: 45,
+    target: 6,
+    minPools: 0,
+    metric: "claims",
+    lesson: "Narrow ranges concentrate capital but leave the active zone more easily. Wider ranges trade efficiency for more time in range.",
+    fact: "A Slipstream position earns swap fees only while price is inside its selected range. When price moves outside, the position stops earning fees and becomes one-sided until price returns.",
+    factUrl: "https://www.topazdex.com/docs/concepts/concentrated-liquidity",
+  },
+  {
+    title: "IL DEFENSE",
+    feature: "IMPERMANENT LOSS",
+    action: "RISK SIGNALS",
+    mechanic: "Classify price divergence, possible offsets, and net-result checks without treating a displayed rate as guaranteed profit.",
+    time: 45,
+    target: 6,
+    minPools: 0,
+    metric: "claims",
+    lesson: "An LP position must be compared with simply holding the same tokens. Fees and emissions may offset impermanent loss, but they do not erase risk automatically.",
+    fact: "Topaz defines LP results as fees plus emissions, measured against impermanent loss and gas. A displayed APR is not the same as guaranteed net profit.",
+    factUrl: "https://www.topazdex.com/docs/concepts/impermanent-loss",
+  },
+  {
+    title: "ONE TOPAZ",
+    feature: "ROBINHOOD CHAIN EXPANSION",
+    action: "CHAIN SIGNALS",
+    mechanic: "Protect one economic core while recognizing new-market access, unsafe fragmentation, and network checks.",
+    time: 45,
+    target: 6,
+    minPools: 0,
+    metric: "claims",
+    lesson: "Topaz is expanding from BNB Chain toward Robinhood Chain while keeping one connected economic core instead of making holders start over.",
+    fact: "Topaz describes its expansion principle as one economic core reaching new markets without duplicating the token or dividing governance. Always verify the selected network before signing.",
+    factUrl: "https://x.com/TopazDex/status/2097308904497598648",
+  },
 ];
 
 function getProgress(metric: Metric, game: GameState) {
@@ -402,6 +454,10 @@ const MISSION_GOALS = [
   "Complete 8 market scans. Select the highest-volume valid pool and reject HIGH IMPACT activity.",
   "Route each project incentive to its matching gauge. Reject expired incentive packages.",
   "Put the five epoch events in their correct order, from voting through claims and automatic lock rebase.",
+  "Match six token-pair scenarios with stable v2, volatile v2, or Slipstream liquidity.",
+  "Choose the appropriate range width for six liquidity-management scenarios.",
+  "Correctly classify six impermanent-loss, offset, and net-result signals.",
+  "Sort six expansion decisions into one core, new access, fragmentation risk, or network verification.",
 ];
 
 const CONTROL_HINTS = [
@@ -412,6 +468,10 @@ const CONTROL_HINTS = [
   "COMPARE THE THREE POOLS · TAP THE HIGHEST VALID VOLUME",
   "READ EACH PACKAGE · TAP ITS MATCHING GAUGE OR REJECT EXPIRED",
   "SELECT THE NEXT EVENT IN THE WEEKLY TOPAZ EPOCH",
+  "READ THE PAIR AND MANAGEMENT GOAL · CHOOSE THE BEST-FIT POOL",
+  "READ THE VOLATILITY AND MANAGEMENT PLAN · CHOOSE A RANGE",
+  "READ THE LP SIGNAL · IDENTIFY RISK, OFFSET, OR NET-RESULT CHECK",
+  "READ THE EXPANSION SIGNAL · PROTECT ONE TOPAZ ECONOMIC CORE",
 ];
 
 const MISSION_ENVIRONMENTS = [
@@ -422,6 +482,10 @@ const MISSION_ENVIRONMENTS = [
   "FEE STORM",
   "INCENTIVE TERMINAL",
   "EPOCH CORE",
+  "POOL BLUEPRINT",
+  "SLIPSTREAM RANGE",
+  "RISK ANALYZER",
+  "MULTICHAIN GATEWAY",
 ];
 
 const ACCEPT_RULES = [
@@ -432,6 +496,10 @@ const ACCEPT_RULES = [
   "The highest-volume pool that is still marked valid",
   "The gauge named on each active incentive package",
   "The next event in the weekly epoch sequence",
+  "The pool type that fits both the pair and its management goal",
+  "The range width that matches volatility and management frequency",
+  "The correct description of the LP risk or possible offset",
+  "Expansion choices that preserve one core and verify the network",
 ];
 
 const AVOID_RULES = [
@@ -442,6 +510,10 @@ const AVOID_RULES = [
   "HIGH IMPACT activity and lower-volume valid choices",
   "Expired packages and mismatched gauges",
   "Choosing an event before its proper stage",
+  "Using stable math for uncorrelated assets or ignoring management needs",
+  "Choosing a tight range for volatile assets you cannot actively manage",
+  "Treating fees, emissions, or APR as guaranteed net profit",
+  "Duplicating the economy, splitting governance, or signing on the wrong network",
 ];
 
 function scoreGrade(score: number, mistakes: number, missionIndex: number) {
@@ -455,7 +527,7 @@ function gradeExplanation(grade: string) {
   return "Clear complete · replay to improve accuracy and score";
 }
 
-const MISSION_GRADE_TITLES = ["ROUTE MASTER", "LIQUIDITY SPECIALIST", "LOCK ARCHITECT", "GAUGE STRATEGIST", "FEE HUNTER", "INCENTIVE ROUTER", "EPOCH EXPERT"];
+const MISSION_GRADE_TITLES = ["ROUTE MASTER", "LIQUIDITY SPECIALIST", "LOCK ARCHITECT", "GAUGE STRATEGIST", "FEE HUNTER", "INCENTIVE ROUTER", "EPOCH EXPERT", "POOL ARCHITECT", "RANGE KEEPER", "IL DEFENDER", "CHAIN NAVIGATOR"];
 
 function AnimatedScore({ value }: { value: number }) {
   const [displayed, setDisplayed] = useState(0);
@@ -486,6 +558,10 @@ const RESULT_RECAPS = [
   "Voted-pool fee opportunities depend on real trading activity. Higher volume may create more fees, but rewards are variable.",
   "Project incentives target particular gauges. They are separate from swap fees and can influence where voters allocate support.",
   "Topaz actions happen in stages: vote, trading activity, epoch change, claims, and automatic rebase treatment for an active lock.",
+  "Stable v2, volatile v2, and Slipstream pools solve different problems. The best fit depends on asset behavior and how actively the LP can manage the position.",
+  "Narrow Slipstream ranges can be more capital-efficient while active. Wider or full ranges remain active across more price movement but concentrate capital less.",
+  "Impermanent loss is the gap between an LP position and holding the same tokens. Fees and emissions are possible offsets; net results still depend on IL and gas.",
+  "Topaz is connecting new markets, including its Robinhood Chain expansion, to one economic core rather than duplicating the token or dividing governance.",
 ];
 
 type SpecialBoardProps = {
@@ -537,6 +613,52 @@ function SpecialMissionBoard({ missionIndex, lockLevel, onHud, onComplete }: Spe
     "ACTIVE-LOCK REBASE COMPOUNDS",
   ];
   const shuffledEpoch = [epochSteps[2], epochSteps[0], epochSteps[4], epochSteps[1], epochSteps[3]];
+  const advancedScenarios: Record<number, { prompt: string; detail: string; correct: string }[]> = {
+    7: [
+      { prompt: "USDT / USDC", detail: "Passive liquidity near a shared $1 target. No active range management.", correct: "STABLE V2" },
+      { prompt: "TOPAZ / BNB", detail: "Uncorrelated assets with passive exposure across the full price curve.", correct: "VOLATILE V2" },
+      { prompt: "USDT / USDC", detail: "An active LP wants to concentrate capital in a tightly managed band.", correct: "SLIPSTREAM" },
+      { prompt: "EMERGING TOKEN / WBNB", detail: "The LP wants simple, passive liquidity through large price swings.", correct: "VOLATILE V2" },
+      { prompt: "ETH / stETH", detail: "An active LP wants a precise range for two tightly correlated assets.", correct: "SLIPSTREAM" },
+      { prompt: "TOKEN A / TOKEN B", detail: "The assets do not track the same price and the LP will not manage ranges.", correct: "VOLATILE V2" },
+    ],
+    8: [
+      { prompt: "STABLE PAIR · ACTIVE MANAGER", detail: "The pair usually stays close to peg and the position is checked often.", correct: "NARROW RANGE" },
+      { prompt: "VOLATILE PAIR · FEWER ADJUSTMENTS", detail: "The goal is to remain active through broader price movement.", correct: "WIDE RANGE" },
+      { prompt: "SET AND FORGET", detail: "The LP does not want out-of-range risk or regular rebalancing.", correct: "FULL RANGE" },
+      { prompt: "CORRELATED PAIR · DEPEG CONCERN", detail: "The assets usually track, but the range needs room for stress.", correct: "WIDE RANGE" },
+      { prompt: "STABLE PAIR · MAXIMUM FOCUS", detail: "The LP accepts frequent monitoring to concentrate near the current price.", correct: "NARROW RANGE" },
+      { prompt: "LONG-TAIL PAIR · MINIMAL MANAGEMENT", detail: "Large swings are possible and the LP wants continuous coverage.", correct: "FULL RANGE" },
+    ],
+    9: [
+      { prompt: "THE TWO TOKEN PRICES DIVERGE", detail: "The LP position is now worth less than simply holding the original token amounts.", correct: "IL RISK" },
+      { prompt: "THE POOL PRODUCES SWAP FEES", detail: "Trading activity adds income that may help cover LP costs.", correct: "POSSIBLE OFFSET" },
+      { prompt: "A HIGH APR IS DISPLAYED", detail: "The number does not yet account for every cost or future change.", correct: "CHECK NET RESULT" },
+      { prompt: "THE POSITION EARNS EMISSIONS", detail: "Gauge rewards add another possible source of LP income.", correct: "POSSIBLE OFFSET" },
+      { prompt: "A TIGHT RANGE EXPERIENCES A DEPEG", detail: "Concentration can amplify sensitivity when prices separate.", correct: "IL RISK" },
+      { prompt: "FEES + EMISSIONS − IL − GAS", detail: "This comparison is what determines the position's actual outcome.", correct: "CHECK NET RESULT" },
+    ],
+    10: [
+      { prompt: "ONE ECONOMIC CORE", detail: "New markets connect without asking holders to restart the Topaz economy.", correct: "KEEP ONE CORE" },
+      { prompt: "ROBINHOOD CHAIN", detail: "Topaz reaches users and activity on another network.", correct: "EXPAND ACCESS" },
+      { prompt: "A SECOND UNRELATED TOPAZ TOKEN", detail: "The proposal duplicates the economy for the new chain.", correct: "REJECT SPLIT" },
+      { prompt: "WALLET SHOWS THE WRONG NETWORK", detail: "The transaction should pause before anything is signed.", correct: "VERIFY NETWORK" },
+      { prompt: "SHARED GOVERNANCE DIRECTION", detail: "Expansion should not divide voting into competing systems.", correct: "KEEP ONE CORE" },
+      { prompt: "ASSUME ASSETS MOVED AUTOMATICALLY", detail: "A new network requires checking the actual supported path first.", correct: "VERIFY NETWORK" },
+    ],
+  };
+  const advancedChoices: Record<number, string[]> = {
+    7: ["STABLE V2", "VOLATILE V2", "SLIPSTREAM"],
+    8: ["NARROW RANGE", "WIDE RANGE", "FULL RANGE"],
+    9: ["IL RISK", "POSSIBLE OFFSET", "CHECK NET RESULT"],
+    10: ["KEEP ONE CORE", "EXPAND ACCESS", "REJECT SPLIT", "VERIFY NETWORK"],
+  };
+  const advancedHeaders: Record<number, { kicker: string; title: string; note: string; success: string }> = {
+    7: { kicker: "MISSION 8 · POOL BLUEPRINT", title: "MATCH THE POOL DESIGN", note: "Choose from stable v2, volatile v2, and Slipstream.", success: "Correct: the pair and management goal fit this pool design." },
+    8: { kicker: "MISSION 9 · RANGE CONTROL", title: "KEEP LIQUIDITY ACTIVE", note: "Range width changes both efficiency and management risk.", success: "Correct: this range matches the volatility and management plan." },
+    9: { kicker: "MISSION 10 · RISK ANALYZER", title: "READ THE REAL LP RESULT", note: "Rewards can offset risk; they do not guarantee profit.", success: "Correct: you identified what this signal means for the LP." },
+    10: { kicker: "MISSION 11 · MULTICHAIN GATEWAY", title: "PROTECT ONE TOPAZ CORE", note: "Expand access without duplicating the economy or skipping network checks.", success: "Correct: expansion works best when access grows and the core stays connected." },
+  };
 
   useEffect(() => {
     onHud(missionIndex === 2 ? simulatedLockPower(amount, duration) : missionIndex === 3 ? votes.reduce((a, b) => a + b, 0) : step, mistakes);
@@ -662,6 +784,41 @@ function SpecialMissionBoard({ missionIndex, lockLevel, onHud, onComplete }: Spe
         <div className={`incentivePacket ${packet.pool < 0 ? "expired" : ""}`}><b>PROJECT INCENTIVE</b><strong>{packet.label}</strong><span>{packet.pool < 0 ? "DO NOT ROUTE" : "MATCH THIS PACKAGE TO ITS GAUGE"}</span></div>
         <div className="routeButtons">{gaugePools.map((pool, index) => <button key={pool.name} onClick={() => route(index)}><img src={pool.src} alt="" />{pool.name} GAUGE</button>)}<button className="rejectButton" onClick={() => route(-1)}>✕ REJECT EXPIRED</button></div>
         {message && <p className={`boardMessage ${message.includes("routed") || message.includes("rejected") ? "good" : "bad"}`}>{message}</p>}
+      </div>
+    );
+  }
+
+  if (missionIndex >= 7) {
+    const scenarios = advancedScenarios[missionIndex];
+    const scenario = scenarios[Math.min(step, scenarios.length - 1)];
+    const heading = advancedHeaders[missionIndex];
+    const choose = (choice: string) => {
+      if (choice !== scenario.correct) {
+        fail(`Not quite. ${scenario.detail} Look for the choice that best matches this situation.`);
+        return;
+      }
+      const next = step + 1;
+      setMessage(heading.success);
+      setStep(next);
+      if (next === scenarios.length) {
+        const baseScore = 4600 + (missionIndex - 7) * 450;
+        onComplete({ score: Math.max(0, baseScore - mistakes * 180), progress: next, fees: 0, emissions: 0, mistakes, health: 100, lockLevel, cleared: true });
+      }
+    };
+    return (
+      <div className={`missionBoard decisionBoard decisionBoard${missionIndex + 1}`}>
+        <div className="boardHeader"><span>{heading.kicker}</span><strong>{heading.title}</strong><small>{heading.note}</small></div>
+        <div className="decisionProgress"><i style={{ width: `${(step / scenarios.length) * 100}%` }} /><span>{step}/{scenarios.length} COMPLETE</span></div>
+        <article className="decisionScenario">
+          <small>SCENARIO {step + 1} OF {scenarios.length}</small>
+          <strong>{scenario.prompt}</strong>
+          <p>{scenario.detail}</p>
+        </article>
+        <div className={`decisionChoices ${advancedChoices[missionIndex].length === 4 ? "four" : ""}`}>
+          {advancedChoices[missionIndex].map((choice) => <button key={choice} onClick={() => choose(choice)}>{choice}</button>)}
+        </div>
+        {message && <p className={`boardMessage ${message.startsWith("Correct") ? "good" : "bad"}`}>{message}</p>}
+        <p className="boardTip">Read the full scenario before choosing. Wrong choices reduce the mission score.</p>
       </div>
     );
   }
@@ -1610,7 +1767,7 @@ export default function YieldVacuumGame() {
             <img src="/topaz-mark.png" alt="Topaz" />
           </div>
           <h1 className="splashTitle"><span>YIELD</span><strong>VACUUM</strong></h1>
-          <p className="splashNetwork">AN INDEPENDENT GAME ABOUT TOPAZ DEX · BNB CHAIN</p>
+          <p className="splashNetwork">AN INDEPENDENT GAME ABOUT TOPAZ DEX · BNB CHAIN + ROBINHOOD CHAIN EXPANSION</p>
           <button className="splashEnter" onClick={() => prepareBriefing()}>ENTER THE VACUUM</button>
         </section>
       )}
@@ -1620,8 +1777,8 @@ export default function YieldVacuumGame() {
           <span>YIELD VACUUM <b>TOPAZ DEX</b></span>
           <small>HOME</small>
         </button>
-        <div className="campaignHeader" aria-label={`${completedMissions} of 7 missions completed. Current mission ${missionIndex + 1}: ${mission.title}`}>
-          <div className="campaignHeaderTitle"><small>MISSION {missionIndex + 1} OF 7</small><strong>{mission.title}</strong><span>BNB CHAIN · LOCK LV.{lockLevel}</span></div>
+        <div className="campaignHeader" aria-label={`${completedMissions} of ${MISSIONS.length} missions completed. Current mission ${missionIndex + 1}: ${mission.title}`}>
+          <div className="campaignHeaderTitle"><small>MISSION {missionIndex + 1} OF {MISSIONS.length}</small><strong>{mission.title}</strong><span>{missionIndex === 10 ? "BNB + ROBINHOOD CHAIN" : "BNB CHAIN"} · LOCK LV.{lockLevel}</span></div>
           <div className="campaignHeaderTrack" aria-hidden="true">
             {MISSIONS.map((item, index) => <i key={item.title} className={index < completedMissions ? "complete" : index === missionIndex ? "current" : ""}><b>{index < completedMissions ? "✓" : index + 1}</b></i>)}
           </div>
@@ -1662,8 +1819,8 @@ export default function YieldVacuumGame() {
         </div>
 
         {phase === "playing" && (
-          <div className="missionLiveLine" aria-label={`Mission ${missionIndex + 1} of 7: ${mission.title}`}>
-            <b>MISSION {missionIndex + 1} OF 7</b><span>{mission.title}</span><small>{MISSION_ENVIRONMENTS[missionIndex]}</small>
+          <div className="missionLiveLine" aria-label={`Mission ${missionIndex + 1} of ${MISSIONS.length}: ${mission.title}`}>
+            <b>MISSION {missionIndex + 1} OF {MISSIONS.length}</b><span>{mission.title}</span><small>{MISSION_ENVIRONMENTS[missionIndex]}</small>
             <button className="helpButton" onClick={() => setHelpOpen((open) => !open)} aria-expanded={helpOpen}>?</button>
           </div>
         )}
@@ -1693,7 +1850,7 @@ export default function YieldVacuumGame() {
           {phase === "briefing" && (
             <div className={`overlay briefing ${missionIndex < 2 ? "challengeBriefing" : ""} ${missionIndex === 1 ? "lpBriefing" : ""}`}>
               <div className="briefingContent">
-                <div className="briefingMissionBadge"><span>{missionIndex + 1}</span><div><small>MISSION {missionIndex + 1} OF 7 · {MISSION_ENVIRONMENTS[missionIndex]}</small><strong>{mission.title}</strong></div></div>
+                <div className="briefingMissionBadge"><span>{missionIndex + 1}</span><div><small>MISSION {missionIndex + 1} OF {MISSIONS.length} · {MISSION_ENVIRONMENTS[missionIndex]}</small><strong>{mission.title}</strong></div></div>
                 <p className="briefingLead">{mission.lesson}</p>
                 <div className="briefingCards">
                   <article className="objectiveCard"><small>OBJECTIVE</small><p>{MISSION_GOALS[missionIndex]}</p></article>
@@ -1726,7 +1883,7 @@ export default function YieldVacuumGame() {
           {phase === "results" && (
             <div className="overlay results">
               <div className={`missionResultHeading ${result.cleared ? "cleared" : "missed"}`}>
-                <small>MISSION {missionIndex + 1} OF 7</small>
+                <small>MISSION {missionIndex + 1} OF {MISSIONS.length}</small>
                 <strong>{result.cleared ? "MISSION CLEARED" : "MISSION MISSED"}</strong>
                 <span>{mission.title}</span>
               </div>
@@ -1750,10 +1907,10 @@ export default function YieldVacuumGame() {
                   <p><b>{gradeGoal.next ? `NEXT TARGET · GRADE ${gradeGoal.next}` : "TOP GRADE EARNED"}</b>{gradeGoal.message}</p>
                 </div>
               )}
-              <div className="campaignProgress" aria-label={`${missionIndex + 1} of 7 missions reached`}>
+              <div className="campaignProgress" aria-label={`${missionIndex + 1} of ${MISSIONS.length} missions reached`}>
                 <div className="campaignProgressLabel">
                   <b>CAMPAIGN PROGRESS</b>
-                  <span>{missionIndex + 1}/7 {result.cleared ? "COMPLETE" : "REACHED"}</span>
+                  <span>{missionIndex + 1}/{MISSIONS.length} {result.cleared ? "COMPLETE" : "REACHED"}</span>
                 </div>
                 <div className="campaignProgressTrack">
                   {MISSIONS.map((item, index) => (
@@ -1805,6 +1962,30 @@ export default function YieldVacuumGame() {
                     <span><b>1</b>CLAIM BUNDLE</span>
                     <span><b>{result.mistakes}</b>ORDER ERRORS</span>
                   </>
+                ) : missionIndex === 7 ? (
+                  <>
+                    <span><b>{result.progress}/6</b>POOL MATCHES</span>
+                    <span><b>3</b>POOL DESIGNS</span>
+                    <span><b>{result.mistakes}</b>DESIGN ERRORS</span>
+                  </>
+                ) : missionIndex === 8 ? (
+                  <>
+                    <span><b>{result.progress}/6</b>RANGE DECISIONS</span>
+                    <span><b>3</b>RANGE WIDTHS</span>
+                    <span><b>{result.mistakes}</b>RANGE ERRORS</span>
+                  </>
+                ) : missionIndex === 9 ? (
+                  <>
+                    <span><b>{result.progress}/6</b>RISK SIGNALS</span>
+                    <span><b>NET</b>RESULT CHECKED</span>
+                    <span><b>{result.mistakes}</b>RISK ERRORS</span>
+                  </>
+                ) : missionIndex === 10 ? (
+                  <>
+                    <span><b>{result.progress}/6</b>CHAIN SIGNALS</span>
+                    <span><b>1</b>CONNECTED CORE</span>
+                    <span><b>{result.mistakes}</b>NETWORK ERRORS</span>
+                  </>
                 ) : (
                   <>
                     <span><b>{result.progress}/{mission.target}</b>{mission.action}</span>
@@ -1826,7 +2007,9 @@ export default function YieldVacuumGame() {
                     ? "Mission missed. Approve BEST ROUTE quotes and reject HIGH IMPACT paths."
                     : missionIndex === 1
                       ? "Mission missed. You need both in-range emissions and unstaked fees; one cannot replace the other."
-                      : "Target missed. Keep the veTOPAZ vacuum moving and protect the active pools."}
+                      : missionIndex >= 7
+                        ? "Mission missed. Read the full scenario, identify its stated goal, and choose the matching Topaz concept."
+                        : "Target missed. Keep the veTOPAZ vacuum moving and protect the active pools."}
                 </p>
               )}
               <p className="missionRecap"><b>WHAT YOU JUST USED:</b> {RESULT_RECAPS[missionIndex]}</p>
