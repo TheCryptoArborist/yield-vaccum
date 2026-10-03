@@ -2,6 +2,8 @@
 
 An independent eleven-mission educational arcade game about Topaz DEX, its BNB Chain economic core, and expansion toward Robinhood Chain, presented by The Crypto Arborist.
 
+The optional `/arcade` area includes Mint Flyer and a demo-only MSS2 Commitments flow. The commitments preview stores only clearly labeled browser-local demo records. It does not request token approvals, signatures, transfers, payouts, or membership payments.
+
 ## Development
 
 ```bash
@@ -25,6 +27,8 @@ The `/arcade` route hosts optional arcade games without changing the Topaz educa
 - One same-run continue costs 100 demo credits and restores three lives.
 - Demo credits have no cash or token value and create no blockchain transaction.
 - Real MSS2 payments remain disabled until token deployments, networks, recipient, pricing, and backend transaction verification are confirmed.
+
+The MSS2 Commitments panel is a separate Robinhood-only demonstration for proposed permanent membership contributions. It simulates review, receipt verification, duplicate protection, and an isolated membership record without requesting a wallet action. Its proposed dead-address destination does not apply to ordinary arcade purchases or operating revenue.
 
 ## Wallet foundation
 

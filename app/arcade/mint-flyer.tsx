@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import WalletConnect from "../wallet-connect";
+import Mss2Commitments from "./mss2-commitments";
 import styles from "./mint-flyer.module.css";
 
 type FlightPhase = "ready" | "playing" | "crashed";
@@ -301,6 +302,8 @@ export default function MintFlyer() {
         <p>Demo credits exist only to test the continue screen. They have no cash value, cannot be purchased, transferred, withdrawn, or redeemed, and do not create an onchain transaction.</p>
         <span>Wallet connection is optional and does not enable payment. Real MSS2 or TOPAZ continues stay disabled until token deployments, supported networks, recipient, pricing, and backend transaction verification are confirmed.</span>
       </section>
+
+      <Mss2Commitments />
 
       <section className={styles.comingSoon}>
         <small>ARCADE ROADMAP</small>
