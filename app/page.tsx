@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ACHIEVEMENTS, achievementById, missionGrade, nextGradeRequirement, type AchievementId } from "../lib/achievements";
 import TopazLivePanel from "./topaz-live";
 import TopazXPanel from "./topaz-x";
+import WalletConnect from "./wallet-connect";
 
 type Phase = "splash" | "briefing" | "playing" | "results";
 type DropKind = "route" | "emission" | "fee" | "crystal" | "vote" | "incentive" | "hazard";
@@ -1788,6 +1789,7 @@ export default function YieldVacuumGame() {
           <p><b>{completedMissions} CLEARED</b><span>{MISSIONS.length - completedMissions} TO GO</span></p>
         </div>
         <div className="topbarActions">
+          <WalletConnect compact />
           <button className="leaderboardButton" onClick={() => setLeaderboardOpen(true)}>
             <span className="leaderboardTrophy" aria-hidden="true">
               <svg viewBox="0 0 32 32" role="presentation">
