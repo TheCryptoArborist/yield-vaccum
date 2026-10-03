@@ -266,7 +266,7 @@ export default function Mss2Commitments() {
           <small>MEMBERSHIP CONCEPT</small>
           <h3>Benefits remain under design</h3>
           <ul><li>Premium game content</li><li>Cosmetic unlocks</li><li>Capped continue allowances</li></ul>
-          <p>No thresholds or entitlements are active. Free gameplay and free restarts remain available without a contribution.</p>
+          <p>No thresholds or entitlements are active. Permanent commitments remain separate from pay-per-game MSS2 arcade entry and do not replace an entry payment.</p>
         </article>
         <article>
           <small>SEPARATE REVENUE CONCEPT</small>

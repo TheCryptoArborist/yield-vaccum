@@ -226,9 +226,9 @@ export default function MintFlyer() {
           <strong>Thread the mint stream. Collect clean credits. Avoid corrupted blocks.</strong>
         </div>
         <aside>
-          <small>DEMO MODE</small>
-          <b>NO WALLET REQUIRED</b>
-          <span>No MSS2 token or blockchain transaction is used.</span>
+          <small>PAY-PER-GAME PREVIEW</small>
+          <b>MSS2 ENTRY PLANNED</b>
+          <span>This demo does not request a wallet payment.</span>
         </aside>
       </section>
 
@@ -267,11 +267,16 @@ export default function MintFlyer() {
 
           {phase === "ready" && (
             <div className={styles.overlay}>
-              <small>READY FOR TAKEOFF</small>
+              <small>MSS2 GAME ENTRY · DEMO</small>
               <h2>FLY THE MINT STREAM</h2>
-              <p>Drag or move your pointer vertically. Keyboard players can use <b>W/S</b> or the <b>arrow keys</b>.</p>
+              <p>Each future scored run will require a verified MSS2 payment. This preview simulates that entry without requesting a wallet, signature, or token.</p>
+              <div className={styles.entryTerms} aria-label="Future MSS2 game entry terms">
+                <span><small>ENTRY ASSET</small><strong>MSS2 REQUIRED</strong></span>
+                <span><small>PRICE</small><strong>NOT SET</strong></span>
+                <span><small>RECIPIENT</small><strong>DEV WALLET PENDING</strong></span>
+              </div>
               <div className={styles.legend}><span><i className={styles.mintDot} /> COLLECT MINTS</span><span><i className={styles.hazardDot} /> AVOID BLOCKS</span></div>
-              <button onClick={resetFlight}>START FREE FLIGHT</button>
+              <button onClick={resetFlight}>SIMULATE MSS2 ENTRY + START</button>
             </div>
           )}
 
@@ -287,14 +292,14 @@ export default function MintFlyer() {
                     <small>{DEMO_CONTINUE_COST} DEMO CREDITS · RESTORES 3 LIVES</small>
                   </button>
                 )}
-                <button className={styles.restartButton} onClick={resetFlight}>↻ FREE RESTART <small>NEW SCORE · DEMO BALANCE REFILLS</small></button>
+                <button className={styles.restartButton} onClick={resetFlight}>↻ START ANOTHER DEMO RUN <small>LIVE VERSION REQUIRES A NEW MSS2 ENTRY</small></button>
               </div>
-              {continued && <p className={styles.usedNotice}>The one demo continue for this flight has been used. Start a new flight for free.</p>}
+              {continued && <p className={styles.usedNotice}>The one demo continue for this flight has been used. A new demo run simulates a new MSS2 entry.</p>}
               <section className={styles.lockedPayments} aria-label="Token continue readiness">
-                <div><small>FUTURE TOKEN CONTINUES</small><strong>LOCKED</strong></div>
+                <div><small>FUTURE GAME PAYMENTS</small><strong>LOCKED</strong></div>
                 <ul>
-                  <li><b>MSS2</b><span>Awaiting verified network, contract, decimals, recipient, and price.</span></li>
-                  <li><b>TOPAZ</b><span>BNB contract identified; recipient, price, and backend receipt verification still required.</span></li>
+                  <li><b>MSS2</b><span>Required for every new scored run. Entry price and developer wallet remain pending.</span></li>
+                  <li><b>TOPAZ</b><span>Possible continue option under review; it does not replace the MSS2 entry requirement.</span></li>
                 </ul>
                 <p>No signature, approval, transfer, or network switch is requested in this preview.</p>
               </section>
@@ -305,14 +310,14 @@ export default function MintFlyer() {
         <footer className={styles.gameFooter}>
           <span><b>CONTROL</b> DRAG, W/S OR ↑/↓</span>
           <span><b>GOAL</b> COLLECT MINTS + BUILD DISTANCE</span>
-          <span><b>RESTARTS</b> ALWAYS FREE</span>
+          <span><b>ENTRY</b> MSS2 PER SCORED RUN</span>
         </footer>
       </section>
 
       <section className={styles.demoDisclosure}>
-        <div><small>SAFE DEMO ECONOMY</small><strong>DEMO CREDITS ARE NOT MSS2</strong></div>
+        <div><small>PAY-PER-GAME DEMONSTRATION</small><strong>NO REAL MSS2 IS CHARGED</strong></div>
         <p>Demo credits exist only to test the continue screen. They have no cash value, cannot be purchased, transferred, withdrawn, or redeemed, and do not create an onchain transaction.</p>
-        <span>Wallet connection is optional and does not enable payment. Real MSS2 or TOPAZ continues stay disabled until token deployments, supported networks, recipient, pricing, and backend transaction verification are confirmed.</span>
+        <span>Future MSS2 entry payments are planned as developer-controlled arcade revenue. The developer intends to add proceeds to liquidity manually, but no automatic liquidity action or guarantee is active. The recipient wallet, price, refund policy, and verification backend remain unconfirmed.</span>
       </section>
 
       <Mss2Commitments />
