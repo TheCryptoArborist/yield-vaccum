@@ -201,7 +201,7 @@ export default function MintFlyer() {
         </Link>
         <div className={styles.arcadeIdentity}><small>OPTIONAL GAME MODE</small><strong>MSS2 ARCADE</strong></div>
         <div className={styles.walletZone}>
-          <WalletConnect />
+          <WalletConnect theme="mss" />
           <div className={styles.paymentStatus}><i aria-hidden="true" /><span><small>REAL PAYMENTS</small><strong>DISABLED</strong></span></div>
         </div>
       </header>
