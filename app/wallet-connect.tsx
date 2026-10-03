@@ -61,7 +61,7 @@ function legacyWalletName(provider: WalletProvider, index: number) {
   return index ? `Browser wallet ${index + 1}` : "Browser wallet";
 }
 
-export default function WalletConnect({ compact = false }: { compact?: boolean }) {
+export default function WalletConnect({ compact = false, theme = "topaz" }: { compact?: boolean; theme?: "topaz" | "mss" }) {
   const [wallets, setWallets] = useState<WalletOption[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletOption | null>(null);
   const [account, setAccount] = useState("");
@@ -193,7 +193,7 @@ export default function WalletConnect({ compact = false }: { compact?: boolean }
   };
 
   return (
-    <div ref={rootRef} className={`${styles.walletConnect} ${compact ? styles.compact : ""}`}>
+    <div ref={rootRef} className={`${styles.walletConnect} ${compact ? styles.compact : ""} ${theme === "mss" ? styles.mss : ""}`}>
       <button
         type="button"
         className={`${styles.trigger} ${account ? styles.connected : ""}`}
