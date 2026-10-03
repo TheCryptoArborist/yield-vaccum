@@ -229,7 +229,11 @@ export default function MintFlyer() {
 
         <div
           className={styles.playfield}
-          onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); moveWithPointer(event); }}
+          onPointerDown={(event) => {
+            if (phase !== "playing") return;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            moveWithPointer(event);
+          }}
           onPointerMove={(event) => { if (event.buttons || event.pointerType === "touch") moveWithPointer(event); }}
         >
           <div className={styles.speedLines} aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
