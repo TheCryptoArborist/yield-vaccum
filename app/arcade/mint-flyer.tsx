@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import WalletConnect from "../wallet-connect";
@@ -200,7 +201,18 @@ export default function MintFlyer() {
           <img src="/topaz-mark.png" alt="" />
           <span><small>RETURN TO</small><strong>YIELD VACUUM</strong></span>
         </Link>
-        <div className={styles.arcadeIdentity}><small>OPTIONAL GAME MODE</small><strong>MSS2 ARCADE</strong></div>
+        <div className={styles.arcadeIdentity}>
+          <small>OPTIONAL GAME MODE · MSS2 ARCADE</small>
+          <span className={styles.brandPlate}>
+            <Image
+              src="/mss2-logo-site-colour-dark.png"
+              alt="MintStakeShare 2.0 — A New Chapter"
+              width={2000}
+              height={459}
+              priority
+            />
+          </span>
+        </div>
         <div className={styles.walletZone}>
           <WalletConnect theme="mss" />
           <div className={styles.paymentStatus}><i aria-hidden="true" /><span><small>REAL PAYMENTS</small><strong>DISABLED</strong></span></div>
