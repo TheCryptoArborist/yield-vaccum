@@ -1768,7 +1768,10 @@ export default function YieldVacuumGame() {
           </div>
           <h1 className="splashTitle"><span>YIELD</span><strong>VACUUM</strong></h1>
           <p className="splashNetwork">AN INDEPENDENT GAME ABOUT TOPAZ DEX · BNB CHAIN + ROBINHOOD CHAIN EXPANSION</p>
-          <button className="splashEnter" onClick={() => prepareBriefing()}>ENTER THE VACUUM</button>
+          <div className="splashActions">
+            <button className="splashEnter" onClick={() => prepareBriefing()}>ENTER THE VACUUM</button>
+            <a className="splashArcadeLink" href="/arcade"><small>OPTIONAL MSS2 ARCADE</small><strong>PLAY MINT FLYER →</strong></a>
+          </div>
         </section>
       )}
       <header className="topbar">
@@ -1794,6 +1797,7 @@ export default function YieldVacuumGame() {
             <span><strong>LEADERBOARD</strong><small>WEEKLY EPOCH RANKINGS</small></span>
             <i aria-hidden="true">›</i>
           </button>
+          <a className="arcadeNavButton" href="/arcade"><span>OPTIONAL MSS2 ARCADE</span><strong>PLAY MINT FLYER</strong><i aria-hidden="true">→</i></a>
         </div>
       </header>
 

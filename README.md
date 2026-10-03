@@ -16,3 +16,12 @@ npm run build
 ```
 
 The project is configured for a standalone Netlify deployment. Its shared weekly leaderboard uses Netlify Blobs and does not depend on the TREE website or its infrastructure.
+
+## Optional MSS2 Arcade
+
+The `/arcade` route hosts optional arcade games without changing the Topaz educational campaign. The first game is Mint Flyer. Its current continue flow uses clearly labeled demo credits only:
+
+- New flights and restarts are free.
+- One same-run continue costs 100 demo credits and restores three lives.
+- Demo credits have no cash or token value and create no blockchain transaction.
+- Real MSS2 payments remain disabled until token deployments, networks, recipient, pricing, and backend transaction verification are confirmed.
