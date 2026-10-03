@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import WalletConnect from "../wallet-connect";
 import styles from "./mint-flyer.module.css";
 
 type FlightPhase = "ready" | "playing" | "crashed";
@@ -199,7 +200,10 @@ export default function MintFlyer() {
           <span><small>RETURN TO</small><strong>YIELD VACUUM</strong></span>
         </Link>
         <div className={styles.arcadeIdentity}><small>OPTIONAL GAME MODE</small><strong>MSS2 ARCADE</strong></div>
-        <div className={styles.paymentStatus}><i aria-hidden="true" /><span><small>REAL PAYMENTS</small><strong>DISABLED</strong></span></div>
+        <div className={styles.walletZone}>
+          <WalletConnect />
+          <div className={styles.paymentStatus}><i aria-hidden="true" /><span><small>REAL PAYMENTS</small><strong>DISABLED</strong></span></div>
+        </div>
       </header>
 
       <section className={styles.hero}>
@@ -255,7 +259,7 @@ export default function MintFlyer() {
           )}
 
           {phase === "crashed" && (
-            <div className={styles.overlay}>
+            <div className={`${styles.overlay} ${styles.crashOverlay}`}>
               <small>FLIGHT ENDED</small>
               <h2>{newBest ? "NEW LOCAL BEST" : "MINT STREAM CLOSED"}</h2>
               <div className={styles.finalScore}><span><small>FINAL SCORE</small><strong>{score.toLocaleString()}</strong></span><span><small>LOCAL BEST</small><strong>{bestScore.toLocaleString()}</strong></span></div>
@@ -269,6 +273,14 @@ export default function MintFlyer() {
                 <button className={styles.restartButton} onClick={resetFlight}>↻ FREE RESTART <small>NEW SCORE · DEMO BALANCE REFILLS</small></button>
               </div>
               {continued && <p className={styles.usedNotice}>The one demo continue for this flight has been used. Start a new flight for free.</p>}
+              <section className={styles.lockedPayments} aria-label="Token continue readiness">
+                <div><small>FUTURE TOKEN CONTINUES</small><strong>LOCKED</strong></div>
+                <ul>
+                  <li><b>MSS2</b><span>Awaiting verified network, contract, decimals, recipient, and price.</span></li>
+                  <li><b>TOPAZ</b><span>BNB contract identified; recipient, price, and backend receipt verification still required.</span></li>
+                </ul>
+                <p>No signature, approval, transfer, or network switch is requested in this preview.</p>
+              </section>
             </div>
           )}
         </div>
@@ -283,7 +295,7 @@ export default function MintFlyer() {
       <section className={styles.demoDisclosure}>
         <div><small>SAFE DEMO ECONOMY</small><strong>DEMO CREDITS ARE NOT MSS2</strong></div>
         <p>Demo credits exist only to test the continue screen. They have no cash value, cannot be purchased, transferred, withdrawn, or redeemed, and do not create an onchain transaction.</p>
-        <span>Real MSS2 payments stay disabled until token deployments, supported networks, recipient, pricing, and backend transaction verification are confirmed.</span>
+        <span>Wallet connection is optional and does not enable payment. Real MSS2 or TOPAZ continues stay disabled until token deployments, supported networks, recipient, pricing, and backend transaction verification are confirmed.</span>
       </section>
 
       <section className={styles.comingSoon}>
