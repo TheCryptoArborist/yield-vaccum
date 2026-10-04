@@ -511,10 +511,10 @@ export default function MintFlyer() {
           <small>OPTIONAL GAME MODE · MSS2 ARCADE</small>
           <span className={styles.brandPlate}>
             <Image
-              src="/mss2-logo-site-colour-dark.png"
-              alt="MintStakeShare 2.0 — A New Chapter"
-              width={2000}
-              height={459}
+              src="/mss2-logo-wide-colour-light.png"
+              alt="MintStakeShare 2"
+              width={1893}
+              height={339}
               priority
             />
           </span>
