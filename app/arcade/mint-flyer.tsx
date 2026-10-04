@@ -463,13 +463,19 @@ export default function MintFlyer() {
           <strong>Thread the mint stream. Collect clean credits. Avoid corrupted blocks.</strong>
         </div>
         <aside>
-          <small>INDEPENDENT COMMUNITY ARCADE</small>
-          <b>CREATED BY THE CRYPTO ARBORIST</b>
-          <span>Independent creator · No official affiliation or endorsement.</span>
+          <small>GAME STATUS</small>
+          <b>FREE DEMO FLIGHT</b>
+          <span>No wallet or real tokens required.</span>
         </aside>
       </section>
 
-      <section className={styles.gameCard} aria-label="Mint Flyer game">
+      <nav className={styles.arcadeNav} aria-label="Arcade sections">
+        <a className={styles.activeNav} href="#mint-flyer"><small>PLAY NOW</small><strong>MINT FLYER</strong></a>
+        <a href="#mss2-commitments"><small>OPTIONAL DEMO</small><strong>MSS2 COMMITMENTS</strong></a>
+        <a href="#about-creator"><small>INDEPENDENT PROJECT</small><strong>ABOUT THE CREATOR</strong></a>
+      </nav>
+
+      <section id="mint-flyer" className={styles.gameCard} aria-label="Mint Flyer game">
         <div className={styles.hud}>
           <span className={hasCollectEffect ? styles.hudPulse : ""}><small>SCORE</small><strong>{score.toLocaleString()}</strong></span>
           <span><small>DISTANCE</small><strong>{distance}m</strong></span>
@@ -555,32 +561,23 @@ export default function MintFlyer() {
               {!reviewingEntry ? <>
                 <small>HOW TO PLAY · DEMO FLIGHT</small>
                 <h2>FLY. COLLECT. SURVIVE.</h2>
-                <p className={styles.briefingLead}>Move the <b>MF flyer</b> up and down. Collect the cyan circles, avoid the pink warning blocks, and stay alive as long as possible.</p>
-                <div className={styles.deviceDemo} aria-hidden="true">
-                  <span className={styles.deviceTrack}><i /><b>MF</b></span>
-                  <strong className={styles.desktopControlText}>MOVE YOUR MOUSE UP + DOWN — NO CLICK NEEDED</strong>
-                  <strong className={styles.mobileControlText}>PRESS + SLIDE YOUR FINGER UP + DOWN</strong>
-                </div>
+                <p className={styles.briefingLead}>Move the <b>MF flyer</b>. Collect cyan. Avoid pink. Three hits end the flight.</p>
                 <div className={styles.howToGrid} aria-label="How to play Mint Flyer">
                   <article>
                     <i className={styles.howToMove}>↕</i>
-                    <span><b>1. MOVE THE FLYER</b><small><span className={styles.desktopControlText}>Desktop: move your mouse up and down inside the flight area—no click needed. W/S and the arrow keys also work.</span><span className={styles.mobileControlText}>Mobile: press anywhere inside the flight area and slide your finger up or down. You can keep dragging without lifting your finger.</span></small></span>
+                    <span><b>MOVE</b><small><span className={styles.desktopControlText}>Move your mouse up and down. No click needed.</span><span className={styles.mobileControlText}>Press and slide your finger up or down.</span></small></span>
                   </article>
                   <article>
                     <i className={styles.howToMint}>M</i>
-                    <span><b>2. COLLECT MINT CREDITS</b><small>Cyan circles are in-game score pickups worth <strong>+250 points</strong> each. They are not MSS2 tokens.</small></span>
+                    <span><b>COLLECT CYAN</b><small>Mint Credits add <strong>+250 points</strong> and build your combo.</small></span>
                   </article>
                   <article>
                     <i className={styles.howToHazard}>!</i>
-                    <span><b>3. AVOID CORRUPTED BLOCKS</b><small>Touching a pink warning block removes one life. The flight ends after three hits.</small></span>
-                  </article>
-                  <article>
-                    <i className={styles.howToScore}>★</i>
-                    <span><b>4. BUILD YOUR COMBO</b><small>Mint Credits start at <strong>+250 points</strong>. Reach 3, 6, and 10 consecutive pickups for 2X, 3X, and 5X rewards. A collision resets the combo.</small></span>
+                    <span><b>AVOID PINK</b><small>A corrupted block removes one of your three lives.</small></span>
                   </article>
                 </div>
-                <p className={styles.demoGameNote}><b>DEMO FLIGHT:</b> No wallet payment, token approval, signature, or real MSS2 is requested.</p>
-                <button onClick={reviewEntry} disabled={!entryQuote || quoteExpired}>{!entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "GOT IT — REVIEW DEMO ENTRY"}</button>
+                <p className={styles.demoGameNote}><b>DEMO MODE:</b> Free to play. No wallet or real MSS2 required.</p>
+                <button onClick={reviewEntry} disabled={!entryQuote || quoteExpired}>{!entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "REVIEW DEMO ENTRY"}</button>
               </> : <>
                 <small>DEMO ENTRY REVIEW · NO TRANSACTION</small>
                 <h2>REVIEW THE RUN</h2>
@@ -652,38 +649,38 @@ export default function MintFlyer() {
         </footer>
       </section>
 
-      <section className={styles.creatorPanel} aria-labelledby="mint-flyer-creator-title">
-        <div className={styles.creatorPortrait}>
-          <Image
-            src="/crypto-arborist-mss2.webp"
-            alt="The Crypto Arborist tree hero wearing a MintStakeShare 2 championship belt"
-            width={640}
-            height={960}
-          />
+      <details className={styles.infoDrawer} id="payment-safety">
+        <summary><span><small>DEMO SAFETY</small><strong>NO REAL MSS2 IS CHARGED</strong></span><b>VIEW DETAILS +</b></summary>
+        <div className={styles.drawerBody}>
+          <p>Demo credits only test the continue screen. They have no cash value and cannot be purchased, transferred, withdrawn, or redeemed.</p>
+          <p>Proposed developer recipient: <code>{DEVELOPER_WALLET}</code>. Each scored run currently simulates a $1.00 MSS2 entry. No automatic liquidity action, payment, or guarantee is active.</p>
         </div>
+      </details>
+
+      <details className={styles.commitmentsDrawer} id="mss2-commitments">
+        <summary><span><small>OPTIONAL MEMBERSHIP DEMO</small><strong>MSS2 COMMITMENTS</strong><em>Preview the proposed permanent-contribution flow. No real tokens move.</em></span><b>OPEN DEMO +</b></summary>
+        <Mss2Commitments />
+      </details>
+
+      <details className={styles.creatorPanel} id="about-creator">
+        <summary>
+          <div className={styles.creatorPortrait}>
+            <Image
+              src="/crypto-arborist-mss2.webp"
+              alt="The Crypto Arborist tree hero wearing a MintStakeShare 2 championship belt"
+              width={640}
+              height={960}
+            />
+          </div>
+          <span><small>INDEPENDENT COMMUNITY ARCADE</small><strong>BUILT BY THE CRYPTO ARBORIST</strong><em>Meet the creator and view the project disclosure.</em></span>
+          <b>ABOUT +</b>
+        </summary>
         <div className={styles.creatorCopy}>
-          <small>WHO IS BEHIND MINT FLYER?</small>
-          <h2 id="mint-flyer-creator-title">BUILT BY THE CRYPTO ARBORIST</h2>
-          <strong>THE CRYPTO ARBORIST · INDEPENDENT CREATOR</strong>
           <p>Yield Vacuum and Mint Flyer were independently created by The Crypto Arborist as educational and arcade experiences for the broader crypto community.</p>
           <p className={styles.creatorDisclosure}>This is not an official product of Topaz DEX, MintStakeShare, Robinhood Chain, Arc, or their affiliates. No endorsement, partnership, or sponsorship is implied.</p>
           <a href="https://x.com/thickquidity" target="_blank" rel="noreferrer">FOLLOW THE CRYPTO ARBORIST ON X ↗</a>
         </div>
-      </section>
-
-      <section className={styles.demoDisclosure}>
-        <div><small>PAY-PER-GAME DEMONSTRATION</small><strong>NO REAL MSS2 IS CHARGED</strong></div>
-        <p>Demo credits exist only to test the continue screen. They have no cash value, cannot be purchased, transferred, withdrawn, or redeemed, and do not create an onchain transaction.</p>
-        <span>Proposed developer recipient: {DEVELOPER_WALLET}. Each scored run targets $1.00 worth of MSS2. The developer intends to add proceeds to liquidity manually, but no automatic liquidity action or guarantee is active. Price source, quote rules, refund policy, and backend verification remain unconfirmed.</span>
-      </section>
-
-      <Mss2Commitments />
-
-      <section className={styles.comingSoon}>
-        <small>ARCADE ROADMAP</small>
-        <strong>ONE GAME NOW. MORE FLIGHTS LATER.</strong>
-        <p>Mint Flyer is the first optional MSS2 Arcade test. It does not change Yield Vacuum missions, progression, achievements, or leaderboard data.</p>
-      </section>
+      </details>
     </main>
   );
 }
