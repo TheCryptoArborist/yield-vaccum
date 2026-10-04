@@ -27,6 +27,13 @@ type FlyerEntity = {
   y: number;
   size: number;
 };
+type FlightEffect = {
+  id: number;
+  kind: "collect" | "hit";
+  x: number;
+  y: number;
+  bornAt: number;
+};
 
 const MAX_LIVES = 3;
 const DEMO_CONTINUE_COST = 100;
@@ -51,14 +58,18 @@ export default function MintFlyer() {
   const [quoteUnavailable, setQuoteUnavailable] = useState(false);
   const [quoteClock, setQuoteClock] = useState(0);
   const [reviewingEntry, setReviewingEntry] = useState(false);
+  const [effects, setEffects] = useState<FlightEffect[]>([]);
 
   const playerYRef = useRef(0.5);
+  const targetYRef = useRef(0.5);
   const entitiesRef = useRef<FlyerEntity[]>([]);
+  const effectsRef = useRef<FlightEffect[]>([]);
   const scoreRef = useRef(0);
   const distanceRef = useRef(0);
   const livesRef = useRef(MAX_LIVES);
   const spawnTimerRef = useRef(0);
   const entityIdRef = useRef(0);
+  const effectIdRef = useRef(0);
   const collectedRef = useRef(0);
   const invulnerableUntilRef = useRef(0);
   const heldKeysRef = useRef(new Set<string>());
@@ -118,7 +129,9 @@ export default function MintFlyer() {
 
   const resetFlight = useCallback(() => {
     playerYRef.current = 0.5;
+    targetYRef.current = 0.5;
     entitiesRef.current = [];
+    effectsRef.current = [];
     scoreRef.current = 0;
     distanceRef.current = 0;
     livesRef.current = MAX_LIVES;
@@ -127,6 +140,7 @@ export default function MintFlyer() {
     invulnerableUntilRef.current = performance.now() + 900;
     setPlayerY(0.5);
     setEntities([]);
+    setEffects([]);
     setScore(0);
     setDistance(0);
     setMintsCollected(0);
@@ -200,7 +214,13 @@ export default function MintFlyer() {
 
       const keys = heldKeysRef.current;
       const direction = Number(keys.has("ArrowDown") || keys.has("KeyS")) - Number(keys.has("ArrowUp") || keys.has("KeyW"));
-      if (direction !== 0) playerYRef.current = Math.max(0.08, Math.min(0.92, playerYRef.current + direction * dt * 0.68));
+      if (direction !== 0) targetYRef.current = Math.max(0.08, Math.min(0.92, targetYRef.current + direction * dt * 1.08));
+      const controlSmoothing = 1 - Math.exp(-18 * dt);
+      playerYRef.current += (targetYRef.current - playerYRef.current) * controlSmoothing;
+
+      const effectCountBeforeCleanup = effectsRef.current.length;
+      effectsRef.current = effectsRef.current.filter((effect) => now - effect.bornAt < 820);
+      if (effectsRef.current.length !== effectCountBeforeCleanup) setEffects([...effectsRef.current]);
 
       distanceRef.current += dt * 34;
       spawnTimerRef.current += dt;
@@ -231,12 +251,16 @@ export default function MintFlyer() {
           if (moved.kind === "mint") {
             collectedRef.current += 1;
             setMintsCollected(collectedRef.current);
+            effectsRef.current.push({ id: effectIdRef.current++, kind: "collect", x: moved.x, y: moved.y, bornAt: now });
+            setEffects([...effectsRef.current]);
             continue;
           }
           if (now >= invulnerableUntilRef.current) {
             remainingLives -= 1;
             livesRef.current = remainingLives;
             invulnerableUntilRef.current = now + 1250;
+            effectsRef.current.push({ id: effectIdRef.current++, kind: "hit", x: moved.x, y: moved.y, bornAt: now });
+            setEffects([...effectsRef.current]);
             if (remainingLives <= 0) {
               const finalScore = Math.floor(distanceRef.current * 10) + collectedRef.current * 250;
               scoreRef.current = finalScore;
@@ -272,9 +296,11 @@ export default function MintFlyer() {
   const moveWithPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (phase !== "playing") return;
     const rect = event.currentTarget.getBoundingClientRect();
-    playerYRef.current = Math.max(0.08, Math.min(0.92, (event.clientY - rect.top) / rect.height));
-    setPlayerY(playerYRef.current);
+    targetYRef.current = Math.max(0.08, Math.min(0.92, (event.clientY - rect.top) / rect.height));
   };
+
+  const hasCollectEffect = effects.some((effect) => effect.kind === "collect");
+  const hasHitEffect = effects.some((effect) => effect.kind === "hit");
 
   return (
     <main className={styles.arcadeShell}>
@@ -316,7 +342,7 @@ export default function MintFlyer() {
 
       <section className={styles.gameCard} aria-label="Mint Flyer game">
         <div className={styles.hud}>
-          <span><small>SCORE</small><strong>{score.toLocaleString()}</strong></span>
+          <span className={hasCollectEffect ? styles.hudPulse : ""}><small>SCORE</small><strong>{score.toLocaleString()}</strong></span>
           <span><small>DISTANCE</small><strong>{distance}m</strong></span>
           <span className={styles.mintCounter}><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
           <span><small>LIVES</small><strong>{"◆".repeat(lives)}<i>{"◇".repeat(MAX_LIVES - lives)}</i></strong></span>
@@ -324,7 +350,7 @@ export default function MintFlyer() {
         </div>
 
         <div
-          className={styles.playfield}
+          className={`${styles.playfield} ${hasHitEffect ? styles.impactShake : ""} ${hasCollectEffect ? styles.collectGlow : ""}`}
           onPointerDown={(event) => {
             if (phase !== "playing") return;
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -340,7 +366,7 @@ export default function MintFlyer() {
             </div>
           )}
           <div className={styles.speedLines} aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
-          <div className={`${styles.flyer} ${phase === "playing" ? styles.flying : ""}`} style={{ top: `${playerY * 100}%` }} aria-label="Mint Flyer">
+          <div className={`${styles.flyer} ${phase === "playing" ? styles.flying : ""} ${hasCollectEffect ? styles.flyerBoost : ""} ${hasHitEffect ? styles.flyerDamaged : ""}`} style={{ top: `${playerY * 100}%` }} aria-label="Mint Flyer">
             <span>MF</span><i /><b />
           </div>
 
@@ -352,6 +378,18 @@ export default function MintFlyer() {
               aria-hidden="true"
             >
               {entity.kind === "mint" ? <><span>M</span><i /></> : <><span>!</span><i /><b /></>}
+            </div>
+          ))}
+
+          {effects.map((effect) => (
+            <div
+              key={effect.id}
+              className={`${styles.flightEffect} ${effect.kind === "collect" ? styles.collectEffect : styles.hitEffect}`}
+              style={{ left: `${effect.x * 100}%`, top: `${effect.y * 100}%` }}
+              aria-hidden="true"
+            >
+              <strong>{effect.kind === "collect" ? "+250" : "−1 LIFE"}</strong>
+              <i /><i /><i /><i /><i /><i />
             </div>
           ))}
 
