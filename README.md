@@ -28,7 +28,9 @@ The `/arcade` route hosts optional arcade games without changing the Topaz educa
 - Demo credits have no cash or token value and create no blockchain transaction.
 - The preview simulates paid entry without requesting a wallet signature or token transfer.
 - Proposed developer recipient: `0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789`.
-- Real MSS2 payments remain disabled until token deployments, networks, the MSS2 price source and quote rules, refund policy, recipient ownership, and backend transaction verification are confirmed.
+- The demo reads an indicative MSS2/USD value from the verified Robinhood Topaz MSS2/WETH pair on DEX Screener: `0xdfcc6ad671033f7d3eceb24cbae5c0f7f6f8d91e`.
+- DEX Screener data is display-only and is not yet an authoritative payment quote.
+- Real MSS2 payments remain disabled until live quote rules, manipulation safeguards, refund policy, recipient ownership, and backend transaction verification are confirmed.
 - The developer intends to add arcade proceeds to liquidity manually. No automatic liquidity action or guarantee is represented.
 
 The MSS2 Commitments panel is a separate Robinhood-only demonstration for proposed permanent membership contributions. It simulates review, receipt verification, duplicate protection, and an isolated membership record without requesting a wallet action. Its proposed dead-address destination does not apply to ordinary arcade purchases or operating revenue.

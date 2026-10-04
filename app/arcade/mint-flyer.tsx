@@ -8,6 +8,16 @@ import Mss2Commitments from "./mss2-commitments";
 import styles from "./mint-flyer.module.css";
 
 type FlightPhase = "ready" | "playing" | "crashed";
+type EntryQuote = {
+  source: string;
+  status: "indicative";
+  pairUrl: string;
+  priceUsd: string;
+  entryPriceUsd: string;
+  indicativeMss2ForEntry: string;
+  liquidityUsd: number | null;
+  checkedAt: string;
+};
 type FlyerEntity = {
   id: number;
   kind: "mint" | "hazard";
@@ -34,6 +44,8 @@ export default function MintFlyer() {
   const [continued, setContinued] = useState(false);
   const [bestScore, setBestScore] = useState(0);
   const [newBest, setNewBest] = useState(false);
+  const [entryQuote, setEntryQuote] = useState<EntryQuote | null>(null);
+  const [quoteUnavailable, setQuoteUnavailable] = useState(false);
 
   const playerYRef = useRef(0.5);
   const entitiesRef = useRef<FlyerEntity[]>([]);
@@ -49,6 +61,31 @@ export default function MintFlyer() {
   useEffect(() => {
     const frame = requestAnimationFrame(() => setBestScore(Number(window.localStorage.getItem(BEST_SCORE_KEY) || 0)));
     return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadQuote = () => fetch("/api/mss2-price", { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error("MSS2 quote unavailable");
+        return response.json() as Promise<EntryQuote>;
+      })
+      .then((quote) => {
+        if (!active) return;
+        setEntryQuote(quote);
+        setQuoteUnavailable(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setEntryQuote(null);
+        setQuoteUnavailable(true);
+      });
+    void loadQuote();
+    const refresh = window.setInterval(loadQuote, 60_000);
+    return () => {
+      active = false;
+      window.clearInterval(refresh);
+    };
   }, []);
 
   const publishBest = useCallback((finalScore: number) => {
@@ -274,9 +311,14 @@ export default function MintFlyer() {
               <p>Each future scored run will require the amount of MSS2 equal to a ${ENTRY_PRICE_USD.toFixed(2)} USD target at checkout. This preview does not request a wallet, signature, or token.</p>
               <div className={styles.entryTerms} aria-label="Future MSS2 game entry terms">
                 <span><small>USD TARGET</small><strong>${ENTRY_PRICE_USD.toFixed(2)} PER RUN</strong></span>
-                <span><small>MSS2 AMOUNT</small><strong>LIVE QUOTE PENDING</strong></span>
+                <span><small>INDICATIVE MSS2</small><strong>{entryQuote ? `≈ ${entryQuote.indicativeMss2ForEntry} MSS2` : quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING QUOTE"}</strong></span>
                 <span><small>RECIPIENT</small><strong>{DEVELOPER_WALLET.slice(0, 8)}…{DEVELOPER_WALLET.slice(-6)}</strong></span>
               </div>
+              <p className={styles.quoteSource}>
+                {entryQuote
+                  ? <><b>INDICATIVE ONLY</b><span>DEX Screener · ${Number(entryQuote.priceUsd).toLocaleString(undefined, { maximumFractionDigits: 8 })}/MSS2 · refreshed every 60 seconds</span><a href={entryQuote.pairUrl} target="_blank" rel="noreferrer">VIEW PAIR ↗</a></>
+                  : <><b>NOT A PAYMENT QUOTE</b><span>The game stays in demo mode when market data is unavailable.</span></>}
+              </p>
               <p className={styles.entryWallet}><b>PROPOSED DEVELOPER RECIPIENT</b><code>{DEVELOPER_WALLET}</code></p>
               <div className={styles.legend}><span><i className={styles.mintDot} /> COLLECT MINTS</span><span><i className={styles.hazardDot} /> AVOID BLOCKS</span></div>
               <button onClick={resetFlight}>SIMULATE $1 MSS2 ENTRY + START</button>
