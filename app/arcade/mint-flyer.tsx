@@ -44,16 +44,16 @@ const BEST_SCORE_KEY = "yield-vacuum-mss2-mint-flyer-best";
 const DEVELOPER_WALLET = "0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789";
 const ENTRY_PRICE_USD = 1;
 const SOUND_PREFERENCE_KEY = "yield-vacuum-mss2-mint-flyer-sound";
-const MOON_DISTANCE = 1500;
+const MOON_DISTANCE = 3000;
 const FLIGHT_STAGES: Array<{ id: FlightStage; name: string; start: number; instruction: string }> = [
   { id: 1, name: "MINT STREAM", start: 0, instruction: "Collect cyan Mint Credits and build your combo." },
-  { id: 2, name: "BLOCK SURGE", start: 400, instruction: "Corrupted blocks are faster and appear more often." },
-  { id: 3, name: "MOON RUN", start: 900, instruction: "Hold your line and reach the Moon." },
+  { id: 2, name: "BLOCK SURGE", start: 650, instruction: "Faster corrupted blocks now arrive in formations." },
+  { id: 3, name: "MOON RUN", start: 1650, instruction: "Survive maximum speed and reach the Moon." },
 ];
 const GRADE_TARGETS = [
-  { grade: "B", score: 21000 },
-  { grade: "A", score: 25000 },
-  { grade: "S", score: 30000 },
+  { grade: "B", score: 40000 },
+  { grade: "A", score: 50000 },
+  { grade: "S", score: 62000 },
 ] as const;
 
 function comboMultiplier(streak: number) {
@@ -70,9 +70,9 @@ function stageForDistance(distance: number): FlightStage {
 }
 
 function gradeForScore(score: number) {
-  if (score >= 30000) return "S";
-  if (score >= 25000) return "A";
-  if (score >= 21000) return "B";
+  if (score >= 62000) return "S";
+  if (score >= 50000) return "A";
+  if (score >= 40000) return "B";
   return "C";
 }
 
@@ -400,21 +400,34 @@ export default function MintFlyer() {
       }
 
       spawnTimerRef.current += dt;
-      const spawnEvery = activeStage === 1 ? 0.84 : activeStage === 2 ? 0.66 : 0.54;
-      const mintChance = activeStage === 1 ? 0.67 : activeStage === 2 ? 0.53 : 0.48;
+      const spawnEvery = activeStage === 1 ? 0.76 : activeStage === 2 ? 0.46 : 0.32;
+      const mintChance = activeStage === 1 ? 0.65 : activeStage === 2 ? 0.47 : 0.38;
       if (spawnTimerRef.current >= spawnEvery) {
         spawnTimerRef.current = 0;
         const kind: FlyerEntity["kind"] = Math.random() < mintChance ? "mint" : "hazard";
+        const entityY = 0.12 + Math.random() * 0.76;
+        const entitySize = kind === "mint" ? 0.055 : 0.075 + Math.random() * 0.025;
         entitiesRef.current.push({
           id: entityIdRef.current++,
           kind,
           x: 1.08,
-          y: 0.12 + Math.random() * 0.76,
-          size: kind === "mint" ? 0.055 : 0.075 + Math.random() * 0.025,
+          y: entityY,
+          size: entitySize,
         });
+        const formationChance = activeStage === 2 ? 0.3 : activeStage === 3 ? 0.52 : 0;
+        if (kind === "hazard" && Math.random() < formationChance) {
+          const partnerY = Math.max(0.12, Math.min(0.88, entityY + (entityY < 0.5 ? 0.3 : -0.3)));
+          entitiesRef.current.push({
+            id: entityIdRef.current++,
+            kind: "hazard",
+            x: 1.13,
+            y: partnerY,
+            size: Math.max(0.07, entitySize - 0.008),
+          });
+        }
       }
 
-      const speed = activeStage === 1 ? 0.24 : activeStage === 2 ? 0.31 : 0.38;
+      const speed = activeStage === 1 ? 0.25 : activeStage === 2 ? 0.39 : 0.54;
       const nextEntities: FlyerEntity[] = [];
       let remainingLives = livesRef.current;
 
