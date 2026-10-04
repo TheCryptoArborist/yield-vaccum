@@ -609,7 +609,7 @@ export default function MintFlyer() {
           )}
           {phase === "playing" && (
             <div className={styles.playGuide} aria-label="Mint Flyer objective and controls">
-              <span><i className={styles.guideMintIcon}>M</i><b>COLLECT CYAN MINT CREDITS</b><small>+250 POINTS EACH</small></span>
+              <span><i className={styles.guideMintIcon}><Image className={styles.mintGuideLogo} src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></i><b>COLLECT MSS2 MINT CREDITS</b><small>+250 POINTS EACH</small></span>
               <span><i className={styles.guideHazardIcon}>!</i><b>AVOID PINK BLOCKS</b><small>LOSE 1 OF 3 LIVES</small></span>
               <span className={styles.desktopControlGuide}><i className={styles.guideMoveIcon}>↕</i><b>STEER WITH YOUR MOUSE</b><small>NO CLICK NEEDED · W/S OR ARROWS ALSO WORK</small></span>
               <span className={styles.mobileControlGuide}><i className={styles.guideMoveIcon}>↕</i><b>PRESS + SLIDE TO STEER</b><small>DRAG YOUR FINGER UP + DOWN ANYWHERE</small></span>
@@ -633,7 +633,7 @@ export default function MintFlyer() {
               style={{ left: `${entity.x * 100}%`, top: `${entity.y * 100}%`, width: `${entity.size * 100}%` }}
               aria-hidden="true"
             >
-              {entity.kind === "mint" ? <><span>M</span><i /></> : <><span>!</span><i /><b /></>}
+              {entity.kind === "mint" ? <><Image className={styles.mintLogo} src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /><i /></> : <><span>!</span><i /><b /></>}
             </div>
           ))}
 
@@ -679,8 +679,8 @@ export default function MintFlyer() {
                     <span><b>MOVE</b><small><span className={styles.desktopControlText}>Move your mouse up and down. No click needed.</span><span className={styles.mobileControlText}>Press and slide your finger up or down.</span></small></span>
                   </article>
                   <article>
-                    <i className={styles.howToMint}>M</i>
-                    <span><b>COLLECT CYAN</b><small>Mint Credits add <strong>+250 points</strong> and build your combo.</small></span>
+                    <i className={styles.howToMint}><Image className={styles.howToMintLogo} src="/mss2-flyer-emblem.png" alt="" width={96} height={96} /></i>
+                    <span><b>COLLECT MSS2 CREDITS</b><small>The glowing logo coins add <strong>+250 points</strong> and build your combo.</small></span>
                   </article>
                   <article>
                     <i className={styles.howToHazard}>!</i>
@@ -695,7 +695,7 @@ export default function MintFlyer() {
                 <h2>REVIEW THE RUN</h2>
                 <p>Confirm the simulated entry details below, then start the flight. This screen does not request a token approval, signature, network switch, or transfer.</p>
                 <div className={styles.reviewReminder}>
-                  <span><i className={styles.guideMintIcon}>M</i><b>CYAN = COLLECT</b><small>+250 POINTS</small></span>
+                  <span><i className={styles.guideMintIcon}><Image className={styles.mintGuideLogo} src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></i><b>MSS2 LOGO = COLLECT</b><small>+250 POINTS</small></span>
                   <span><i className={styles.guideHazardIcon}>!</i><b>PINK = AVOID</b><small>-1 LIFE</small></span>
                   <span><i className={styles.guideMoveIcon}>↕</i><b><span className={styles.desktopControlText}>MOUSE OR KEYS</span><span className={styles.mobileControlText}>PRESS + SLIDE</span></b><small>MOVE UP + DOWN</small></span>
                 </div>
