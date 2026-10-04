@@ -593,7 +593,7 @@ export default function MintFlyer() {
                 <div className={styles.entryReview} aria-label="Demo MSS2 entry review">
                   <span><small>RUN PRICE</small><strong>${entryQuote?.entryPriceUsd ?? ENTRY_PRICE_USD.toFixed(2)} USD</strong></span>
                   <span><small>INDICATIVE AMOUNT</small><strong>{entryQuote ? `${entryQuote.indicativeMss2ForEntry} MSS2` : "UNAVAILABLE"}</strong></span>
-                  <span><small>NETWORK / MARKET</small><strong>ROBINHOOD · TOPAZ</strong></span>
+                  <span><small>PRICE REFERENCE</small><strong>ROBINHOOD CHAIN · TOPAZ</strong></span>
                   <span><small>QUOTE EXPIRES</small><strong className={quoteExpired ? styles.expiredText : ""}>{quoteExpired ? "EXPIRED" : `${quoteSecondsRemaining}s`}</strong></span>
                   <span className={styles.reviewWide}><small>PROPOSED RECIPIENT</small><code>{DEVELOPER_WALLET}</code></span>
                   <span className={styles.reviewWide}><small>DEMO QUOTE REFERENCE</small><code>{entryQuote?.quoteId ?? "UNAVAILABLE"}</code></span>
@@ -634,12 +634,12 @@ export default function MintFlyer() {
               </div>
               {continued && <p className={styles.usedNotice}>The one demo continue for this flight has been used. A new demo run simulates a new MSS2 entry.</p>}
               <section className={styles.lockedPayments} aria-label="Token continue readiness">
-                <div><small>FUTURE GAME PAYMENTS</small><strong>LOCKED</strong></div>
+                <div><small>FUTURE MSS2 GAME PAYMENTS</small><strong>LOCKED</strong></div>
                 <ul>
-                  <li><b>MSS2</b><span>Required for every new scored run at a $1.00 USD target. The live MSS2 quote source remains pending.</span></li>
-                  <li><b>TOPAZ</b><span>Possible continue option under review; it does not replace the MSS2 entry requirement.</span></li>
+                  <li><b>ROBINHOOD CHAIN</b><span>Planned MSS2 run and continue payments. Token decimals, transfer behavior, pricing, recipient, and backend verification must be confirmed before activation.</span></li>
+                  <li><b>ARC</b><span>Planned MSS2 run and continue payments after the Arc MSS2 contract deployment and liquidity source are independently verified.</span></li>
                 </ul>
-                <p>No signature, approval, transfer, or network switch is requested in this preview.</p>
+                <p>The wallet may add or switch networks, but this preview requests no token approval, signature, or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only proposal.</p>
               </section>
             </div>
           )}
