@@ -20,6 +20,7 @@ const MAX_LIVES = 3;
 const DEMO_CONTINUE_COST = 100;
 const STARTING_DEMO_CREDITS = 100;
 const BEST_SCORE_KEY = "yield-vacuum-mss2-mint-flyer-best";
+const DEVELOPER_WALLET = "0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789";
 
 export default function MintFlyer() {
   const [phase, setPhase] = useState<FlightPhase>("ready");
@@ -273,8 +274,9 @@ export default function MintFlyer() {
               <div className={styles.entryTerms} aria-label="Future MSS2 game entry terms">
                 <span><small>ENTRY ASSET</small><strong>MSS2 REQUIRED</strong></span>
                 <span><small>PRICE</small><strong>NOT SET</strong></span>
-                <span><small>RECIPIENT</small><strong>DEV WALLET PENDING</strong></span>
+                <span><small>RECIPIENT</small><strong>{DEVELOPER_WALLET.slice(0, 8)}…{DEVELOPER_WALLET.slice(-6)}</strong></span>
               </div>
+              <p className={styles.entryWallet}><b>PROPOSED DEVELOPER RECIPIENT</b><code>{DEVELOPER_WALLET}</code></p>
               <div className={styles.legend}><span><i className={styles.mintDot} /> COLLECT MINTS</span><span><i className={styles.hazardDot} /> AVOID BLOCKS</span></div>
               <button onClick={resetFlight}>SIMULATE MSS2 ENTRY + START</button>
             </div>
@@ -298,7 +300,7 @@ export default function MintFlyer() {
               <section className={styles.lockedPayments} aria-label="Token continue readiness">
                 <div><small>FUTURE GAME PAYMENTS</small><strong>LOCKED</strong></div>
                 <ul>
-                  <li><b>MSS2</b><span>Required for every new scored run. Entry price and developer wallet remain pending.</span></li>
+                  <li><b>MSS2</b><span>Required for every new scored run. Developer wallet is configured for preview; entry price remains pending.</span></li>
                   <li><b>TOPAZ</b><span>Possible continue option under review; it does not replace the MSS2 entry requirement.</span></li>
                 </ul>
                 <p>No signature, approval, transfer, or network switch is requested in this preview.</p>
@@ -317,7 +319,7 @@ export default function MintFlyer() {
       <section className={styles.demoDisclosure}>
         <div><small>PAY-PER-GAME DEMONSTRATION</small><strong>NO REAL MSS2 IS CHARGED</strong></div>
         <p>Demo credits exist only to test the continue screen. They have no cash value, cannot be purchased, transferred, withdrawn, or redeemed, and do not create an onchain transaction.</p>
-        <span>Future MSS2 entry payments are planned as developer-controlled arcade revenue. The developer intends to add proceeds to liquidity manually, but no automatic liquidity action or guarantee is active. The recipient wallet, price, refund policy, and verification backend remain unconfirmed.</span>
+        <span>Proposed developer recipient: {DEVELOPER_WALLET}. The developer intends to add proceeds to liquidity manually, but no automatic liquidity action or guarantee is active. Price, refund policy, and backend verification remain unconfirmed.</span>
       </section>
 
       <Mss2Commitments />
