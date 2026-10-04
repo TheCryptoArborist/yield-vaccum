@@ -23,12 +23,12 @@ The project is configured for a standalone Netlify deployment. Its shared weekly
 
 The `/arcade` route hosts optional arcade games without changing the Topaz educational campaign. The first game is Mint Flyer. Its current continue flow uses clearly labeled demo credits only:
 
-- Every future scored MSS2 arcade run is planned to require a separately verified MSS2 entry payment.
+- Every future scored MSS2 arcade run is planned to require a separately verified MSS2 entry payment targeting $1.00 USD worth of MSS2 at checkout.
 - One same-run continue costs 100 demo credits and restores three lives.
 - Demo credits have no cash or token value and create no blockchain transaction.
 - The preview simulates paid entry without requesting a wallet signature or token transfer.
 - Proposed developer recipient: `0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789`.
-- Real MSS2 payments remain disabled until token deployments, networks, pricing, refund policy, recipient ownership, and backend transaction verification are confirmed.
+- Real MSS2 payments remain disabled until token deployments, networks, the MSS2 price source and quote rules, refund policy, recipient ownership, and backend transaction verification are confirmed.
 - The developer intends to add arcade proceeds to liquidity manually. No automatic liquidity action or guarantee is represented.
 
 The MSS2 Commitments panel is a separate Robinhood-only demonstration for proposed permanent membership contributions. It simulates review, receipt verification, duplicate protection, and an isolated membership record without requesting a wallet action. Its proposed dead-address destination does not apply to ordinary arcade purchases or operating revenue.
