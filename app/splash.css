@@ -2,7 +2,8 @@
   position: fixed;
   inset: 0;
   z-index: 50;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -71,12 +72,12 @@
 
 .splashLogoStage {
   position: relative;
-  width: min(34vw, 240px);
-  height: min(34vw, 240px);
+  width: min(31vw, 215px);
+  height: min(31vw, 215px);
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
 }
 
 .splashLogoStage img {
@@ -136,80 +137,135 @@
 }
 
 .splashNetwork {
-  margin: 24px 0 18px;
-  color: #9b6e5e;
-  font-size: clamp(7px, 1.25vw, 10px);
+  margin: 20px 0 12px;
+  color: #ffc4aa;
+  font-size: clamp(8px, 1.25vw, 10px);
   font-weight: 900;
   letter-spacing: 0.26em;
   opacity: 0;
   animation: splashTextIn 0.7s 1.95s ease-out both;
 }
 
-.splashEnter {
-  border: 1px solid rgba(255, 130, 73, 0.65);
-  background: linear-gradient(135deg, #ff7438, #da3505);
-  color: #fff;
-  padding: 15px 30px;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.17em;
-  cursor: pointer;
-  box-shadow: 0 0 32px rgba(255, 72, 12, 0.3);
+.splashGameMenu {
+  width: min(690px, 100%);
   opacity: 0;
   transform: translateY(16px);
-  animation: splashTextIn 0.65s 2.25s ease-out both, enterPulse 1.8s 3s ease-in-out infinite;
+  animation: splashTextIn 0.65s 2.25s ease-out both;
 }
 
-.splashEnter:hover,
-.splashEnter:focus-visible {
-  filter: brightness(1.15);
-  outline: 2px solid #ffb28f;
-  outline-offset: 4px;
+.splashGameMenu > p {
+  margin: 0 0 7px;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: 0.28em;
 }
 
 .splashActions {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  gap: 9px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.splashArcadeLink {
-  min-width: 190px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 17px;
-  border: 1px solid rgba(255, 130, 73, 0.42);
-  background: rgba(13, 8, 7, 0.86);
+.splashGameChoice {
+  min-width: 0;
+  min-height: 96px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-content: center;
+  gap: 5px 14px;
+  padding: 12px 15px;
   color: #fff;
+  font-family: inherit;
+  text-align: left;
   text-decoration: none;
-  opacity: 0;
-  transform: translateY(16px);
-  animation: splashTextIn 0.65s 2.4s ease-out both;
+  cursor: pointer;
+  opacity: 1;
+  transform: none;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.splashArcadeLink small {
-  color: #ad7764;
-  font-size: 6px;
-  font-weight: 900;
-  letter-spacing: 0.15em;
+.splashChoiceBrand {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.splashArcadeLink strong {
-  color: #ff8e65;
+.splashChoiceBrand i {
+  padding: 4px 7px;
+  border-radius: 2px;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 1000;
+  letter-spacing: 0.14em;
+}
+
+.splashChoiceBrand small {
+  font-size: 7px;
+  font-weight: 1000;
+  letter-spacing: 0.17em;
+}
+
+.splashGameChoice > strong {
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.splashGameChoice > b {
+  grid-column: 1;
+  color: #d8d8dc;
   font-size: 8px;
-  letter-spacing: 0.1em;
+  line-height: 1.35;
+  letter-spacing: 0.03em;
 }
 
-.splashArcadeLink:hover,
-.splashArcadeLink:focus-visible {
-  border-color: #ff7438;
-  background: rgba(45, 15, 6, 0.94);
-  outline: 2px solid #ffb28f;
-  outline-offset: 4px;
+.splashGameChoice > em {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  align-self: center;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.splashTopazChoice {
+  border: 2px solid #ff7438;
+  background: linear-gradient(135deg, rgba(92, 24, 4, 0.98), rgba(28, 7, 2, 0.98));
+  box-shadow: 0 0 28px rgba(255, 72, 12, 0.22);
+}
+
+.splashTopazChoice .splashChoiceBrand i {
+  background: #ff5a19;
+  color: #fff;
+}
+
+.splashTopazChoice .splashChoiceBrand small,
+.splashTopazChoice > em { color: #ffb18e; }
+
+.splashMss2Choice {
+  border: 2px solid #00ebf2;
+  background: linear-gradient(135deg, rgba(7, 28, 55, 0.98), rgba(40, 22, 99, 0.98));
+  box-shadow: 0 0 28px rgba(0, 235, 242, 0.16);
+}
+
+.splashMss2Choice .splashChoiceBrand i {
+  background: #00ebf2;
+  color: #061629;
+}
+
+.splashMss2Choice .splashChoiceBrand small,
+.splashMss2Choice > em { color: #8fffff; }
+
+.splashGameChoice:hover,
+.splashGameChoice:focus-visible {
+  transform: translateY(-3px);
+  filter: brightness(1.12);
+  outline: 2px solid #fff;
+  outline-offset: 3px;
 }
 
 @keyframes splashSpin { to { transform: rotate(360deg); } }
@@ -244,10 +300,10 @@
   }
   .splashPresents { margin-bottom: 12px; }
   .splashTitle strong { margin-top: 9px; }
-  .splashNetwork { margin: 20px 0 16px; }
-  .splashActions { width: min(350px, 100%); flex-direction: column; gap: 7px; }
-  .splashEnter, .splashArcadeLink { width: 100%; }
-  .splashArcadeLink { min-height: 44px; padding: 8px 14px; }
+  .splashNetwork { margin: 18px 0 12px; }
+  .splashGameMenu { width: min(390px, 100%); }
+  .splashActions { grid-template-columns: 1fr; gap: 7px; }
+  .splashGameChoice { min-height: 82px; padding: 10px 13px; }
 }
 
 @media (max-height: 720px) {
@@ -260,10 +316,12 @@
   }
   .splashTitle span { font-size: clamp(48px, 9vh, 76px); }
   .splashTitle strong { font-size: clamp(29px, 5.3vh, 46px); }
-  .splashNetwork { margin: 16px 0 13px; }
-  .splashEnter { padding: 13px 26px; }
+  .splashNetwork { margin: 13px 0 9px; }
   .splashActions { gap: 6px; }
-  .splashArcadeLink { min-height: 40px; padding-block: 7px; }
+  .splashGameChoice { min-height: 76px; padding-block: 8px; }
+  .splashGameChoice > strong { font-size: 13px; }
+  .splashGameChoice > b { font-size: 7px; }
+  .splashGameChoice > em { font-size: 7px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
