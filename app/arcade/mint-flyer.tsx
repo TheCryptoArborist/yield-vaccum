@@ -41,6 +41,7 @@ export default function MintFlyer() {
   const [entities, setEntities] = useState<FlyerEntity[]>([]);
   const [score, setScore] = useState(0);
   const [distance, setDistance] = useState(0);
+  const [mintsCollected, setMintsCollected] = useState(0);
   const [lives, setLives] = useState(MAX_LIVES);
   const [demoCredits, setDemoCredits] = useState(STARTING_DEMO_CREDITS);
   const [continued, setContinued] = useState(false);
@@ -128,6 +129,7 @@ export default function MintFlyer() {
     setEntities([]);
     setScore(0);
     setDistance(0);
+    setMintsCollected(0);
     setLives(MAX_LIVES);
     setDemoCredits(STARTING_DEMO_CREDITS);
     setContinued(false);
@@ -228,6 +230,7 @@ export default function MintFlyer() {
         if (horizontalHit && verticalHit) {
           if (moved.kind === "mint") {
             collectedRef.current += 1;
+            setMintsCollected(collectedRef.current);
             continue;
           }
           if (now >= invulnerableUntilRef.current) {
@@ -315,6 +318,7 @@ export default function MintFlyer() {
         <div className={styles.hud}>
           <span><small>SCORE</small><strong>{score.toLocaleString()}</strong></span>
           <span><small>DISTANCE</small><strong>{distance}m</strong></span>
+          <span className={styles.mintCounter}><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
           <span><small>LIVES</small><strong>{"◆".repeat(lives)}<i>{"◇".repeat(MAX_LIVES - lives)}</i></strong></span>
           <span className={styles.demoBalance}><small>DEMO CREDITS</small><strong>{demoCredits}</strong></span>
         </div>
@@ -328,6 +332,13 @@ export default function MintFlyer() {
           }}
           onPointerMove={(event) => { if (event.buttons || event.pointerType === "touch") moveWithPointer(event); }}
         >
+          {phase === "playing" && (
+            <div className={styles.playGuide} aria-label="Mint Flyer objective and controls">
+              <span><i className={styles.guideMintIcon}>M</i><b>COLLECT CYAN MINT CREDITS</b><small>+250 POINTS EACH</small></span>
+              <span><i className={styles.guideHazardIcon}>!</i><b>AVOID PINK BLOCKS</b><small>LOSE 1 OF 3 LIVES</small></span>
+              <span><i className={styles.guideMoveIcon}>↕</i><b>MOVE UP + DOWN</b><small>DRAG · W/S · ARROW KEYS</small></span>
+            </div>
+          )}
           <div className={styles.speedLines} aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
           <div className={`${styles.flyer} ${phase === "playing" ? styles.flying : ""}`} style={{ top: `${playerY * 100}%` }} aria-label="Mint Flyer">
             <span>MF</span><i /><b />
@@ -345,28 +356,40 @@ export default function MintFlyer() {
           ))}
 
           {phase === "ready" && (
-            <div className={`${styles.overlay} ${reviewingEntry ? styles.entryReviewOverlay : ""}`}>
+            <div className={`${styles.overlay} ${reviewingEntry ? styles.entryReviewOverlay : styles.briefingOverlay}`}>
               {!reviewingEntry ? <>
-                <small>MSS2 GAME ENTRY · DEMO</small>
-                <h2>FLY THE MINT STREAM</h2>
-                <p>Each future scored run will require the amount of MSS2 equal to a ${ENTRY_PRICE_USD.toFixed(2)} USD target at checkout. This preview does not request a wallet, signature, or token.</p>
-                <div className={styles.entryTerms} aria-label="Future MSS2 game entry terms">
-                  <span><small>USD TARGET</small><strong>${ENTRY_PRICE_USD.toFixed(2)} PER RUN</strong></span>
-                  <span><small>INDICATIVE MSS2</small><strong>{entryQuote ? `≈ ${entryQuote.indicativeMss2ForEntry} MSS2` : quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING QUOTE"}</strong></span>
-                  <span><small>RECIPIENT</small><strong>{DEVELOPER_WALLET.slice(0, 8)}…{DEVELOPER_WALLET.slice(-6)}</strong></span>
+                <small>HOW TO PLAY · DEMO FLIGHT</small>
+                <h2>FLY. COLLECT. SURVIVE.</h2>
+                <p className={styles.briefingLead}>Move the <b>MF flyer</b> up and down. Collect the cyan circles, avoid the pink warning blocks, and stay alive as long as possible.</p>
+                <div className={styles.howToGrid} aria-label="How to play Mint Flyer">
+                  <article>
+                    <i className={styles.howToMove}>↕</i>
+                    <span><b>1. MOVE THE FLYER</b><small>Drag anywhere in the flight area, or use W/S and the up/down arrow keys.</small></span>
+                  </article>
+                  <article>
+                    <i className={styles.howToMint}>M</i>
+                    <span><b>2. COLLECT MINT CREDITS</b><small>Cyan circles are in-game score pickups worth <strong>+250 points</strong> each. They are not MSS2 tokens.</small></span>
+                  </article>
+                  <article>
+                    <i className={styles.howToHazard}>!</i>
+                    <span><b>3. AVOID CORRUPTED BLOCKS</b><small>Touching a pink warning block removes one life. The flight ends after three hits.</small></span>
+                  </article>
+                  <article>
+                    <i className={styles.howToScore}>★</i>
+                    <span><b>4. BUILD YOUR SCORE</b><small>Earn 10 points per meter flown, plus 250 points for every Mint Credit collected.</small></span>
+                  </article>
                 </div>
-                <p className={styles.quoteSource}>
-                  {entryQuote
-                    ? <><b>INDICATIVE ONLY</b><span>DEX Screener · ${Number(entryQuote.priceUsd).toLocaleString(undefined, { maximumFractionDigits: 8 })}/MSS2 · refreshes every 30 seconds</span><a href={entryQuote.pairUrl} target="_blank" rel="noreferrer">VIEW PAIR ↗</a></>
-                    : <><b>NOT A PAYMENT QUOTE</b><span>The game stays in demo mode when market data is unavailable.</span></>}
-                </p>
-                <p className={styles.entryWallet}><b>PROPOSED DEVELOPER RECIPIENT</b><code>{DEVELOPER_WALLET}</code></p>
-                <div className={styles.legend}><span><i className={styles.mintDot} /> COLLECT MINTS</span><span><i className={styles.hazardDot} /> AVOID BLOCKS</span></div>
-                <button onClick={reviewEntry} disabled={!entryQuote || quoteExpired}>{!entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING QUOTE" : quoteExpired ? "REFRESHING EXPIRED QUOTE" : "REVIEW $1 MSS2 DEMO ENTRY"}</button>
+                <p className={styles.demoGameNote}><b>DEMO FLIGHT:</b> No wallet payment, token approval, signature, or real MSS2 is requested.</p>
+                <button onClick={reviewEntry} disabled={!entryQuote || quoteExpired}>{!entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "GOT IT — REVIEW DEMO ENTRY"}</button>
               </> : <>
                 <small>DEMO ENTRY REVIEW · NO TRANSACTION</small>
                 <h2>REVIEW THE RUN</h2>
-                <p>Confirm the simulated entry details below. This screen does not request a token approval, signature, network switch, or transfer.</p>
+                <p>Confirm the simulated entry details below, then start the flight. This screen does not request a token approval, signature, network switch, or transfer.</p>
+                <div className={styles.reviewReminder}>
+                  <span><i className={styles.guideMintIcon}>M</i><b>CYAN = COLLECT</b><small>+250 POINTS</small></span>
+                  <span><i className={styles.guideHazardIcon}>!</i><b>PINK = AVOID</b><small>-1 LIFE</small></span>
+                  <span><i className={styles.guideMoveIcon}>↕</i><b>DRAG OR KEYS</b><small>MOVE UP + DOWN</small></span>
+                </div>
                 <div className={styles.entryReview} aria-label="Demo MSS2 entry review">
                   <span><small>RUN PRICE</small><strong>${entryQuote?.entryPriceUsd ?? ENTRY_PRICE_USD.toFixed(2)} USD</strong></span>
                   <span><small>INDICATIVE AMOUNT</small><strong>{entryQuote ? `${entryQuote.indicativeMss2ForEntry} MSS2` : "UNAVAILABLE"}</strong></span>
@@ -412,9 +435,9 @@ export default function MintFlyer() {
         </div>
 
         <footer className={styles.gameFooter}>
-          <span><b>CONTROL</b> DRAG, W/S OR ↑/↓</span>
-          <span><b>GOAL</b> COLLECT MINTS + BUILD DISTANCE</span>
-          <span><b>ENTRY</b> MSS2 PER SCORED RUN</span>
+          <span><b>CONTROL</b> DRAG, W/S OR ↑/↓ TO MOVE</span>
+          <span><b>COLLECT</b> CYAN MINT CREDITS · +250 POINTS</span>
+          <span><b>AVOID</b> PINK BLOCKS · -1 LIFE</span>
         </footer>
       </section>
 
