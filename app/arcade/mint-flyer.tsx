@@ -463,9 +463,9 @@ export default function MintFlyer() {
           <strong>Thread the mint stream. Collect clean credits. Avoid corrupted blocks.</strong>
         </div>
         <aside>
-          <small>PAY-PER-GAME PREVIEW</small>
-          <b>MSS2 ENTRY PLANNED</b>
-          <span>This demo does not request a wallet payment.</span>
+          <small>INDEPENDENT COMMUNITY ARCADE</small>
+          <b>CREATED BY THE CRYPTO ARBORIST</b>
+          <span>Independent creator · No official affiliation or endorsement.</span>
         </aside>
       </section>
 
@@ -650,6 +650,25 @@ export default function MintFlyer() {
           <span><b>COLLECT</b> CYAN MINT CREDITS · +250 POINTS</span>
           <span><b>AVOID</b> PINK BLOCKS · -1 LIFE</span>
         </footer>
+      </section>
+
+      <section className={styles.creatorPanel} aria-labelledby="mint-flyer-creator-title">
+        <div className={styles.creatorPortrait}>
+          <Image
+            src="/crypto-arborist-mss2.webp"
+            alt="The Crypto Arborist tree hero wearing a MintStakeShare 2 championship belt"
+            width={640}
+            height={960}
+          />
+        </div>
+        <div className={styles.creatorCopy}>
+          <small>WHO IS BEHIND MINT FLYER?</small>
+          <h2 id="mint-flyer-creator-title">BUILT BY THE CRYPTO ARBORIST</h2>
+          <strong>THE CRYPTO ARBORIST · INDEPENDENT CREATOR</strong>
+          <p>Yield Vacuum and Mint Flyer were independently created by The Crypto Arborist as educational and arcade experiences for the broader crypto community.</p>
+          <p className={styles.creatorDisclosure}>This is not an official product of Topaz DEX, MintStakeShare, Robinhood Chain, Arc, or their affiliates. No endorsement, partnership, or sponsorship is implied.</p>
+          <a href="https://x.com/thickquidity" target="_blank" rel="noreferrer">FOLLOW THE CRYPTO ARBORIST ON X ↗</a>
+        </div>
       </section>
 
       <section className={styles.demoDisclosure}>
