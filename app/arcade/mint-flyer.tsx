@@ -7,7 +7,8 @@ import WalletConnect from "../wallet-connect";
 import Mss2Commitments from "./mss2-commitments";
 import styles from "./mint-flyer.module.css";
 
-type FlightPhase = "ready" | "countdown" | "playing" | "paused" | "crashed";
+type FlightPhase = "ready" | "countdown" | "playing" | "paused" | "crashed" | "victory";
+type FlightStage = 1 | 2 | 3;
 type EntryQuote = {
   source: string;
   status: "indicative";
@@ -43,12 +44,36 @@ const BEST_SCORE_KEY = "yield-vacuum-mss2-mint-flyer-best";
 const DEVELOPER_WALLET = "0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789";
 const ENTRY_PRICE_USD = 1;
 const SOUND_PREFERENCE_KEY = "yield-vacuum-mss2-mint-flyer-sound";
+const MOON_DISTANCE = 1500;
+const FLIGHT_STAGES: Array<{ id: FlightStage; name: string; start: number; instruction: string }> = [
+  { id: 1, name: "MINT STREAM", start: 0, instruction: "Collect cyan Mint Credits and build your combo." },
+  { id: 2, name: "BLOCK SURGE", start: 400, instruction: "Corrupted blocks are faster and appear more often." },
+  { id: 3, name: "MOON RUN", start: 900, instruction: "Hold your line and reach the Moon." },
+];
+const GRADE_TARGETS = [
+  { grade: "B", score: 21000 },
+  { grade: "A", score: 25000 },
+  { grade: "S", score: 30000 },
+] as const;
 
 function comboMultiplier(streak: number) {
   if (streak >= 10) return 5;
   if (streak >= 6) return 3;
   if (streak >= 3) return 2;
   return 1;
+}
+
+function stageForDistance(distance: number): FlightStage {
+  if (distance >= FLIGHT_STAGES[2].start) return 3;
+  if (distance >= FLIGHT_STAGES[1].start) return 2;
+  return 1;
+}
+
+function gradeForScore(score: number) {
+  if (score >= 30000) return "S";
+  if (score >= 25000) return "A";
+  if (score >= 21000) return "B";
+  return "C";
 }
 
 export default function MintFlyer() {
@@ -73,6 +98,9 @@ export default function MintFlyer() {
   const [maxCombo, setMaxCombo] = useState(0);
   const [totalHits, setTotalHits] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [stage, setStage] = useState<FlightStage>(1);
+  const [stageNotice, setStageNotice] = useState(false);
+  const [moonBonus, setMoonBonus] = useState(0);
 
   const playerYRef = useRef(0.5);
   const targetYRef = useRef(0.5);
@@ -93,6 +121,8 @@ export default function MintFlyer() {
   const totalHitsRef = useRef(0);
   const soundEnabledRef = useRef(true);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const stageRef = useRef<FlightStage>(1);
+  const stageNoticeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -186,6 +216,8 @@ export default function MintFlyer() {
   }, []);
 
   const resetFlight = useCallback(() => {
+    if (stageNoticeTimerRef.current !== null) window.clearTimeout(stageNoticeTimerRef.current);
+    stageNoticeTimerRef.current = null;
     playerYRef.current = 0.5;
     targetYRef.current = 0.5;
     entitiesRef.current = [];
@@ -199,6 +231,7 @@ export default function MintFlyer() {
     maxComboRef.current = 0;
     mintScoreRef.current = 0;
     totalHitsRef.current = 0;
+    stageRef.current = 1;
     invulnerableUntilRef.current = performance.now() + 900;
     setPlayerY(0.5);
     setEntities([]);
@@ -209,6 +242,9 @@ export default function MintFlyer() {
     setCombo(0);
     setMaxCombo(0);
     setTotalHits(0);
+    setStage(1);
+    setStageNotice(false);
+    setMoonBonus(0);
     setLives(MAX_LIVES);
     setDemoCredits(STARTING_DEMO_CREDITS);
     setContinued(false);
@@ -296,6 +332,7 @@ export default function MintFlyer() {
   }, []);
 
   useEffect(() => () => {
+    if (stageNoticeTimerRef.current !== null) window.clearTimeout(stageNoticeTimerRef.current);
     if (audioContextRef.current?.state !== "closed") void audioContextRef.current?.close();
   }, []);
 
@@ -336,12 +373,38 @@ export default function MintFlyer() {
       if (effectsRef.current.length !== effectCountBeforeCleanup) setEffects([...effectsRef.current]);
 
       distanceRef.current += dt * 34;
+      const activeStage = stageForDistance(distanceRef.current);
+      if (activeStage !== stageRef.current) {
+        stageRef.current = activeStage;
+        setStage(activeStage);
+        setStageNotice(true);
+        playTone(activeStage === 3 ? 920 : 760, 0.16, "square", 0.04);
+        if (stageNoticeTimerRef.current !== null) window.clearTimeout(stageNoticeTimerRef.current);
+        stageNoticeTimerRef.current = window.setTimeout(() => setStageNotice(false), 1700);
+      }
+
+      if (distanceRef.current >= MOON_DISTANCE) {
+        const arrivalBonus = 5000 + livesRef.current * 750 + maxComboRef.current * 50;
+        const finalScore = Math.floor(MOON_DISTANCE * 10) + mintScoreRef.current + arrivalBonus;
+        distanceRef.current = MOON_DISTANCE;
+        scoreRef.current = finalScore;
+        entitiesRef.current = [];
+        setMoonBonus(arrivalBonus);
+        setDistance(MOON_DISTANCE);
+        setScore(finalScore);
+        setEntities([]);
+        publishBest(finalScore);
+        playTone(1040, 0.22, "sine", 0.045);
+        setPhase("victory");
+        return;
+      }
+
       spawnTimerRef.current += dt;
-      const difficulty = Math.min(0.18, distanceRef.current / 2200);
-      const spawnEvery = Math.max(0.56, 0.88 - difficulty);
+      const spawnEvery = activeStage === 1 ? 0.84 : activeStage === 2 ? 0.66 : 0.54;
+      const mintChance = activeStage === 1 ? 0.67 : activeStage === 2 ? 0.53 : 0.48;
       if (spawnTimerRef.current >= spawnEvery) {
         spawnTimerRef.current = 0;
-        const kind: FlyerEntity["kind"] = Math.random() < 0.58 ? "mint" : "hazard";
+        const kind: FlyerEntity["kind"] = Math.random() < mintChance ? "mint" : "hazard";
         entitiesRef.current.push({
           id: entityIdRef.current++,
           kind,
@@ -351,7 +414,7 @@ export default function MintFlyer() {
         });
       }
 
-      const speed = 0.24 + difficulty;
+      const speed = activeStage === 1 ? 0.24 : activeStage === 2 ? 0.31 : 0.38;
       const nextEntities: FlyerEntity[] = [];
       let remainingLives = livesRef.current;
 
@@ -430,6 +493,12 @@ export default function MintFlyer() {
   const hasCollectEffect = effects.some((effect) => effect.kind === "collect");
   const hasHitEffect = effects.some((effect) => effect.kind === "hit");
   const currentMultiplier = comboMultiplier(combo);
+  const currentStage = FLIGHT_STAGES[stage - 1];
+  const flightProgress = Math.min(100, (distance / MOON_DISTANCE) * 100);
+  const runGrade = gradeForScore(score);
+  const nextGradeTarget = GRADE_TARGETS.find((target) => score < target.score);
+  const stageClass = stage === 1 ? styles.stageMint : stage === 2 ? styles.stageSurge : styles.stageMoon;
+  const gradeClass = runGrade === "S" ? styles.gradeS : runGrade === "A" ? styles.gradeA : runGrade === "B" ? styles.gradeB : styles.gradeC;
 
   return (
     <main className={styles.arcadeShell}>
@@ -485,8 +554,16 @@ export default function MintFlyer() {
           <span className={styles.demoBalance}><small>DEMO CREDITS</small><strong>{demoCredits}</strong></span>
         </div>
 
+        <div className={styles.flightProgress} aria-label={`Stage ${stage} of 3: ${currentStage.name}. ${Math.round(flightProgress)} percent to the Moon.`}>
+          <div className={styles.stageLabels}>
+            {FLIGHT_STAGES.map((item) => <span key={item.id} className={stage === item.id ? styles.currentStage : stage > item.id ? styles.clearedStage : ""}><b>{item.id}</b>{item.name}</span>)}
+          </div>
+          <div className={styles.progressTrack}><i style={{ width: `${flightProgress}%` }} /><b style={{ left: `${flightProgress}%` }}>◆</b></div>
+          <small>{Math.max(0, MOON_DISTANCE - distance).toLocaleString()}m TO THE MOON</small>
+        </div>
+
         <div
-          className={`${styles.playfield} ${hasHitEffect ? styles.impactShake : ""} ${hasCollectEffect ? styles.collectGlow : ""}`}
+          className={`${styles.playfield} ${stageClass} ${hasHitEffect ? styles.impactShake : ""} ${hasCollectEffect ? styles.collectGlow : ""}`}
           onPointerDown={(event) => {
             if (phase !== "playing") return;
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -496,6 +573,14 @@ export default function MintFlyer() {
             if (["mouse", "pen", "touch"].includes(event.pointerType) || event.buttons) moveWithPointer(event);
           }}
         >
+          <div className={styles.stageScenery} aria-hidden="true"><i /><i /><i /><i /><i /><span /></div>
+          {stageNotice && phase === "playing" && (
+            <div className={styles.stageTransition} role="status">
+              <small>STAGE {stage} OF 3</small>
+              <strong>{currentStage.name}</strong>
+              <span>{currentStage.instruction}</span>
+            </div>
+          )}
           {phase === "playing" && (
             <div className={styles.playGuide} aria-label="Mint Flyer objective and controls">
               <span><i className={styles.guideMintIcon}>M</i><b>COLLECT CYAN MINT CREDITS</b><small>+250 POINTS EACH</small></span>
@@ -561,7 +646,7 @@ export default function MintFlyer() {
               {!reviewingEntry ? <>
                 <small>HOW TO PLAY · DEMO FLIGHT</small>
                 <h2>FLY. COLLECT. SURVIVE.</h2>
-                <p className={styles.briefingLead}>Move the <b>MF flyer</b>. Collect cyan. Avoid pink. Three hits end the flight.</p>
+                <p className={styles.briefingLead}>Move the <b>MSS2 flyer</b>. Collect cyan. Avoid pink. Reach the Moon before three hits end the flight.</p>
                 <div className={styles.howToGrid} aria-label="How to play Mint Flyer">
                   <article>
                     <i className={styles.howToMove}>↕</i>
@@ -576,6 +661,7 @@ export default function MintFlyer() {
                     <span><b>AVOID PINK</b><small>A corrupted block removes one of your three lives.</small></span>
                   </article>
                 </div>
+                <div className={styles.routePreview} aria-label="Three flight stages"><span>1 <b>MINT STREAM</b></span><i>→</i><span>2 <b>BLOCK SURGE</b></span><i>→</i><span>3 <b>MOON RUN</b></span></div>
                 <p className={styles.demoGameNote}><b>DEMO MODE:</b> Free to play. No wallet or real MSS2 required.</p>
                 <button onClick={reviewEntry} disabled={!entryQuote || quoteExpired}>{!entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "REVIEW DEMO ENTRY"}</button>
               </> : <>
@@ -638,6 +724,29 @@ export default function MintFlyer() {
                 </ul>
                 <p>The wallet may add or switch networks, but this preview requests no token approval, signature, or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only proposal.</p>
               </section>
+            </div>
+          )}
+
+          {phase === "victory" && (
+            <div className={`${styles.overlay} ${styles.victoryOverlay}`}>
+              <div className={styles.moonArrival} aria-hidden="true"><i /><span>✓</span></div>
+              <small>ALL THREE STAGES CLEARED</small>
+              <h2>MOON REACHED</h2>
+              <p>You crossed the Mint Stream, survived the Block Surge, and completed the Moon Run.</p>
+              <div className={styles.victoryScore}>
+                <span><small>FINAL SCORE</small><strong>{score.toLocaleString()}</strong>{newBest && <b>NEW LOCAL BEST</b>}</span>
+                <span className={`${styles.gradeBadge} ${gradeClass}`}><small>FLIGHT GRADE</small><strong>{runGrade}</strong></span>
+              </div>
+              <div className={styles.arrivalBonus}><small>MOON ARRIVAL BONUS</small><strong>+{moonBonus.toLocaleString()}</strong><span>Completion + surviving lives + best combo</span></div>
+              <div className={styles.finalScore}>
+                <span><small>LOCAL BEST</small><strong>{bestScore.toLocaleString()}</strong></span>
+                <span><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
+                <span><small>DISTANCE</small><strong>{distance}m</strong></span>
+                <span><small>BEST COMBO</small><strong>{maxCombo} · {comboMultiplier(maxCombo)}X</strong></span>
+                <span><small>BLOCK HITS</small><strong>{totalHits}</strong></span>
+              </div>
+              <p className={styles.replayTarget}>{nextGradeTarget ? <><b>{(nextGradeTarget.score - score).toLocaleString()} MORE POINTS FOR GRADE {nextGradeTarget.grade}</b><span>Collect more Mint Credits, protect your combo, and preserve lives.</span></> : <><b>GRADE S ACHIEVED</b><span>Replay to beat your local best of {bestScore.toLocaleString()}.</span></>}</p>
+              <button className={styles.moonReplayButton} onClick={prepareAnotherRun}>↻ FLY TO THE MOON AGAIN</button>
             </div>
           )}
         </div>
