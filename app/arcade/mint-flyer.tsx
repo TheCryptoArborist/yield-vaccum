@@ -512,7 +512,7 @@ export default function MintFlyer() {
           )}
           <div className={styles.speedLines} aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
           <div className={`${styles.flyer} ${phase === "playing" ? styles.flying : ""} ${hasCollectEffect ? styles.flyerBoost : ""} ${hasHitEffect ? styles.flyerDamaged : ""}`} style={{ top: `${playerY * 100}%` }} aria-label="Mint Flyer">
-            <span>MF</span><i /><b />
+            <Image className={styles.flyerLogo} src="/mss2-flyer-emblem.png" alt="" width={256} height={256} priority /><i /><b />
           </div>
 
           {entities.map((entity) => (
