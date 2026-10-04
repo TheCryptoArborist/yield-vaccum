@@ -356,13 +356,16 @@ export default function MintFlyer() {
             event.currentTarget.setPointerCapture(event.pointerId);
             moveWithPointer(event);
           }}
-          onPointerMove={(event) => { if (event.buttons || event.pointerType === "touch") moveWithPointer(event); }}
+          onPointerMove={(event) => {
+            if (["mouse", "pen", "touch"].includes(event.pointerType) || event.buttons) moveWithPointer(event);
+          }}
         >
           {phase === "playing" && (
             <div className={styles.playGuide} aria-label="Mint Flyer objective and controls">
               <span><i className={styles.guideMintIcon}>M</i><b>COLLECT CYAN MINT CREDITS</b><small>+250 POINTS EACH</small></span>
               <span><i className={styles.guideHazardIcon}>!</i><b>AVOID PINK BLOCKS</b><small>LOSE 1 OF 3 LIVES</small></span>
-              <span><i className={styles.guideMoveIcon}>↕</i><b>MOVE UP + DOWN</b><small>DRAG · W/S · ARROW KEYS</small></span>
+              <span className={styles.desktopControlGuide}><i className={styles.guideMoveIcon}>↕</i><b>STEER WITH YOUR MOUSE</b><small>NO CLICK NEEDED · W/S OR ARROWS ALSO WORK</small></span>
+              <span className={styles.mobileControlGuide}><i className={styles.guideMoveIcon}>↕</i><b>PRESS + SLIDE TO STEER</b><small>DRAG YOUR FINGER UP + DOWN ANYWHERE</small></span>
             </div>
           )}
           <div className={styles.speedLines} aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
@@ -402,7 +405,7 @@ export default function MintFlyer() {
                 <div className={styles.howToGrid} aria-label="How to play Mint Flyer">
                   <article>
                     <i className={styles.howToMove}>↕</i>
-                    <span><b>1. MOVE THE FLYER</b><small>Drag anywhere in the flight area, or use W/S and the up/down arrow keys.</small></span>
+                    <span><b>1. MOVE THE FLYER</b><small><span className={styles.desktopControlText}>Desktop: move your mouse up and down inside the flight area—no click needed. W/S and the arrow keys also work.</span><span className={styles.mobileControlText}>Mobile: press anywhere inside the flight area and slide your finger up or down. You can keep dragging without lifting your finger.</span></small></span>
                   </article>
                   <article>
                     <i className={styles.howToMint}>M</i>
@@ -426,7 +429,7 @@ export default function MintFlyer() {
                 <div className={styles.reviewReminder}>
                   <span><i className={styles.guideMintIcon}>M</i><b>CYAN = COLLECT</b><small>+250 POINTS</small></span>
                   <span><i className={styles.guideHazardIcon}>!</i><b>PINK = AVOID</b><small>-1 LIFE</small></span>
-                  <span><i className={styles.guideMoveIcon}>↕</i><b>DRAG OR KEYS</b><small>MOVE UP + DOWN</small></span>
+                  <span><i className={styles.guideMoveIcon}>↕</i><b><span className={styles.desktopControlText}>MOUSE OR KEYS</span><span className={styles.mobileControlText}>PRESS + SLIDE</span></b><small>MOVE UP + DOWN</small></span>
                 </div>
                 <div className={styles.entryReview} aria-label="Demo MSS2 entry review">
                   <span><small>RUN PRICE</small><strong>${entryQuote?.entryPriceUsd ?? ENTRY_PRICE_USD.toFixed(2)} USD</strong></span>
