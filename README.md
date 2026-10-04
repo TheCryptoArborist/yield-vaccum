@@ -30,6 +30,8 @@ The `/arcade` route hosts optional arcade games without changing the Topaz educa
 - Proposed developer recipient: `0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789`.
 - The demo reads an indicative MSS2/USD value from the verified Robinhood Topaz MSS2/WETH pair on DEX Screener: `0xdfcc6ad671033f7d3eceb24cbae5c0f7f6f8d91e`.
 - DEX Screener data is display-only and is not yet an authoritative payment quote.
+- Each displayed amount is wrapped in a 90-second demo quote with a reference, expiry countdown, and explicit review step before a run starts.
+- Expired or unavailable demo quotes cannot start a new scored run; every restart returns to the entry review instead of bypassing it.
 - Real MSS2 payments remain disabled until live quote rules, manipulation safeguards, refund policy, recipient ownership, and backend transaction verification are confirmed.
 - The developer intends to add arcade proceeds to liquidity manually. No automatic liquidity action or guarantee is represented.
 

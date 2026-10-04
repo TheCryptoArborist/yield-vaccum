@@ -3,6 +3,7 @@ const PAIR_URL = "https://dexscreener.com/robinhood/0xdfcc6ad671033f7d3eceb24cba
 const EXPECTED_PAIR = "0xdfcc6ad671033f7d3eceb24cbae5c0f7f6f8d91e";
 const EXPECTED_MSS2 = "0x091f0c7e675a787a4018eb47c30bed3fa2013b65";
 const ENTRY_PRICE_USD = 1;
+const QUOTE_LIFETIME_MS = 90_000;
 
 type DexPair = {
   chainId?: string;
@@ -41,9 +42,13 @@ export async function GET() {
       throw new Error("DEX Screener returned an unexpected MSS2 pair or price");
     }
 
+    const checkedAt = new Date();
+    const quoteId = `demo-${checkedAt.getTime().toString(36)}-${Math.round(priceUsd * 1e12).toString(36)}`;
+
     return Response.json({
       source: "DEX Screener",
       status: "indicative",
+      quoteId,
       chainId: "robinhood",
       dexId: "topaz",
       pairAddress: EXPECTED_PAIR,
@@ -53,7 +58,8 @@ export async function GET() {
       entryPriceUsd: ENTRY_PRICE_USD.toFixed(2),
       indicativeMss2ForEntry: displayAmount(ENTRY_PRICE_USD / priceUsd),
       liquidityUsd: pair?.liquidity?.usd ?? null,
-      checkedAt: new Date().toISOString(),
+      checkedAt: checkedAt.toISOString(),
+      validUntil: new Date(checkedAt.getTime() + QUOTE_LIFETIME_MS).toISOString(),
     }, {
       headers: { "Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=120" },
     });

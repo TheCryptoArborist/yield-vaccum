@@ -11,12 +11,14 @@ type FlightPhase = "ready" | "playing" | "crashed";
 type EntryQuote = {
   source: string;
   status: "indicative";
+  quoteId: string;
   pairUrl: string;
   priceUsd: string;
   entryPriceUsd: string;
   indicativeMss2ForEntry: string;
   liquidityUsd: number | null;
   checkedAt: string;
+  validUntil: string;
 };
 type FlyerEntity = {
   id: number;
@@ -46,6 +48,8 @@ export default function MintFlyer() {
   const [newBest, setNewBest] = useState(false);
   const [entryQuote, setEntryQuote] = useState<EntryQuote | null>(null);
   const [quoteUnavailable, setQuoteUnavailable] = useState(false);
+  const [quoteClock, setQuoteClock] = useState(0);
+  const [reviewingEntry, setReviewingEntry] = useState(false);
 
   const playerYRef = useRef(0.5);
   const entitiesRef = useRef<FlyerEntity[]>([]);
@@ -63,30 +67,41 @@ export default function MintFlyer() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  const loadEntryQuote = useCallback(async () => {
+    try {
+      const response = await fetch("/api/mss2-price", { cache: "no-store" });
+      if (!response.ok) throw new Error("MSS2 quote unavailable");
+      const quote = await response.json() as EntryQuote;
+      setEntryQuote(quote);
+      setQuoteUnavailable(false);
+      setQuoteClock(Date.now());
+    } catch {
+      setEntryQuote(null);
+      setQuoteUnavailable(true);
+      setReviewingEntry(false);
+    }
+  }, []);
+
   useEffect(() => {
-    let active = true;
-    const loadQuote = () => fetch("/api/mss2-price", { cache: "no-store" })
-      .then((response) => {
-        if (!response.ok) throw new Error("MSS2 quote unavailable");
-        return response.json() as Promise<EntryQuote>;
-      })
-      .then((quote) => {
-        if (!active) return;
-        setEntryQuote(quote);
-        setQuoteUnavailable(false);
-      })
-      .catch(() => {
-        if (!active) return;
-        setEntryQuote(null);
-        setQuoteUnavailable(true);
-      });
-    void loadQuote();
-    const refresh = window.setInterval(loadQuote, 60_000);
+    if (reviewingEntry) return;
+    const initial = window.setTimeout(loadEntryQuote, 0);
+    const refresh = window.setInterval(loadEntryQuote, 30_000);
     return () => {
-      active = false;
+      window.clearTimeout(initial);
       window.clearInterval(refresh);
     };
+  }, [loadEntryQuote, reviewingEntry]);
+
+  useEffect(() => {
+    const clock = window.setInterval(() => setQuoteClock(Date.now()), 1_000);
+    return () => window.clearInterval(clock);
   }, []);
+
+  const quoteExpiry = entryQuote ? Date.parse(entryQuote.validUntil) : 0;
+  const quoteSecondsRemaining = entryQuote && Number.isFinite(quoteExpiry)
+    ? Math.max(0, Math.ceil((quoteExpiry - quoteClock) / 1_000))
+    : 0;
+  const quoteExpired = Boolean(entryQuote) && quoteSecondsRemaining <= 0;
 
   const publishBest = useCallback((finalScore: number) => {
     const stored = Number(window.localStorage.getItem(BEST_SCORE_KEY) || 0);
@@ -117,8 +132,33 @@ export default function MintFlyer() {
     setDemoCredits(STARTING_DEMO_CREDITS);
     setContinued(false);
     setNewBest(false);
+    setReviewingEntry(false);
     setPhase("playing");
   }, []);
+
+  const reviewEntry = useCallback(() => {
+    if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) {
+      setQuoteClock(Date.now());
+      void loadEntryQuote();
+      return;
+    }
+    setQuoteClock(Date.now());
+    setReviewingEntry(true);
+  }, [entryQuote, loadEntryQuote]);
+
+  const confirmDemoEntry = useCallback(() => {
+    if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) {
+      setQuoteClock(Date.now());
+      return;
+    }
+    resetFlight();
+  }, [entryQuote, resetFlight]);
+
+  const prepareAnotherRun = useCallback(() => {
+    setPhase("ready");
+    setReviewingEntry(false);
+    if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) void loadEntryQuote();
+  }, [entryQuote, loadEntryQuote]);
 
   const continueFlight = useCallback(() => {
     if (continued || demoCredits < DEMO_CONTINUE_COST) return;
@@ -136,7 +176,7 @@ export default function MintFlyer() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (["ArrowUp", "ArrowDown", "KeyW", "KeyS", "Space"].includes(event.code)) event.preventDefault();
       heldKeysRef.current.add(event.code);
-      if (event.code === "Space" && phase !== "playing") resetFlight();
+      if (event.code === "Space" && phase === "ready" && !reviewingEntry) reviewEntry();
     };
     const onKeyUp = (event: KeyboardEvent) => heldKeysRef.current.delete(event.code);
     window.addEventListener("keydown", onKeyDown);
@@ -145,7 +185,7 @@ export default function MintFlyer() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [phase, resetFlight]);
+  }, [phase, reviewEntry, reviewingEntry]);
 
   useEffect(() => {
     if (phase !== "playing") return;
@@ -305,23 +345,42 @@ export default function MintFlyer() {
           ))}
 
           {phase === "ready" && (
-            <div className={styles.overlay}>
-              <small>MSS2 GAME ENTRY · DEMO</small>
-              <h2>FLY THE MINT STREAM</h2>
-              <p>Each future scored run will require the amount of MSS2 equal to a ${ENTRY_PRICE_USD.toFixed(2)} USD target at checkout. This preview does not request a wallet, signature, or token.</p>
-              <div className={styles.entryTerms} aria-label="Future MSS2 game entry terms">
-                <span><small>USD TARGET</small><strong>${ENTRY_PRICE_USD.toFixed(2)} PER RUN</strong></span>
-                <span><small>INDICATIVE MSS2</small><strong>{entryQuote ? `≈ ${entryQuote.indicativeMss2ForEntry} MSS2` : quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING QUOTE"}</strong></span>
-                <span><small>RECIPIENT</small><strong>{DEVELOPER_WALLET.slice(0, 8)}…{DEVELOPER_WALLET.slice(-6)}</strong></span>
-              </div>
-              <p className={styles.quoteSource}>
-                {entryQuote
-                  ? <><b>INDICATIVE ONLY</b><span>DEX Screener · ${Number(entryQuote.priceUsd).toLocaleString(undefined, { maximumFractionDigits: 8 })}/MSS2 · refreshed every 60 seconds</span><a href={entryQuote.pairUrl} target="_blank" rel="noreferrer">VIEW PAIR ↗</a></>
-                  : <><b>NOT A PAYMENT QUOTE</b><span>The game stays in demo mode when market data is unavailable.</span></>}
-              </p>
-              <p className={styles.entryWallet}><b>PROPOSED DEVELOPER RECIPIENT</b><code>{DEVELOPER_WALLET}</code></p>
-              <div className={styles.legend}><span><i className={styles.mintDot} /> COLLECT MINTS</span><span><i className={styles.hazardDot} /> AVOID BLOCKS</span></div>
-              <button onClick={resetFlight}>SIMULATE $1 MSS2 ENTRY + START</button>
+            <div className={`${styles.overlay} ${reviewingEntry ? styles.entryReviewOverlay : ""}`}>
+              {!reviewingEntry ? <>
+                <small>MSS2 GAME ENTRY · DEMO</small>
+                <h2>FLY THE MINT STREAM</h2>
+                <p>Each future scored run will require the amount of MSS2 equal to a ${ENTRY_PRICE_USD.toFixed(2)} USD target at checkout. This preview does not request a wallet, signature, or token.</p>
+                <div className={styles.entryTerms} aria-label="Future MSS2 game entry terms">
+                  <span><small>USD TARGET</small><strong>${ENTRY_PRICE_USD.toFixed(2)} PER RUN</strong></span>
+                  <span><small>INDICATIVE MSS2</small><strong>{entryQuote ? `≈ ${entryQuote.indicativeMss2ForEntry} MSS2` : quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING QUOTE"}</strong></span>
+                  <span><small>RECIPIENT</small><strong>{DEVELOPER_WALLET.slice(0, 8)}…{DEVELOPER_WALLET.slice(-6)}</strong></span>
+                </div>
+                <p className={styles.quoteSource}>
+                  {entryQuote
+                    ? <><b>INDICATIVE ONLY</b><span>DEX Screener · ${Number(entryQuote.priceUsd).toLocaleString(undefined, { maximumFractionDigits: 8 })}/MSS2 · refreshes every 30 seconds</span><a href={entryQuote.pairUrl} target="_blank" rel="noreferrer">VIEW PAIR ↗</a></>
+                    : <><b>NOT A PAYMENT QUOTE</b><span>The game stays in demo mode when market data is unavailable.</span></>}
+                </p>
+                <p className={styles.entryWallet}><b>PROPOSED DEVELOPER RECIPIENT</b><code>{DEVELOPER_WALLET}</code></p>
+                <div className={styles.legend}><span><i className={styles.mintDot} /> COLLECT MINTS</span><span><i className={styles.hazardDot} /> AVOID BLOCKS</span></div>
+                <button onClick={reviewEntry} disabled={!entryQuote || quoteExpired}>{!entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING QUOTE" : quoteExpired ? "REFRESHING EXPIRED QUOTE" : "REVIEW $1 MSS2 DEMO ENTRY"}</button>
+              </> : <>
+                <small>DEMO ENTRY REVIEW · NO TRANSACTION</small>
+                <h2>REVIEW THE RUN</h2>
+                <p>Confirm the simulated entry details below. This screen does not request a token approval, signature, network switch, or transfer.</p>
+                <div className={styles.entryReview} aria-label="Demo MSS2 entry review">
+                  <span><small>RUN PRICE</small><strong>${entryQuote?.entryPriceUsd ?? ENTRY_PRICE_USD.toFixed(2)} USD</strong></span>
+                  <span><small>INDICATIVE AMOUNT</small><strong>{entryQuote ? `${entryQuote.indicativeMss2ForEntry} MSS2` : "UNAVAILABLE"}</strong></span>
+                  <span><small>NETWORK / MARKET</small><strong>ROBINHOOD · TOPAZ</strong></span>
+                  <span><small>QUOTE EXPIRES</small><strong className={quoteExpired ? styles.expiredText : ""}>{quoteExpired ? "EXPIRED" : `${quoteSecondsRemaining}s`}</strong></span>
+                  <span className={styles.reviewWide}><small>PROPOSED RECIPIENT</small><code>{DEVELOPER_WALLET}</code></span>
+                  <span className={styles.reviewWide}><small>DEMO QUOTE REFERENCE</small><code>{entryQuote?.quoteId ?? "UNAVAILABLE"}</code></span>
+                </div>
+                <p className={styles.entryWarning}><b>DEMO ONLY</b><span>A future live entry would be final and non-refundable after explicit wallet approval and successful backend verification. This preview moves no funds.</span></p>
+                <div className={styles.entryActions}>
+                  <button className={styles.secondaryEntryButton} onClick={() => setReviewingEntry(false)}>← BACK</button>
+                  <button onClick={confirmDemoEntry} disabled={quoteExpired || !entryQuote}>{quoteExpired ? "QUOTE EXPIRED" : "CONFIRM DEMO ENTRY + START"}</button>
+                </div>
+              </>}
             </div>
           )}
 
@@ -337,7 +396,7 @@ export default function MintFlyer() {
                     <small>{DEMO_CONTINUE_COST} DEMO CREDITS · RESTORES 3 LIVES</small>
                   </button>
                 )}
-                <button className={styles.restartButton} onClick={resetFlight}>↻ START ANOTHER DEMO RUN <small>LIVE VERSION REQUIRES A NEW MSS2 ENTRY</small></button>
+                <button className={styles.restartButton} onClick={prepareAnotherRun}>↻ REVIEW ANOTHER DEMO ENTRY <small>EVERY NEW SCORED RUN USES A NEW QUOTE</small></button>
               </div>
               {continued && <p className={styles.usedNotice}>The one demo continue for this flight has been used. A new demo run simulates a new MSS2 entry.</p>}
               <section className={styles.lockedPayments} aria-label="Token continue readiness">
