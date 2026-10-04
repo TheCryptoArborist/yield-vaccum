@@ -55,6 +55,10 @@ const GRADE_TARGETS = [
   { grade: "A", score: 50000 },
   { grade: "S", score: 62000 },
 ] as const;
+const GRADE_LADDER = [
+  { grade: "C", score: 0 },
+  ...GRADE_TARGETS,
+] as const;
 
 function comboMultiplier(streak: number) {
   if (streak >= 10) return 5;
@@ -395,6 +399,8 @@ export default function MintFlyer() {
         setEntities([]);
         publishBest(finalScore);
         playTone(1040, 0.22, "sine", 0.045);
+        window.setTimeout(() => playTone(1310, 0.2, "sine", 0.04), 170);
+        window.setTimeout(() => playTone(1560, 0.34, "sine", 0.035), 340);
         setPhase("victory");
         return;
       }
@@ -512,6 +518,13 @@ export default function MintFlyer() {
   const nextGradeTarget = GRADE_TARGETS.find((target) => score < target.score);
   const stageClass = stage === 1 ? styles.stageMint : stage === 2 ? styles.stageSurge : styles.stageMoon;
   const gradeClass = runGrade === "S" ? styles.gradeS : runGrade === "A" ? styles.gradeA : runGrade === "B" ? styles.gradeB : styles.gradeC;
+  const distanceScore = Math.min(Math.floor(distance * 10), MOON_DISTANCE * 10);
+  const mintPoints = Math.max(0, score - distanceScore - moonBonus);
+  const replayCoach = totalHits > 0
+    ? `Avoid ${totalHits === 1 ? "the block hit" : `all ${totalHits} block hits`} to keep your combo and preserve the full arrival bonus.`
+    : maxCombo < 10
+      ? "Chain 10 Mint Credits without a hit to unlock the 5X multiplier."
+      : "Clean flight. Hold the 5X combo longer and collect more Mint Credits to raise your score.";
 
   return (
     <main className={styles.arcadeShell}>
@@ -751,6 +764,23 @@ export default function MintFlyer() {
                 <span className={`${styles.gradeBadge} ${gradeClass}`}><small>FLIGHT GRADE</small><strong>{runGrade}</strong></span>
               </div>
               <div className={styles.arrivalBonus}><small>MOON ARRIVAL BONUS</small><strong>+{moonBonus.toLocaleString()}</strong><span>Completion + surviving lives + best combo</span></div>
+              <div className={styles.scoreBreakdown} aria-label="Final score breakdown">
+                <span><small>FLIGHT DISTANCE</small><strong>+{distanceScore.toLocaleString()}</strong></span>
+                <i>+</i>
+                <span><small>MINT + COMBO POINTS</small><strong>+{mintPoints.toLocaleString()}</strong></span>
+                <i>+</i>
+                <span><small>MOON BONUS</small><strong>+{moonBonus.toLocaleString()}</strong></span>
+                <i>=</i>
+                <span className={styles.scoreTotal}><small>FINAL SCORE</small><strong>{score.toLocaleString()}</strong></span>
+              </div>
+              <div className={styles.gradeLadder} aria-label={`Flight grade ${runGrade}`}>
+                {GRADE_LADDER.map((target) => (
+                  <span key={target.grade} className={runGrade === target.grade ? styles.activeGrade : score >= target.score ? styles.passedGrade : ""}>
+                    <b>{target.grade}</b>
+                    <small>{target.grade === "C" ? "COMPLETE" : `${target.score / 1000}K`}</small>
+                  </span>
+                ))}
+              </div>
               <div className={styles.finalScore}>
                 <span><small>LOCAL BEST</small><strong>{bestScore.toLocaleString()}</strong></span>
                 <span><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
@@ -758,7 +788,7 @@ export default function MintFlyer() {
                 <span><small>BEST COMBO</small><strong>{maxCombo} · {comboMultiplier(maxCombo)}X</strong></span>
                 <span><small>BLOCK HITS</small><strong>{totalHits}</strong></span>
               </div>
-              <p className={styles.replayTarget}>{nextGradeTarget ? <><b>{(nextGradeTarget.score - score).toLocaleString()} MORE POINTS FOR GRADE {nextGradeTarget.grade}</b><span>Collect more Mint Credits, protect your combo, and preserve lives.</span></> : <><b>GRADE S ACHIEVED</b><span>Replay to beat your local best of {bestScore.toLocaleString()}.</span></>}</p>
+              <p className={styles.replayTarget}>{nextGradeTarget ? <><b>{(nextGradeTarget.score - score).toLocaleString()} MORE POINTS FOR GRADE {nextGradeTarget.grade}</b><span>{replayCoach}</span></> : <><b>GRADE S ACHIEVED</b><span>{replayCoach} Replay to beat your local best of {bestScore.toLocaleString()}.</span></>}</p>
               <button className={styles.moonReplayButton} onClick={prepareAnotherRun}>↻ FLY TO THE MOON AGAIN</button>
             </div>
           )}
