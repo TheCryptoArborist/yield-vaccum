@@ -7,7 +7,7 @@ import WalletConnect from "../wallet-connect";
 import Mss2Commitments from "./mss2-commitments";
 import styles from "./mint-flyer.module.css";
 
-type FlightPhase = "ready" | "playing" | "crashed";
+type FlightPhase = "ready" | "countdown" | "playing" | "paused" | "crashed";
 type EntryQuote = {
   source: string;
   status: "indicative";
@@ -33,6 +33,7 @@ type FlightEffect = {
   x: number;
   y: number;
   bornAt: number;
+  label?: string;
 };
 
 const MAX_LIVES = 3;
@@ -41,6 +42,14 @@ const STARTING_DEMO_CREDITS = 100;
 const BEST_SCORE_KEY = "yield-vacuum-mss2-mint-flyer-best";
 const DEVELOPER_WALLET = "0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789";
 const ENTRY_PRICE_USD = 1;
+const SOUND_PREFERENCE_KEY = "yield-vacuum-mss2-mint-flyer-sound";
+
+function comboMultiplier(streak: number) {
+  if (streak >= 10) return 5;
+  if (streak >= 6) return 3;
+  if (streak >= 3) return 2;
+  return 1;
+}
 
 export default function MintFlyer() {
   const [phase, setPhase] = useState<FlightPhase>("ready");
@@ -59,6 +68,11 @@ export default function MintFlyer() {
   const [quoteClock, setQuoteClock] = useState(0);
   const [reviewingEntry, setReviewingEntry] = useState(false);
   const [effects, setEffects] = useState<FlightEffect[]>([]);
+  const [countdown, setCountdown] = useState(3);
+  const [combo, setCombo] = useState(0);
+  const [maxCombo, setMaxCombo] = useState(0);
+  const [totalHits, setTotalHits] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const playerYRef = useRef(0.5);
   const targetYRef = useRef(0.5);
@@ -73,11 +87,55 @@ export default function MintFlyer() {
   const collectedRef = useRef(0);
   const invulnerableUntilRef = useRef(0);
   const heldKeysRef = useRef(new Set<string>());
+  const comboRef = useRef(0);
+  const maxComboRef = useRef(0);
+  const mintScoreRef = useRef(0);
+  const totalHitsRef = useRef(0);
+  const soundEnabledRef = useRef(true);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setBestScore(Number(window.localStorage.getItem(BEST_SCORE_KEY) || 0)));
+    const frame = requestAnimationFrame(() => {
+      setBestScore(Number(window.localStorage.getItem(BEST_SCORE_KEY) || 0));
+      const storedSound = window.localStorage.getItem(SOUND_PREFERENCE_KEY) !== "off";
+      soundEnabledRef.current = storedSound;
+      setSoundEnabled(storedSound);
+    });
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  const primeAudio = useCallback(() => {
+    if (!soundEnabledRef.current) return;
+    if (!audioContextRef.current) audioContextRef.current = new AudioContext();
+    if (audioContextRef.current.state === "suspended") void audioContextRef.current.resume();
+  }, []);
+
+  const playTone = useCallback((frequency: number, duration: number, type: OscillatorType = "square", volume = 0.035) => {
+    if (!soundEnabledRef.current) return;
+    const context = audioContextRef.current;
+    if (!context || context.state === "closed") return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, context.currentTime);
+    gain.gain.setValueAtTime(volume, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + duration);
+  }, []);
+
+  const toggleSound = useCallback(() => {
+    const next = !soundEnabledRef.current;
+    soundEnabledRef.current = next;
+    setSoundEnabled(next);
+    window.localStorage.setItem(SOUND_PREFERENCE_KEY, next ? "on" : "off");
+    if (next) {
+      primeAudio();
+      window.setTimeout(() => playTone(660, 0.09, "square", 0.025), 20);
+    }
+  }, [playTone, primeAudio]);
 
   const loadEntryQuote = useCallback(async () => {
     try {
@@ -137,6 +195,10 @@ export default function MintFlyer() {
     livesRef.current = MAX_LIVES;
     spawnTimerRef.current = 0;
     collectedRef.current = 0;
+    comboRef.current = 0;
+    maxComboRef.current = 0;
+    mintScoreRef.current = 0;
+    totalHitsRef.current = 0;
     invulnerableUntilRef.current = performance.now() + 900;
     setPlayerY(0.5);
     setEntities([]);
@@ -144,12 +206,16 @@ export default function MintFlyer() {
     setScore(0);
     setDistance(0);
     setMintsCollected(0);
+    setCombo(0);
+    setMaxCombo(0);
+    setTotalHits(0);
     setLives(MAX_LIVES);
     setDemoCredits(STARTING_DEMO_CREDITS);
     setContinued(false);
     setNewBest(false);
     setReviewingEntry(false);
-    setPhase("playing");
+    setCountdown(3);
+    setPhase("countdown");
   }, []);
 
   const reviewEntry = useCallback(() => {
@@ -167,8 +233,9 @@ export default function MintFlyer() {
       setQuoteClock(Date.now());
       return;
     }
+    primeAudio();
     resetFlight();
-  }, [entryQuote, resetFlight]);
+  }, [entryQuote, primeAudio, resetFlight]);
 
   const prepareAnotherRun = useCallback(() => {
     setPhase("ready");
@@ -185,14 +252,60 @@ export default function MintFlyer() {
     setDemoCredits((current) => current - DEMO_CONTINUE_COST);
     setContinued(true);
     setEntities([...entitiesRef.current]);
-    setPhase("playing");
+    setCountdown(3);
+    setPhase("countdown");
   }, [continued, demoCredits]);
+
+  const pauseFlight = useCallback(() => {
+    if (phase === "playing" || phase === "countdown") setPhase("paused");
+  }, [phase]);
+
+  const resumeFlight = useCallback(() => {
+    primeAudio();
+    setCountdown(3);
+    setPhase("countdown");
+  }, [primeAudio]);
+
+  useEffect(() => {
+    if (phase !== "countdown") return;
+    playTone(countdown > 0 ? 430 + (3 - countdown) * 120 : 880, countdown > 0 ? 0.08 : 0.14, "square", 0.03);
+    if (countdown <= 0) {
+      const launch = window.setTimeout(() => setPhase("playing"), 360);
+      return () => window.clearTimeout(launch);
+    }
+    const timer = window.setTimeout(() => setCountdown((current) => current - 1), 720);
+    return () => window.clearTimeout(timer);
+  }, [countdown, phase, playTone]);
+
+  useEffect(() => {
+    const pauseForInterruption = () => {
+      setPhase((current) => current === "playing" || current === "countdown" ? "paused" : current);
+      heldKeysRef.current.clear();
+    };
+    const protectFlight = () => {
+      if (document.visibilityState === "hidden") pauseForInterruption();
+    };
+    document.addEventListener("visibilitychange", protectFlight);
+    window.addEventListener("blur", pauseForInterruption);
+    window.addEventListener("pagehide", pauseForInterruption);
+    return () => {
+      document.removeEventListener("visibilitychange", protectFlight);
+      window.removeEventListener("blur", pauseForInterruption);
+      window.removeEventListener("pagehide", pauseForInterruption);
+    };
+  }, []);
+
+  useEffect(() => () => {
+    if (audioContextRef.current?.state !== "closed") void audioContextRef.current?.close();
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (["ArrowUp", "ArrowDown", "KeyW", "KeyS", "Space"].includes(event.code)) event.preventDefault();
+      if (["ArrowUp", "ArrowDown", "KeyW", "KeyS", "Space", "KeyP", "Escape"].includes(event.code)) event.preventDefault();
       heldKeysRef.current.add(event.code);
       if (event.code === "Space" && phase === "ready" && !reviewingEntry) reviewEntry();
+      if ((event.code === "KeyP" || event.code === "Escape") && (phase === "playing" || phase === "countdown")) pauseFlight();
+      if ((event.code === "KeyP" || event.code === "Escape") && phase === "paused") resumeFlight();
     };
     const onKeyUp = (event: KeyboardEvent) => heldKeysRef.current.delete(event.code);
     window.addEventListener("keydown", onKeyDown);
@@ -201,7 +314,7 @@ export default function MintFlyer() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [phase, reviewEntry, reviewingEntry]);
+  }, [pauseFlight, phase, resumeFlight, reviewEntry, reviewingEntry]);
 
   useEffect(() => {
     if (phase !== "playing") return;
@@ -250,19 +363,34 @@ export default function MintFlyer() {
         if (horizontalHit && verticalHit) {
           if (moved.kind === "mint") {
             collectedRef.current += 1;
+            comboRef.current += 1;
+            maxComboRef.current = Math.max(maxComboRef.current, comboRef.current);
+            const multiplier = comboMultiplier(comboRef.current);
+            const mintAward = 250 * multiplier;
+            mintScoreRef.current += mintAward;
             setMintsCollected(collectedRef.current);
-            effectsRef.current.push({ id: effectIdRef.current++, kind: "collect", x: moved.x, y: moved.y, bornAt: now });
+            setCombo(comboRef.current);
+            setMaxCombo(maxComboRef.current);
+            effectsRef.current.push({ id: effectIdRef.current++, kind: "collect", x: moved.x, y: moved.y, bornAt: now, label: `+${mintAward}${multiplier > 1 ? ` · ${multiplier}X` : ""}` });
             setEffects([...effectsRef.current]);
+            playTone(620 + Math.min(comboRef.current, 10) * 36, 0.1, "square", 0.028);
+            if (soundEnabledRef.current && "vibrate" in navigator) navigator.vibrate(12);
             continue;
           }
           if (now >= invulnerableUntilRef.current) {
             remainingLives -= 1;
             livesRef.current = remainingLives;
+            comboRef.current = 0;
+            totalHitsRef.current += 1;
             invulnerableUntilRef.current = now + 1250;
-            effectsRef.current.push({ id: effectIdRef.current++, kind: "hit", x: moved.x, y: moved.y, bornAt: now });
+            setCombo(0);
+            setTotalHits(totalHitsRef.current);
+            effectsRef.current.push({ id: effectIdRef.current++, kind: "hit", x: moved.x, y: moved.y, bornAt: now, label: "−1 LIFE · COMBO LOST" });
             setEffects([...effectsRef.current]);
+            playTone(120, 0.28, "sawtooth", 0.055);
+            if (soundEnabledRef.current && "vibrate" in navigator) navigator.vibrate([55, 35, 90]);
             if (remainingLives <= 0) {
-              const finalScore = Math.floor(distanceRef.current * 10) + collectedRef.current * 250;
+              const finalScore = Math.floor(distanceRef.current * 10) + mintScoreRef.current;
               scoreRef.current = finalScore;
               setScore(finalScore);
               setLives(0);
@@ -279,7 +407,7 @@ export default function MintFlyer() {
       }
 
       entitiesRef.current = nextEntities;
-      const nextScore = Math.floor(distanceRef.current * 10) + collectedRef.current * 250;
+      const nextScore = Math.floor(distanceRef.current * 10) + mintScoreRef.current;
       scoreRef.current = nextScore;
       setPlayerY(playerYRef.current);
       setEntities([...nextEntities]);
@@ -291,7 +419,7 @@ export default function MintFlyer() {
 
     animation = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(animation);
-  }, [phase, publishBest]);
+  }, [phase, playTone, publishBest]);
 
   const moveWithPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (phase !== "playing") return;
@@ -301,6 +429,7 @@ export default function MintFlyer() {
 
   const hasCollectEffect = effects.some((effect) => effect.kind === "collect");
   const hasHitEffect = effects.some((effect) => effect.kind === "hit");
+  const currentMultiplier = comboMultiplier(combo);
 
   return (
     <main className={styles.arcadeShell}>
@@ -345,6 +474,7 @@ export default function MintFlyer() {
           <span className={hasCollectEffect ? styles.hudPulse : ""}><small>SCORE</small><strong>{score.toLocaleString()}</strong></span>
           <span><small>DISTANCE</small><strong>{distance}m</strong></span>
           <span className={styles.mintCounter}><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
+          <span className={combo >= 3 ? styles.comboActive : ""}><small>COMBO</small><strong>{combo} · {currentMultiplier}X</strong></span>
           <span><small>LIVES</small><strong>{"◆".repeat(lives)}<i>{"◇".repeat(MAX_LIVES - lives)}</i></strong></span>
           <span className={styles.demoBalance}><small>DEMO CREDITS</small><strong>{demoCredits}</strong></span>
         </div>
@@ -366,6 +496,12 @@ export default function MintFlyer() {
               <span><i className={styles.guideHazardIcon}>!</i><b>AVOID PINK BLOCKS</b><small>LOSE 1 OF 3 LIVES</small></span>
               <span className={styles.desktopControlGuide}><i className={styles.guideMoveIcon}>↕</i><b>STEER WITH YOUR MOUSE</b><small>NO CLICK NEEDED · W/S OR ARROWS ALSO WORK</small></span>
               <span className={styles.mobileControlGuide}><i className={styles.guideMoveIcon}>↕</i><b>PRESS + SLIDE TO STEER</b><small>DRAG YOUR FINGER UP + DOWN ANYWHERE</small></span>
+            </div>
+          )}
+          {(phase === "playing" || phase === "countdown") && (
+            <div className={styles.flightTools}>
+              <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={toggleSound} aria-pressed={soundEnabled}>{soundEnabled ? "FX ON" : "FX OFF"}</button>
+              <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={pauseFlight}>Ⅱ PAUSE</button>
             </div>
           )}
           <div className={styles.speedLines} aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
@@ -391,10 +527,28 @@ export default function MintFlyer() {
               style={{ left: `${effect.x * 100}%`, top: `${effect.y * 100}%` }}
               aria-hidden="true"
             >
-              <strong>{effect.kind === "collect" ? "+250" : "−1 LIFE"}</strong>
+              <strong>{effect.label ?? (effect.kind === "collect" ? "+250" : "−1 LIFE")}</strong>
               <i /><i /><i /><i /><i /><i />
             </div>
           ))}
+
+          {phase === "countdown" && (
+            <div className={styles.countdownOverlay} aria-live="assertive">
+              <small>GET READY</small>
+              <strong key={countdown}>{countdown > 0 ? countdown : "FLY!"}</strong>
+              <span className={styles.desktopControlText}>MOVE YOUR MOUSE TO STEER</span>
+              <span className={styles.mobileControlText}>PRESS + SLIDE TO STEER</span>
+            </div>
+          )}
+
+          {phase === "paused" && (
+            <div className={`${styles.overlay} ${styles.pauseOverlay}`}>
+              <small>FLIGHT PROTECTED</small>
+              <h2>PAUSED</h2>
+              <p>Your score, combo, lives, and position are safe. Resume when you are ready.</p>
+              <button type="button" onClick={resumeFlight}>RESUME WITH COUNTDOWN</button>
+            </div>
+          )}
 
           {phase === "ready" && (
             <div className={`${styles.overlay} ${reviewingEntry ? styles.entryReviewOverlay : styles.briefingOverlay}`}>
@@ -402,6 +556,11 @@ export default function MintFlyer() {
                 <small>HOW TO PLAY · DEMO FLIGHT</small>
                 <h2>FLY. COLLECT. SURVIVE.</h2>
                 <p className={styles.briefingLead}>Move the <b>MF flyer</b> up and down. Collect the cyan circles, avoid the pink warning blocks, and stay alive as long as possible.</p>
+                <div className={styles.deviceDemo} aria-hidden="true">
+                  <span className={styles.deviceTrack}><i /><b>MF</b></span>
+                  <strong className={styles.desktopControlText}>MOVE YOUR MOUSE UP + DOWN — NO CLICK NEEDED</strong>
+                  <strong className={styles.mobileControlText}>PRESS + SLIDE YOUR FINGER UP + DOWN</strong>
+                </div>
                 <div className={styles.howToGrid} aria-label="How to play Mint Flyer">
                   <article>
                     <i className={styles.howToMove}>↕</i>
@@ -417,7 +576,7 @@ export default function MintFlyer() {
                   </article>
                   <article>
                     <i className={styles.howToScore}>★</i>
-                    <span><b>4. BUILD YOUR SCORE</b><small>Earn 10 points per meter flown, plus 250 points for every Mint Credit collected.</small></span>
+                    <span><b>4. BUILD YOUR COMBO</b><small>Mint Credits start at <strong>+250 points</strong>. Reach 3, 6, and 10 consecutive pickups for 2X, 3X, and 5X rewards. A collision resets the combo.</small></span>
                   </article>
                 </div>
                 <p className={styles.demoGameNote}><b>DEMO FLIGHT:</b> No wallet payment, token approval, signature, or real MSS2 is requested.</p>
@@ -452,7 +611,18 @@ export default function MintFlyer() {
             <div className={`${styles.overlay} ${styles.crashOverlay}`}>
               <small>FLIGHT ENDED</small>
               <h2>{newBest ? "NEW LOCAL BEST" : "MINT STREAM CLOSED"}</h2>
-              <div className={styles.finalScore}><span><small>FINAL SCORE</small><strong>{score.toLocaleString()}</strong></span><span><small>LOCAL BEST</small><strong>{bestScore.toLocaleString()}</strong></span></div>
+              <div className={styles.scoreCeremony}>
+                <small>FINAL SCORE</small>
+                <strong>{score.toLocaleString()}</strong>
+                {newBest && <b>★ PERSONAL BEST ★</b>}
+              </div>
+              <div className={styles.finalScore}>
+                <span><small>LOCAL BEST</small><strong>{bestScore.toLocaleString()}</strong></span>
+                <span><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
+                <span><small>DISTANCE</small><strong>{distance}m</strong></span>
+                <span><small>BEST COMBO</small><strong>{maxCombo} · {comboMultiplier(maxCombo)}X</strong></span>
+                <span><small>BLOCK HITS</small><strong>{totalHits}</strong></span>
+              </div>
               <div className={styles.crashActions}>
                 {!continued && demoCredits >= DEMO_CONTINUE_COST && (
                   <button className={styles.continueButton} onClick={continueFlight}>
@@ -476,7 +646,7 @@ export default function MintFlyer() {
         </div>
 
         <footer className={styles.gameFooter}>
-          <span><b>CONTROL</b> DRAG, W/S OR ↑/↓ TO MOVE</span>
+          <span><b>CONTROL</b> <span className={styles.desktopControlText}>MOUSE, W/S OR ↑/↓</span><span className={styles.mobileControlText}>PRESS + SLIDE</span> TO MOVE</span>
           <span><b>COLLECT</b> CYAN MINT CREDITS · +250 POINTS</span>
           <span><b>AVOID</b> PINK BLOCKS · -1 LIFE</span>
         </footer>
