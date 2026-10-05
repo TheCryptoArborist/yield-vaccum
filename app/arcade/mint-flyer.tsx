@@ -850,8 +850,8 @@ export default function MintFlyer() {
                 </div>
                 <div className={styles.routePreview} aria-label="Three flight stages"><span>1 <b>MINT STREAM</b></span><i>→</i><span>2 <b>BLOCK SURGE</b></span><i>→</i><span>3 <b>MOON RUN</b></span></div>
                 <p className={styles.demoGameNote}>{paymentReadiness?.enabled
-                  ? <><b>LIVE ENTRY:</b> The verified entry router sends 50% to the dead address and 50% to the Community Airdrop Reserve in one transaction.</>
-                  : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed entry split sends 50% to the dead address and 50% to the designated Community Airdrop Reserve. Real transfers remain disabled.</>}</p>
+                  ? <><b>LIVE ENTRY:</b> The verified entry router sends 20% to the dead address and 80% to the Community Airdrop Reserve in one transaction.</>
+                  : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed entry split sends 20% to the dead address and 80% to the designated Community Airdrop Reserve—a 4:1 community allocation. Real transfers remain disabled.</>}</p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 <button onClick={() => void reviewEntry()} disabled={paymentBusy || (paymentReadiness?.enabled ? !walletConnection || !playerKey : !entryQuote || quoteExpired)}>{paymentBusy ? "PREPARING…" : paymentReadiness?.enabled ? walletConnection ? "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : !entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "REVIEW SAFE DEMO"}</button>
               </> : <>
@@ -868,11 +868,11 @@ export default function MintFlyer() {
                   <span><small>{paymentReadiness?.enabled ? "EXACT TRANSFER" : "INDICATIVE AMOUNT"}</small><strong>{paymentReadiness?.enabled ? livePaymentQuote ? `${livePaymentQuote.displayAmount} MSS2` : "UNAVAILABLE" : entryQuote ? `${entryQuote.indicativeMss2ForEntry} MSS2` : "UNAVAILABLE"}</strong></span>
                   <span><small>PRICE REFERENCE</small><strong>ROBINHOOD CHAIN · TOPAZ</strong></span>
                   <span><small>QUOTE EXPIRES</small><strong className={(paymentReadiness?.enabled ? liveQuoteExpired : quoteExpired) ? styles.expiredText : ""}>{paymentReadiness?.enabled ? liveQuoteExpired ? "EXPIRED" : `${liveQuoteSecondsRemaining}s` : quoteExpired ? "EXPIRED" : `${quoteSecondsRemaining}s`}</strong></span>
-                  <span className={styles.reviewWide}><small>50% · DEAD ADDRESS</small><code>{DEAD_ADDRESS}</code></span>
-                  <span className={styles.reviewWide}><small>50% · COMMUNITY AIRDROP RESERVE</small><code>{COMMUNITY_AIRDROP_WALLET}</code></span>
+                  <span className={styles.reviewWide}><small>20% · DEAD ADDRESS</small><code>{DEAD_ADDRESS}</code></span>
+                  <span className={styles.reviewWide}><small>80% · COMMUNITY AIRDROP RESERVE</small><code>{COMMUNITY_AIRDROP_WALLET}</code></span>
                   <span className={styles.reviewWide}><small>{paymentReadiness?.enabled ? "SERVER PAYMENT ID" : "DEMO QUOTE REFERENCE"}</small><code>{paymentReadiness?.enabled ? livePaymentQuote?.paymentId : entryQuote?.quoteId ?? "UNAVAILABLE"}</code></span>
                 </div>
-                <p className={styles.entryWarning}><b>{paymentReadiness?.enabled ? "FINAL TRANSFER" : "NO FUNDS MOVE"}</b><span>{paymentReadiness?.enabled ? "After wallet approval, the router splits the MSS2 entry 50/50 between the dead address and Community Airdrop Reserve. Transfers are intended to be final and do not guarantee an airdrop, income, token value, or uninterrupted service." : "This review is simulated. Real entry payments stay disabled until the 50/50 router and backend verification are complete."}</span></p>
+                <p className={styles.entryWarning}><b>{paymentReadiness?.enabled ? "FINAL TRANSFER" : "NO FUNDS MOVE"}</b><span>{paymentReadiness?.enabled ? "After wallet approval, the router sends 20% of the MSS2 entry to the dead address and 80% to the Community Airdrop Reserve. Transfers are intended to be final and do not guarantee an airdrop, income, token value, or uninterrupted service." : "This review is simulated. Real entry payments stay disabled until the 20/80 router and backend verification are complete."}</span></p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 {paymentTxHash && <a className={styles.paymentTxLink} href={`https://robin.etherscan.io/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">VIEW SUBMITTED TRANSACTION ↗</a>}
                 <div className={styles.entryActions}>
@@ -914,10 +914,10 @@ export default function MintFlyer() {
               <section className={styles.lockedPayments} aria-label="Token payment readiness">
                 <div><small>MSS2 GAME ENTRY</small><strong>{paymentReadiness?.enabled ? "ROBINHOOD LIVE" : "RELEASE LOCKED"}</strong></div>
                 <ul>
-                  <li><b>ROBINHOOD CHAIN</b><span>{paymentReadiness?.enabled ? "Each scored run uses one exact MSS2 entry split. The server checks the chain, token, sender, both destinations, both amounts, receipt, confirmations, and duplicate use." : "The payment code is gated until the 50/50 router and matching backend verifier are complete."}</span></li>
+                  <li><b>ROBINHOOD CHAIN</b><span>{paymentReadiness?.enabled ? "Each scored run uses one exact MSS2 entry split. The server checks the chain, token, sender, both destinations, both amounts, receipt, confirmations, and duplicate use." : "The payment code is gated until the 20/80 router and matching backend verifier are complete."}</span></li>
                   <li><b>ARC</b><span>Locked until the live Arc MSS2 pool, quote source, RPC receipt path, and end-to-end verifier pass independently.</span></li>
                 </ul>
-                <p>{paymentReadiness?.enabled ? "The wallet shows the final router transaction before anything moves. Half goes to the dead address and half goes to the Community Airdrop Reserve." : "This preview requests no token approval or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only demo."}</p>
+                <p>{paymentReadiness?.enabled ? "The wallet shows the final router transaction before anything moves. 20% goes to the dead address and 80% goes to the Community Airdrop Reserve." : "This preview requests no token approval or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only demo."}</p>
               </section>
             </div>
           )}
@@ -977,7 +977,7 @@ export default function MintFlyer() {
         <summary><span><small>PAYMENT SAFETY</small><strong>{paymentReadiness?.enabled ? "ROBINHOOD MSS2 ENTRY IS LIVE" : "REAL MSS2 REMAINS LOCKED"}</strong></span><b>VIEW DETAILS +</b></summary>
         <div className={styles.drawerBody}>
           <p>Continue credits are game-only. They have no cash value and cannot be purchased, transferred, withdrawn, or redeemed.</p>
-          <p>The proposed entry target is $1.00 in MSS2 using a short-lived Robinhood/Topaz market quote. A future verified router would send <b>50%</b> to <code>{DEAD_ADDRESS}</code> and <b>50%</b> to the Community Airdrop Reserve at <code>{COMMUNITY_AIRDROP_WALLET}</code>.</p>
+          <p>The proposed entry target is $1.00 in MSS2 using a short-lived Robinhood/Topaz market quote. A future verified router would send <b>20%</b> to <code>{DEAD_ADDRESS}</code> and <b>80%</b> to the Community Airdrop Reserve at <code>{COMMUNITY_AIRDROP_WALLET}</code>.</p>
           <p>The reserve is designated for a possible future community airdrop. No distribution, eligibility rule, timing, income, token appreciation, or preferential leaderboard treatment is promised. Real payments remain locked until the router and backend verifier are reviewed and tested.</p>
         </div>
       </details>

@@ -56,7 +56,7 @@ export function paymentReadiness(): PaymentReadiness {
   const recipient = getAddress(EXPECTED_PAYMENT_RECIPIENT);
   const recipientConfirmed = false;
   const enabled = false;
-  const reason = "Real MSS2 entries remain locked until the 50/50 entry router is deployed and verified.";
+  const reason = "Real MSS2 entries remain locked until the 20/80 entry router is deployed and verified.";
 
   return {
     enabled,
