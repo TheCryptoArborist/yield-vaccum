@@ -384,6 +384,10 @@ export default function WalletConnect({
   const currentNetwork = SUPPORTED_NETWORKS.find((network) => network.chainId === chainId.toLowerCase());
   const balanceChainId = chainId.toLowerCase();
   const supportsMss2Balance = balanceChainId === "0x1237" || balanceChainId === "0x13b2";
+  const availableNetworks = theme === "mss"
+    ? SUPPORTED_NETWORKS.filter((network) => network.chainId === "0x1237" || network.chainId === "0x13b2")
+    : SUPPORTED_NETWORKS;
+  const displayedNetwork = theme === "mss" && !supportsMss2Balance ? undefined : currentNetwork;
   const activeBalanceKey = account ? `${account.toLowerCase()}:${balanceChainId}` : "";
   const mss2BalanceState: "idle" | "loading" | "ready" | "unsupported" | "error" = theme !== "mss" || !account
     ? "idle"
@@ -438,22 +442,27 @@ export default function WalletConnect({
           aria-expanded={networkOpen}
           aria-haspopup="menu"
         >
-          {currentNetwork
-            ? <img src={currentNetwork.icon} alt="" aria-hidden="true" />
+          {displayedNetwork
+            ? <img src={displayedNetwork.icon} alt="" aria-hidden="true" />
             : <i aria-hidden="true" />}
-          <span><small>NETWORK</small><strong>{account ? chainLabel(chainId) : "CONNECT FIRST"}</strong></span>
+          <span>
+            <small>{theme === "mss" ? "MSS2 NETWORK" : "NETWORK"}</small>
+            <strong>{account
+              ? theme === "mss" && !supportsMss2Balance ? "SELECT ROBINHOOD OR ARC" : chainLabel(chainId)
+              : "CONNECT FIRST"}</strong>
+          </span>
           <b aria-hidden="true">{networkOpen ? "▲" : "▼"}</b>
         </button>
       </div>
 
       {networkOpen && account && (
-        <section className={`${styles.popover} ${styles.networkPopover}`} role="menu" aria-label="Select wallet network">
+        <section className={`${styles.popover} ${styles.networkPopover}`} role="menu" aria-label={theme === "mss" ? "Select MSS2 network" : "Select wallet network"}>
           <header>
-            <span><small>WALLET NETWORK</small><strong>CHOOSE A CHAIN</strong></span>
+            <span><small>{theme === "mss" ? "MSS2 NETWORK" : "WALLET NETWORK"}</small><strong>{theme === "mss" ? "SELECT MSS2 NETWORK" : "CHOOSE A CHAIN"}</strong></span>
             <button type="button" onClick={() => setNetworkOpen(false)} aria-label="Close network menu">×</button>
           </header>
           <div className={styles.networkPicker}>
-            {SUPPORTED_NETWORKS.map((network) => {
+            {availableNetworks.map((network) => {
               const active = chainId.toLowerCase() === network.chainId;
               const switching = switchingChain === network.chainId;
               const paymentNote = network.chainId === "0x1237"
@@ -476,7 +485,9 @@ export default function WalletConnect({
                 </button>
               );
             })}
-            <p>Switching networks never moves tokens. Robinhood is the only MSS2 payment target in this preview. Arc payments stay locked until its MSS2 deployment and verifier are confirmed.</p>
+            <p>{theme === "mss"
+              ? "MSS2 is available on Robinhood and Arc. Switching networks never moves tokens. Arc entry payments stay locked until pricing and backend verification are reviewed."
+              : "Switching networks never moves tokens. Select the network required for the feature you are using."}</p>
           </div>
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>
