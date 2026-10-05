@@ -44,6 +44,7 @@ type ProviderAnnouncement = CustomEvent<{ info: WalletInfo; provider: WalletProv
 export type WalletConnection = {
   account: string;
   chainId: string;
+  signMessage: (message: string) => Promise<string>;
 };
 
 declare global {
@@ -205,8 +206,20 @@ export default function WalletConnect({
   }, [selectedWallet]);
 
   useEffect(() => {
-    onConnectionChange?.(account ? { account, chainId } : null);
-  }, [account, chainId, onConnectionChange]);
+    if (!account || !selectedWallet) {
+      onConnectionChange?.(null);
+      return;
+    }
+    onConnectionChange?.({
+      account,
+      chainId,
+      signMessage: async (message: string) => {
+        const signature = await selectedWallet.provider.request({ method: "personal_sign", params: [message, account] });
+        if (typeof signature !== "string") throw new Error("The wallet did not return a valid signature.");
+        return signature;
+      },
+    });
+  }, [account, chainId, onConnectionChange, selectedWallet]);
 
   useEffect(() => {
     if (!open) return;
@@ -361,7 +374,7 @@ export default function WalletConnect({
             </div>
           )}
 
-          <p className={styles.disclosure}>Connecting shares the selected public address and current network. Network buttons may ask the wallet to add or switch chains, but never request a signature, token approval, or transfer.</p>
+          <p className={styles.disclosure}>Connecting shares the selected public address and current network. Network buttons never request a payment. In the MSS2 Arcade, choosing to display a balance requests a free plain-text ownership signature—never a token approval or transfer.</p>
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>
       )}

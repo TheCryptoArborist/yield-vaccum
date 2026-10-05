@@ -32,10 +32,11 @@ export type MintFlyerProfile = {
   mss2Wallet?: string | null;
   mss2HeldRounded?: string | null;
   mss2BalanceCheckedAt?: string | null;
+  mss2WalletVerifiedAt?: string | null;
   updatedAt: string;
 };
 
-export type MintFlyerLeaderboardEntry = MintFlyerProfile & {
+export type MintFlyerLeaderboardEntry = Omit<MintFlyerProfile, "playerKey" | "mss2Wallet"> & {
   displayedAchievements: MintFlyerAchievementId[];
 };
 
@@ -95,7 +96,7 @@ export async function saveMintFlyerRun(input: Omit<MintFlyerRun, "grade" | "crea
   return { duplicate: false, profile, newAchievements: profile.unlocked.filter((id) => !previous.has(id)) };
 }
 
-export async function updateMintFlyerBalanceDisplay(playerKey: string, display: boolean, walletAddress = "") {
+export async function updateMintFlyerBalanceDisplay(playerKey: string, display: boolean, walletAddress = "", walletVerifiedAt = "") {
   const store = arcadeStore();
   const profile = await readMintFlyerProfile(playerKey);
   if (!display) {
@@ -103,12 +104,15 @@ export async function updateMintFlyerBalanceDisplay(playerKey: string, display: 
     profile.mss2Wallet = null;
     profile.mss2HeldRounded = null;
     profile.mss2BalanceCheckedAt = null;
+    profile.mss2WalletVerifiedAt = null;
   } else {
+    if (!walletVerifiedAt) throw new Error("Wallet ownership must be verified before displaying a balance.");
     const rounded = await readRoundedRobinhoodMss2Balance(walletAddress);
     profile.displayMss2Balance = true;
     profile.mss2Wallet = walletAddress.toLowerCase();
     profile.mss2HeldRounded = rounded;
     profile.mss2BalanceCheckedAt = new Date().toISOString();
+    profile.mss2WalletVerifiedAt = walletVerifiedAt;
   }
   profile.updatedAt = new Date().toISOString();
   await store.setJSON(`profiles/${playerKey}.json`, profile);
@@ -124,10 +128,14 @@ export async function readMintFlyerLeaderboard() {
     .filter((profile) => profile.moonClears > 0)
     .sort((a, b) => b.bestScore - a.bestScore || b.moonClears - a.moonClears || a.updatedAt.localeCompare(b.updatedAt))
     .slice(0, 25)
-    .map((profile): MintFlyerLeaderboardEntry => ({
-      ...profile,
-      mss2Wallet: null,
-      mss2HeldRounded: profile.displayMss2Balance ? profile.mss2HeldRounded ?? null : null,
-      displayedAchievements: profile.unlocked.slice(-3).reverse(),
-    }));
+    .map((profile): MintFlyerLeaderboardEntry => {
+      const { playerKey: _playerKey, mss2Wallet: _wallet, ...publicProfile } = profile;
+      void _playerKey;
+      void _wallet;
+      return {
+        ...publicProfile,
+        mss2HeldRounded: profile.displayMss2Balance && profile.mss2WalletVerifiedAt ? profile.mss2HeldRounded ?? null : null,
+        displayedAchievements: profile.unlocked.slice(-3).reverse(),
+      };
+    });
 }
