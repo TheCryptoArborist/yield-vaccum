@@ -9,7 +9,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ignore-pattern .next"
+    "lint": "eslint . --ignore-pattern .next",
+    "test": "npm run test:contract && npm run test:payments",
+    "test:contract": "node scripts/compile-mss2-router.mjs",
+    "test:payments": "node --import tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
     "@netlify/blobs": "^10.0.11",
@@ -26,7 +29,9 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
+    "solc": "^0.8.30",
     "tailwindcss": "4.2.1",
+    "tsx": "^4.20.6",
     "typescript": "5.9.3"
   }
 }

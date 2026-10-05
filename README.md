@@ -40,14 +40,24 @@ The MSS2 Commitments panel is a separate Robinhood-only demonstration for propos
 
 ## Wallet foundation
 
-The campaign header and MSS2 Arcade can discover MetaMask, Rabby, and other EIP-6963 browser wallets. Connecting reads the selected public account and current chain after user consent. The Topaz wallet picker retains BNB, Robinhood, and Arc support, while the MSS2 Arcade picker intentionally offers only the two MSS2 networks: Robinhood and Arc. The arcade header reads a rounded MSS2 wallet balance from the currently selected MSS2 chain. The MSS2 arcade can request Robinhood network selection and one exact ERC-20 transfer only after the user reviews a live server quote. It never asks for an unlimited token approval.
+The campaign header and MSS2 Arcade can discover MetaMask, Rabby, and other EIP-6963 browser wallets. Connecting reads the selected public account and current chain after user consent. The Topaz wallet picker retains BNB, Robinhood, and Arc support, while the MSS2 Arcade picker intentionally offers only the two MSS2 networks: Robinhood and Arc. The arcade header reads a rounded MSS2 wallet balance from the currently selected MSS2 chain. If a network-specific payment route is later released, the wallet will first request an exact allowance for the verified router and then the entry transaction. The prepared flow does not request an unlimited token approval.
 
 Mint Flyer follows the MSS2 network selected in the shared wallet bar. Robinhood uses its chain-specific balance and Robinhood/Topaz MSS2/WETH quote; Arc uses its own balance and the official Topaz Arc MSS2/USDC price observation. Both calculate the indicative MSS2 equivalent of a $1.00 run independently. Preview flights remain free and request no wallet transaction. MSS2 is the intended entry asset when a network-specific production payment route is eventually enabled. TOPAZ remains outside this release. Game-credit continues remain separate from token entry payments.
 
 ## MSS2 payment release locks
 
-Real payments cannot be enabled by an environment switch in this branch. The payment-readiness response is hard-locked until a future 20/80 entry router is deployed and verified.
+Real payments cannot be enabled by an environment switch in this branch. The payment-readiness response is hard-locked until the 20/80 entry router is independently reviewed, deployed, verified, and explicitly released for each network.
 
-The future backend must verify Robinhood chain data, the MSS2 token contract, transaction sender, exact total, the 20% dead-address allocation, the 80% reserve allocation, successful receipt, router event, required confirmations, and prior transaction use. The leaderboard must also require the verified payment ID to match the same browser profile and run. Payment records remain separate from arcade scores and achievements.
+`contracts/Mss2EntryRouter.sol` is the non-custodial prototype. It has fixed token and destination addresses, no owner, no upgrade path, and no withdrawal or rescue function. Each server-issued payment ID can be used once. The router performs two direct `transferFrom` calls, verifies the recipients' exact balance increases, and emits one entry event. It never intentionally holds entry tokens.
+
+The prepared backend verifies the selected chain, router address, transaction sender, exact calldata, successful receipt, exact 20% dead-address transfer, exact 80% reserve transfer, matching router event, required confirmations, and prior transaction use. The leaderboard also requires the verified payment ID to match the same browser profile and run. Payment records remain separate from arcade scores and achievements.
 
 Arc now has an independently validated indicative price source, but Arc payments remain disabled until its 20/80 router, RPC receipt path, transaction verification, confirmation policy, and duplicate-use protection pass the same end-to-end checks. The MSS2 Commitments section remains demo-only and is not enabled by the arcade payment switch.
+
+## Payment tests
+
+```bash
+npm test
+```
+
+The test command compiles the router with Solidity 0.8.30, checks that its ABI exposes no privileged or custody methods, and runs backend evidence tests for split arithmetic, calldata binding, event matching, exact destination transfers, confirmations, and replay rejection.
