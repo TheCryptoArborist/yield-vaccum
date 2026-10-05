@@ -1,4 +1,4 @@
-import { createArcadePaymentQuote, verifyArcadePayment } from "../../../db/arcade-payments";
+import { createArcadePaymentQuote, createDemoRunAuthorization, verifyArcadePayment } from "../../../db/arcade-payments";
 import { paymentReadiness, readVerifiedMarketQuote } from "../../../lib/mss2-payment";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +22,11 @@ export async function POST(request: Request) {
     const action = String(payload.action ?? "");
     const playerKey = String(payload.playerKey ?? "").trim();
     const walletAddress = String(payload.walletAddress ?? "").trim();
+    if (action === "demo-run") {
+      const network = String(payload.network ?? "").trim();
+      if (network !== "robinhood" && network !== "arc") return Response.json({ error: "Choose Robinhood Chain or Arc." }, { status: 400 });
+      return Response.json(await createDemoRunAuthorization({ playerKey, network }), { headers: { "Cache-Control": "no-store" } });
+    }
     if (action === "quote") {
       const runId = String(payload.runId ?? "").trim();
       return Response.json(await createArcadePaymentQuote({ playerKey, runId, walletAddress }), { headers: { "Cache-Control": "no-store" } });

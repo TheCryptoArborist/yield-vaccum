@@ -14,6 +14,8 @@ export type MintFlyerRun = {
   lives: number;
   reachedMoon: boolean;
   continued: boolean;
+  entryMode?: "demo" | "paid";
+  entryNetwork?: "robinhood" | "arc";
   grade: "S" | "A" | "B" | "C";
   createdAt: string;
 };

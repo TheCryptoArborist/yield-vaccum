@@ -91,6 +91,30 @@
 .infoDrawer,.commitmentsDrawer,.creatorPanel{overflow:hidden;border-color:rgba(121,157,211,.28);border-radius:15px;background:linear-gradient(145deg,#10213d,#08152d);box-shadow:0 14px 38px rgba(0,4,15,.26),inset 0 1px 0 rgba(255,255,255,.04)}.commitmentsDrawer{border-color:rgba(117,77,255,.52)}.infoDrawer>summary,.commitmentsDrawer>summary,.creatorPanel>summary{transition:background .18s ease}.infoDrawer>summary:hover,.commitmentsDrawer>summary:hover,.creatorPanel>summary:hover{background:rgba(0,235,242,.055)}.drawerBody{background:linear-gradient(145deg,#0a1a33,#061126)}.creatorPanel .creatorPortrait{border-radius:10px}
 @media(max-width:720px){.brandPlate{width:min(330px,88vw)}.siteHeader,.hero,.gameCard{border-radius:14px}.arcadeNav a,.infoDrawer,.commitmentsDrawer,.creatorPanel{border-radius:12px}}
 @media(max-width:430px){.brandPlate{width:min(285px,84vw);padding:0}.siteHeader{border-radius:12px}.hero,.gameCard{border-radius:12px}.paymentStatus{padding:6px}}
+
+/* Clear end-of-run choices and proposed MSS2 allocation. */
+.crashActions{width:min(700px,100%);grid-template-columns:1fr 1fr;gap:10px}
+.crashActions.singleCrashAction{grid-template-columns:1fr}
+.crashActions button{min-height:72px;padding:15px 18px;gap:7px;font-size:14px}
+.crashActions button small{font-size:8px;line-height:1.35;letter-spacing:.08em}
+.runEntrySummary{width:min(700px,100%);margin:13px 0 0;padding:13px;border:1px solid rgba(121,157,211,.34);border-radius:13px;background:linear-gradient(145deg,rgba(7,19,41,.97),rgba(17,26,66,.97));box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 10px 26px rgba(0,4,15,.22);text-align:left}
+.runEntrySummary header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.runEntrySummary header span{display:flex;flex-direction:column;gap:3px}
+.runEntrySummary header small{color:#93a9c7;font-size:8px;font-weight:1000;letter-spacing:.14em}
+.runEntrySummary header strong{color:#fff;font-size:13px;letter-spacing:.08em}
+.runEntrySummary header>b{padding:6px 9px;border:1px solid #ff4fa3;border-radius:999px;background:rgba(255,79,163,.1);color:#ff9bca;font-size:8px;letter-spacing:.09em;white-space:nowrap}
+.allocationBar{display:grid;grid-template-columns:1fr 4fr;min-height:58px;overflow:hidden;border:1px solid rgba(121,157,211,.45);border-radius:10px}
+.allocationBar>span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px;text-align:center}
+.allocationBar b{font-size:20px;line-height:1}
+.allocationBar small{font-size:8px;font-weight:1000;line-height:1.2;letter-spacing:.08em}
+.deadAllocation{background:linear-gradient(135deg,#4f1740,#87234f);color:#ffd6e7}
+.communityAllocation{background:linear-gradient(135deg,#07536d,#273b9b);color:#dffeff;box-shadow:inset 1px 0 0 rgba(255,255,255,.14)}
+.runEntrySummary>p{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 0!important;color:#dbe6f4!important;font-size:10px!important;line-height:1.4!important;text-align:center}
+.runEntrySummary>p b{color:#b5fff8;white-space:nowrap}
+.runEntrySummary>p span{color:#c0d1e7}
+@media(max-width:720px){.runEntrySummary>p{align-items:flex-start;flex-direction:column;gap:4px;text-align:left}}
+@media(max-width:430px){.runEntrySummary{padding:10px}.runEntrySummary header{align-items:flex-start;flex-direction:column}.allocationBar{grid-template-columns:1.15fr 3.85fr}.allocationBar small{font-size:7px}.crashActions button{min-height:68px;padding:13px 11px;font-size:12px}.crashActions button small{font-size:7px}}
+
 .paymentMessage{width:min(620px,100%);margin:0 0 10px!important;padding:9px 11px!important;border-left:3px solid #00ebf2;background:rgba(0,235,242,.08);color:#dffeff!important;font-size:10px!important;line-height:1.45!important;text-align:left!important}.paymentTxLink{width:min(620px,100%);margin:0 0 10px;padding:9px 11px;border:1px solid rgba(0,235,242,.38);border-radius:8px;background:rgba(0,235,242,.07);color:#b5fff8;font-size:9px;font-weight:1000;letter-spacing:.07em;text-align:center;text-decoration:none}
 .recipientProof{display:grid;grid-template-columns:1fr auto;gap:9px;margin-top:12px;padding:12px;border:1px solid rgba(0,235,242,.34);border-radius:12px;background:rgba(0,235,242,.06)}.recipientProof>div{display:flex;flex-direction:column;gap:4px}.recipientProof small{color:#00ebf2;font-size:7px;font-weight:1000;letter-spacing:.13em}.recipientProof strong{font-size:11px}.recipientProof>div p,.recipientProof>p{margin:0!important;color:#c0d1e7!important;font-size:9px!important}.recipientProof button{align-self:center;padding:10px 12px;border:1px solid #00ebf2;border-radius:8px;background:#00ebf2;color:#061629;font-size:8px;font-weight:1000;letter-spacing:.06em;cursor:pointer}.recipientProof textarea{grid-column:1/-1;min-height:68px;resize:vertical;border:1px solid #557197;border-radius:8px;background:#071329;color:#dbe6f4;padding:9px;font:9px/1.4 monospace;overflow-wrap:anywhere}.recipientProof>p{grid-column:1/-1}.recipientProof textarea+button{grid-column:1/-1;justify-self:start}@media(max-width:620px){.recipientProof{grid-template-columns:1fr}.recipientProof button{width:100%}.recipientProof textarea,.recipientProof>p,.recipientProof textarea+button{grid-column:1}}
 .leaderboardJump{min-width:min(360px,100%);margin-bottom:7px;padding:11px 16px;border:1px solid #00ebf2;border-radius:10px;background:rgba(0,235,242,.1);color:#b5fff8;font-size:9px;font-weight:1000;letter-spacing:.08em;text-decoration:none}.leaderboardJump:hover,.leaderboardJump:focus-visible{background:rgba(0,235,242,.2);outline:none}

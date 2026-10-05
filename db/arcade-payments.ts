@@ -38,6 +38,16 @@ export type ArcadePaymentQuote = {
   verifiedAt?: string;
 };
 
+export type ArcadeDemoRunAuthorization = {
+  authorizationId: string;
+  playerKey: string;
+  runId: string;
+  network: "robinhood" | "arc";
+  mode: "demo";
+  createdAt: string;
+  expiresAt: string;
+};
+
 function store() {
   return process.env.CONTEXT === "production"
     ? getStore("mint-flyer-payments", { consistency: "strong" })
@@ -52,8 +62,32 @@ function transactionKey(txHash: string) {
   return `transactions/${txHash.toLowerCase()}.json`;
 }
 
+function demoRunKey(authorizationId: string) {
+  return `demo-runs/${authorizationId}.json`;
+}
+
 function validKey(value: string) {
   return /^[a-zA-Z0-9-]{16,80}$/.test(value);
+}
+
+export async function createDemoRunAuthorization(input: { playerKey: string; network: "robinhood" | "arc" }) {
+  if (!validKey(input.playerKey)) throw new Error("The arcade profile could not be validated.");
+  const readiness = paymentReadiness();
+  if (input.network === "robinhood" && readiness.enabled) throw new Error("Robinhood scored runs now require a verified MSS2 entry.");
+  if (input.network === "arc" && readiness.arcEnabled) throw new Error("Arc scored runs now require a verified MSS2 entry.");
+
+  const createdAt = new Date();
+  const authorization: ArcadeDemoRunAuthorization = {
+    authorizationId: crypto.randomUUID(),
+    playerKey: input.playerKey,
+    runId: crypto.randomUUID(),
+    network: input.network,
+    mode: "demo",
+    createdAt: createdAt.toISOString(),
+    expiresAt: new Date(createdAt.getTime() + 24 * 60 * 60_000).toISOString(),
+  };
+  await store().setJSON(demoRunKey(authorization.authorizationId), authorization);
+  return { ...authorization, playerKey: undefined };
 }
 
 export async function createArcadePaymentQuote(input: { playerKey: string; runId: string; walletAddress: string }) {
@@ -124,10 +158,28 @@ export async function verifyArcadePayment(input: { paymentId: string; playerKey:
   return { ...verified, pending: false as const, confirmations: evidence.confirmations, explorerUrl: `${ROBINHOOD_EXPLORER_URL}/tx/${input.txHash}` };
 }
 
-export async function requirePaymentForScore(paymentId: string, playerKey: string, runId: string) {
-  if (!paymentReadiness().enabled) return;
-  const quote = await store().get(quoteKey(paymentId), { type: "json" }) as ArcadePaymentQuote | null;
-  if (!quote || quote.status !== "verified" || quote.playerKey !== playerKey || quote.runId !== runId || !quote.txHash) {
-    throw new Error("A verified MSS2 entry payment is required before this Moon Run can be saved.");
+export async function requirePaymentForScore(input: { paymentId: string; runAuthorizationId: string; playerKey: string; runId: string }) {
+  const paymentStore = store();
+  if (input.paymentId) {
+    const quote = await paymentStore.get(quoteKey(input.paymentId), { type: "json" }) as ArcadePaymentQuote | null;
+    if (!quote || quote.status !== "verified" || quote.playerKey !== input.playerKey || quote.runId !== input.runId || !quote.txHash) {
+      throw new Error("A verified MSS2 entry payment is required before this Moon Run can be saved.");
+    }
+    return { mode: "paid" as const, network: "robinhood" as const };
   }
+
+  const authorization = await paymentStore.get(demoRunKey(input.runAuthorizationId), { type: "json" }) as ArcadeDemoRunAuthorization | null;
+  if (!authorization
+    || authorization.mode !== "demo"
+    || authorization.playerKey !== input.playerKey
+    || authorization.runId !== input.runId
+    || Date.now() > Date.parse(authorization.expiresAt)) {
+    throw new Error("This free flight could not be matched to its server-issued run authorization.");
+  }
+
+  const readiness = paymentReadiness();
+  if ((authorization.network === "robinhood" && readiness.enabled) || (authorization.network === "arc" && readiness.arcEnabled)) {
+    throw new Error(`A verified MSS2 entry is now required for ${authorization.network === "arc" ? "Arc" : "Robinhood Chain"} scored runs.`);
+  }
+  return { mode: "demo" as const, network: authorization.network };
 }

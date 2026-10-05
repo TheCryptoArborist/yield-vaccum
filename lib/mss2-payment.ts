@@ -40,7 +40,7 @@ export type PaymentReadiness = {
   tokenDecimals: number;
   entryPriceUsd: string;
   confirmations: number;
-  arcEnabled: false;
+  arcEnabled: boolean;
   reason: string | null;
 };
 
