@@ -148,6 +148,7 @@ export default function MintFlyer() {
   const [newBest, setNewBest] = useState(false);
   const [entryQuote, setEntryQuote] = useState<EntryQuote | null>(null);
   const [quoteUnavailable, setQuoteUnavailable] = useState(false);
+  const [quoteBusy, setQuoteBusy] = useState(false);
   const [quoteClock, setQuoteClock] = useState(0);
   const [reviewingEntry, setReviewingEntry] = useState(false);
   const [effects, setEffects] = useState<FlightEffect[]>([]);
@@ -212,6 +213,7 @@ export default function MintFlyer() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const stageRef = useRef<FlightStage>(1);
   const stageNoticeTimerRef = useRef<number | null>(null);
+  const quoteRequestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -271,19 +273,42 @@ export default function MintFlyer() {
   }, [playTone, primeAudio]);
 
   const loadEntryQuote = useCallback(async () => {
-    if (selectedMss2Network === "unsupported") return;
+    if (selectedMss2Network === "unsupported") return null;
+    quoteRequestRef.current?.abort();
+    const controller = new AbortController();
+    quoteRequestRef.current = controller;
+    setQuoteBusy(true);
+    setQuoteUnavailable(false);
+    const timeout = window.setTimeout(() => controller.abort(), 12_000);
     try {
-      const response = await fetch(`/api/mss2-price?chain=${selectedMss2Network}`, { cache: "no-store" });
-      if (!response.ok) throw new Error("MSS2 quote unavailable");
-      const quote = await response.json() as EntryQuote;
+      const response = await fetch(`/api/mss2-price?chain=${selectedMss2Network}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const quote = await response.json() as EntryQuote & { error?: string };
+      if (!response.ok) throw new Error(quote.error || "MSS2 quote unavailable");
       if (quote.chainId !== selectedMss2Network) throw new Error("MSS2 quote network mismatch");
+      if (quoteRequestRef.current !== controller) return null;
       setEntryQuote(quote);
       setQuoteUnavailable(false);
       setQuoteClock(Date.now());
-    } catch {
+      setPaymentMessage("");
+      return quote;
+    } catch (error) {
+      if (quoteRequestRef.current !== controller) return null;
       setEntryQuote(null);
       setQuoteUnavailable(true);
       setReviewingEntry(false);
+      setPaymentMessage(error instanceof DOMException && error.name === "AbortError"
+        ? "The verified market quote took too long. Tap Retry Quote to try again."
+        : error instanceof Error ? error.message : "The MSS2 quote is temporarily unavailable.");
+      return null;
+    } finally {
+      window.clearTimeout(timeout);
+      if (quoteRequestRef.current === controller) {
+        quoteRequestRef.current = null;
+        setQuoteBusy(false);
+      }
     }
   }, [selectedMss2Network]);
 
@@ -294,6 +319,7 @@ export default function MintFlyer() {
     return () => {
       window.clearTimeout(initial);
       window.clearInterval(refresh);
+      quoteRequestRef.current?.abort();
     };
   }, [loadEntryQuote, reviewingEntry, selectedMss2Network]);
 
@@ -402,10 +428,11 @@ export default function MintFlyer() {
       }
       return;
     }
-    if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) {
+    let currentQuote = entryQuote;
+    if (!currentQuote || Date.now() >= Date.parse(currentQuote.validUntil)) {
       setQuoteClock(Date.now());
-      void loadEntryQuote();
-      return;
+      currentQuote = await loadEntryQuote();
+      if (!currentQuote) return;
     }
     setQuoteClock(Date.now());
     setReviewingEntry(true);
@@ -750,10 +777,10 @@ export default function MintFlyer() {
     : headerQuoteAmount
       ? `$1 = ${headerQuoteAmount} MSS2`
       : quoteUnavailable
-        ? "QUOTE UNAVAILABLE"
+        ? "RETRY QUOTE BELOW"
         : quoteExpired
           ? "REFRESHING QUOTE"
-          : "LOADING QUOTE";
+          : quoteBusy ? "FETCHING VERIFIED QUOTE" : "LOADING QUOTE";
   const headerQuoteMeta = headerQuoteAmount
     ? `${livePaymentQuote && !liveQuoteExpired ? "ENTRY QUOTE" : "DEMO QUOTE"} · ${livePaymentQuote && !liveQuoteExpired ? liveQuoteSecondsRemaining : quoteSecondsRemaining}s`
     : liveEntryEnabled ? "LIVE PAYMENT MODE" : "REAL PAYMENTS LOCKED";
@@ -950,7 +977,7 @@ export default function MintFlyer() {
                     ? <><b>ARC PRICE PREVIEW:</b> See the current MSS2 equivalent of $1.00 from the Arc MSS2/USDC market, then play free. No approval, signature, or payment is requested.</>
                     : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed entry split sends 20% to the dead address and 80% to the designated Community Airdrop Reserve—a 4:1 community allocation. Real transfers remain disabled.</>}</p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
-                <button onClick={() => void reviewEntry()} disabled={paymentBusy || selectedMss2Network === "unsupported" || (liveEntryEnabled ? !walletConnection || !playerKey : !entryQuote || quoteExpired)}>{paymentBusy ? "PREPARING…" : selectedMss2Network === "unsupported" ? "SELECT ROBINHOOD OR ARC ABOVE" : liveEntryEnabled ? walletConnection ? "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : !entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING $1 QUOTE" : quoteExpired ? "REFRESHING QUOTE" : `REVIEW ${selectedNetworkLabel} $1 QUOTE`}</button>
+                <button onClick={() => void reviewEntry()} disabled={paymentBusy || quoteBusy || selectedMss2Network === "unsupported" || (liveEntryEnabled && (!walletConnection || !playerKey))}>{paymentBusy ? "PREPARING…" : selectedMss2Network === "unsupported" ? "SELECT ROBINHOOD OR ARC ABOVE" : liveEntryEnabled ? walletConnection ? "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : quoteBusy ? "FETCHING VERIFIED MARKET…" : !entryQuote ? quoteUnavailable ? "RETRY $1 QUOTE" : "LOAD $1 QUOTE" : quoteExpired ? "REFRESH $1 QUOTE" : `REVIEW ${selectedNetworkLabel} $1 QUOTE`}</button>
               </> : <>
                 <small>{liveEntryEnabled ? `LIVE MSS2 ENTRY · ${selectedNetworkLabel}` : `${selectedNetworkLabel} $1 QUOTE · NO TRANSACTION`}</small>
                 <h2>{liveEntryEnabled ? "REVIEW + PAY" : "REVIEW THE RUN"}</h2>
