@@ -93,7 +93,10 @@ function quoteResponse(input: {
     checkedAt: checkedAt.toISOString(),
     validUntil: new Date(checkedAt.getTime() + QUOTE_LIFETIME_MS).toISOString(),
   }, {
-    headers: { "Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=120" },
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+      "Netlify-CDN-Cache-Control": "no-store",
+    },
   });
 }
 
@@ -196,7 +199,10 @@ export async function GET(request: Request) {
       checkedAt: new Date().toISOString(),
     }, {
       status: 503,
-      headers: { "Cache-Control": "public, max-age=10, s-maxage=15" },
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+        "Netlify-CDN-Cache-Control": "no-store",
+      },
     });
   }
 }
