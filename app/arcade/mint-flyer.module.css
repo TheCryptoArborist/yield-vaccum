@@ -30,7 +30,7 @@
 
 /* Wallet connection and locked token-continue preview */
 .walletZone{justify-self:end;display:flex;align-items:center;gap:9px}.walletZone .paymentStatus{justify-self:auto}.lockedPayments{width:min(620px,100%);margin:13px 0 0;padding:10px;border:1px solid #65301f;background:rgba(17,7,4,.94);text-align:left}.lockedPayments>div{display:flex;align-items:center;justify-content:space-between;gap:12px}.lockedPayments>div small{color:#ff916e;font-size:7px;font-weight:1000;letter-spacing:.16em}.lockedPayments>div strong{padding:4px 7px;border:1px solid #834029;background:#2b0c05;color:#ff9b7d;font-size:8px;letter-spacing:.12em}.lockedPayments ul{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0;padding:0;list-style:none}.lockedPayments li{display:grid;grid-template-columns:auto 1fr;gap:7px;padding:7px;border:1px solid #3b2b26;background:#111113}.lockedPayments li b{color:#ff7952;font-size:8px;letter-spacing:.08em}.lockedPayments li span{color:#a9a1a0;font-size:7px;line-height:1.35}.lockedPayments p{margin:0!important;padding-top:7px;border-top:1px solid #442016;color:#caaea5!important;font-size:7px!important;line-height:1.4!important;text-align:center}
-@media(max-width:720px){.walletZone{grid-column:2;grid-row:1}.walletZone .paymentStatus{display:none}.lockedPayments ul{grid-template-columns:1fr}}
+@media(max-width:720px){.walletZone{width:100%;grid-column:1/-1;grid-row:3;justify-self:stretch}.walletZone .paymentStatus{display:none}.lockedPayments ul{grid-template-columns:1fr}}
 @media(max-width:430px){.lockedPayments{padding:7px}.lockedPayments li{padding:5px}}
 
 /* MintStakeShare 2 brand palette — isolated to /arcade. */

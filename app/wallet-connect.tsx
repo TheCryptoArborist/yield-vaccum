@@ -32,6 +32,7 @@ type WalletNetwork = {
   chainId: `0x${string}`;
   name: string;
   shortName: string;
+  icon: string;
   nativeCurrency: { name: string; symbol: string; decimals: number };
   rpcUrls: string[];
   blockExplorerUrls: string[];
@@ -62,6 +63,7 @@ const SUPPORTED_NETWORKS: WalletNetwork[] = [
     chainId: "0x38",
     name: "BNB Smart Chain",
     shortName: "BNB CHAIN",
+    icon: "/fee-bnb.png",
     nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
     rpcUrls: ["https://bsc-dataseed.bnbchain.org"],
     blockExplorerUrls: ["https://bscscan.com"],
@@ -70,6 +72,7 @@ const SUPPORTED_NETWORKS: WalletNetwork[] = [
     chainId: "0x1237",
     name: "Robinhood Chain",
     shortName: "ROBINHOOD CHAIN",
+    icon: "/network-robinhood-chain.jpg",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: ["https://rpc.mainnet.chain.robinhood.com"],
     blockExplorerUrls: ["https://robin.etherscan.io"],
@@ -78,6 +81,7 @@ const SUPPORTED_NETWORKS: WalletNetwork[] = [
     chainId: "0x13b2",
     name: "Arc",
     shortName: "ARC",
+    icon: "/network-arc.svg",
     nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
     rpcUrls: ["https://rpc.mainnet.arc.io"],
     blockExplorerUrls: ["https://arc.etherscan.io"],
@@ -126,6 +130,7 @@ export default function WalletConnect({
   const [account, setAccount] = useState("");
   const [chainId, setChainId] = useState("");
   const [open, setOpen] = useState(false);
+  const [networkOpen, setNetworkOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [switchingChain, setSwitchingChain] = useState("");
   const [message, setMessage] = useState("");
@@ -256,12 +261,18 @@ export default function WalletConnect({
   }, [account, chainId, onConnectionChange, selectedWallet]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open && !networkOpen) return;
     const closeOnOutside = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+        setNetworkOpen(false);
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        setNetworkOpen(false);
+      }
     };
     document.addEventListener("mousedown", closeOnOutside);
     document.addEventListener("keydown", closeOnEscape);
@@ -269,7 +280,7 @@ export default function WalletConnect({
       document.removeEventListener("mousedown", closeOnOutside);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [open]);
+  }, [networkOpen, open]);
 
   const connect = useCallback(async (wallet: WalletOption) => {
     setBusy(true);
@@ -321,6 +332,7 @@ export default function WalletConnect({
       const chainValue = await selectedWallet.provider.request({ method: "eth_chainId" });
       setChainId(typeof chainValue === "string" ? chainValue : network.chainId);
       setMessage(`${network.name} selected. No transaction was requested.`);
+      setNetworkOpen(false);
     } catch (error) {
       const walletError = error as WalletProviderError;
       setMessage(walletError?.message || `The request to switch to ${network.name} was cancelled.`);
@@ -336,24 +348,89 @@ export default function WalletConnect({
     setChainId("");
     setMessage("Site connection cleared. Disconnect permissions inside your wallet if desired.");
     setOpen(false);
+    setNetworkOpen(false);
   };
+
+  const currentNetwork = SUPPORTED_NETWORKS.find((network) => network.chainId === chainId.toLowerCase());
 
   return (
     <div ref={rootRef} className={`${styles.walletConnect} ${compact ? styles.compact : ""} ${theme === "mss" ? styles.mss : ""}`}>
-      <button
-        type="button"
-        className={`${styles.trigger} ${account ? styles.connected : ""}`}
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-      >
-        <i aria-hidden="true" />
-        <span>
-          <small>{account ? selectedWallet?.info.name || "WALLET CONNECTED" : "METAMASK · RABBY"}</small>
-          <strong>{account ? shortAddress(account) : "CONNECT WALLET"}</strong>
-        </span>
-        {account && <em>{chainLabel(chainId)}</em>}
-      </button>
+      <div className={styles.topControls}>
+        <button
+          type="button"
+          className={`${styles.trigger} ${account ? styles.connected : ""}`}
+          onClick={() => {
+            setNetworkOpen(false);
+            setOpen((current) => !current);
+          }}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+        >
+          <i aria-hidden="true" />
+          <span>
+            <small>{account ? selectedWallet?.info.name || "WALLET CONNECTED" : "METAMASK · RABBY"}</small>
+            <strong>{account ? shortAddress(account) : "CONNECT WALLET"}</strong>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.networkTrigger} ${account ? styles.networkReady : ""}`}
+          onClick={() => {
+            if (!account) {
+              setNetworkOpen(false);
+              setOpen(true);
+              return;
+            }
+            setOpen(false);
+            setNetworkOpen((current) => !current);
+          }}
+          aria-expanded={networkOpen}
+          aria-haspopup="menu"
+        >
+          {currentNetwork
+            ? <img src={currentNetwork.icon} alt="" aria-hidden="true" />
+            : <i aria-hidden="true" />}
+          <span><small>NETWORK</small><strong>{account ? chainLabel(chainId) : "CONNECT FIRST"}</strong></span>
+          <b aria-hidden="true">{networkOpen ? "▲" : "▼"}</b>
+        </button>
+      </div>
+
+      {networkOpen && account && (
+        <section className={`${styles.popover} ${styles.networkPopover}`} role="menu" aria-label="Select wallet network">
+          <header>
+            <span><small>WALLET NETWORK</small><strong>CHOOSE A CHAIN</strong></span>
+            <button type="button" onClick={() => setNetworkOpen(false)} aria-label="Close network menu">×</button>
+          </header>
+          <div className={styles.networkPicker}>
+            {SUPPORTED_NETWORKS.map((network) => {
+              const active = chainId.toLowerCase() === network.chainId;
+              const switching = switchingChain === network.chainId;
+              const paymentNote = network.chainId === "0x1237"
+                ? "MSS2 PAYMENT TARGET"
+                : network.chainId === "0x13b2"
+                  ? "MSS2 PAYMENT LOCKED"
+                  : "WALLET + TOPAZ SUPPORT";
+              return (
+                <button
+                  key={network.chainId}
+                  type="button"
+                  role="menuitem"
+                  className={active ? styles.activeNetwork : ""}
+                  onClick={() => switchNetwork(network)}
+                  disabled={Boolean(switchingChain) || active}
+                >
+                  <img src={network.icon} alt="" aria-hidden="true" />
+                  <span><b>{network.shortName}</b><small>CHAIN {Number.parseInt(network.chainId, 16)} · {paymentNote}</small></span>
+                  <em>{active ? "ACTIVE" : switching ? "CHECK WALLET" : "SWITCH"}</em>
+                </button>
+              );
+            })}
+            <p>Switching networks never moves tokens. Robinhood is the only MSS2 payment target in this preview. Arc payments stay locked until its MSS2 deployment and verifier are confirmed.</p>
+          </div>
+          {message && <p className={styles.message} role="status">{message}</p>}
+        </section>
+      )}
 
       {open && (
         <section className={styles.popover} role="dialog" aria-label="Wallet connection">
@@ -371,26 +448,6 @@ export default function WalletConnect({
                 <strong>{shortAddress(account)}</strong>
                 <span>{chainLabel(chainId)}</span>
                 <button type="button" onClick={forget}>CLEAR SITE CONNECTION</button>
-              </div>
-              <div className={styles.networkPicker} aria-label="Select wallet network">
-                <div className={styles.networkPickerTitle}><small>SUPPORTED NETWORKS</small><strong>CHOOSE A CHAIN</strong></div>
-                {SUPPORTED_NETWORKS.map((network) => {
-                  const active = chainId.toLowerCase() === network.chainId;
-                  const switching = switchingChain === network.chainId;
-                  return (
-                    <button
-                      key={network.chainId}
-                      type="button"
-                      className={active ? styles.activeNetwork : ""}
-                      onClick={() => switchNetwork(network)}
-                      disabled={Boolean(switchingChain) || active}
-                    >
-                      <span><b>{network.shortName}</b><small>CHAIN {Number.parseInt(network.chainId, 16)} · GAS {network.nativeCurrency.symbol}</small></span>
-                      <em>{active ? "ACTIVE" : switching ? "CHECK WALLET" : "SWITCH"}</em>
-                    </button>
-                  );
-                })}
-                <p>Network selection does not enable a game payment. MSS2 Arcade payments are planned for Robinhood Chain and Arc only after each token deployment and backend verifier is confirmed.</p>
               </div>
             </>
           ) : wallets.length ? (
