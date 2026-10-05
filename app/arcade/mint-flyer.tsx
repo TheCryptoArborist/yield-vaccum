@@ -580,6 +580,7 @@ export default function MintFlyer() {
 
       <nav className={styles.arcadeNav} aria-label="Arcade sections">
         <a className={styles.activeNav} href="#mint-flyer"><small>PLAY NOW</small><strong>MINT FLYER</strong></a>
+        <a href="#mint-flyer-leaderboard"><small>RANKS + BADGES</small><strong>LEADERBOARD</strong></a>
         <a href="#mss2-commitments"><small>OPTIONAL DEMO</small><strong>MSS2 COMMITMENTS</strong></a>
         <a href="#about-creator"><small>INDEPENDENT PROJECT</small><strong>ABOUT THE CREATOR</strong></a>
       </nav>
