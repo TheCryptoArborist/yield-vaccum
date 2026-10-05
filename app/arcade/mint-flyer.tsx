@@ -971,7 +971,7 @@ export default function MintFlyer() {
         </footer>
       </section>
 
-      <MintFlyerLeaderboard result={leaderboardResult} walletConnection={walletConnection} />
+      <MintFlyerLeaderboard result={leaderboardResult} />
 
       <details className={styles.infoDrawer} id="payment-safety">
         <summary><span><small>PAYMENT SAFETY</small><strong>{paymentReadiness?.enabled ? "ROBINHOOD MSS2 ENTRY IS LIVE" : "REAL MSS2 REMAINS LOCKED"}</strong></span><b>VIEW DETAILS +</b></summary>

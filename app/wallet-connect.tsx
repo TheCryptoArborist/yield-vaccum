@@ -84,7 +84,7 @@ const SUPPORTED_NETWORKS: WalletNetwork[] = [
     icon: "/network-arc.svg",
     nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
     rpcUrls: ["https://rpc.mainnet.arc.io"],
-    blockExplorerUrls: ["https://arc.etherscan.io"],
+    blockExplorerUrls: ["https://explorer.arc.io"],
   },
 ];
 
@@ -134,6 +134,8 @@ export default function WalletConnect({
   const [busy, setBusy] = useState(false);
   const [switchingChain, setSwitchingChain] = useState("");
   const [message, setMessage] = useState("");
+  const [mss2Balance, setMss2Balance] = useState<string | null>(null);
+  const [mss2BalanceState, setMss2BalanceState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -261,6 +263,29 @@ export default function WalletConnect({
   }, [account, chainId, onConnectionChange, selectedWallet]);
 
   useEffect(() => {
+    if (theme !== "mss" || !account) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setMss2BalanceState("loading");
+      try {
+        const response = await fetch(`/api/mss2-balance?address=${encodeURIComponent(account)}`, { cache: "no-store", signal: controller.signal });
+        const data = await response.json() as { error?: string; rounded?: string };
+        if (!response.ok || typeof data.rounded !== "string") throw new Error(data.error || "Balance unavailable.");
+        setMss2Balance(data.rounded);
+        setMss2BalanceState("ready");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setMss2Balance(null);
+        setMss2BalanceState("error");
+      }
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [account, theme]);
+
+  useEffect(() => {
     if (!open && !networkOpen) return;
     const closeOnOutside = (event: MouseEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) {
@@ -368,8 +393,11 @@ export default function WalletConnect({
         >
           <i aria-hidden="true" />
           <span>
-            <small>{account ? selectedWallet?.info.name || "WALLET CONNECTED" : "METAMASK · RABBY"}</small>
-            <strong>{account ? shortAddress(account) : "CONNECT WALLET"}</strong>
+            <small>{account ? `CONNECTED · ${selectedWallet?.info.name || "WALLET"}` : "METAMASK · RABBY"}</small>
+            <strong>{account && theme === "mss"
+              ? mss2BalanceState === "ready" ? `~${mss2Balance} MSS2` : mss2BalanceState === "error" ? "BALANCE UNAVAILABLE" : "CHECKING MSS2…"
+              : account ? shortAddress(account) : "CONNECT WALLET"}</strong>
+            {account && theme === "mss" && <em>{shortAddress(account)}</em>}
           </span>
         </button>
 
@@ -446,7 +474,7 @@ export default function WalletConnect({
               <div className={styles.accountCard}>
                 <small>{selectedWallet?.info.name || "CONNECTED WALLET"}</small>
                 <strong>{shortAddress(account)}</strong>
-                <span>{chainLabel(chainId)}</span>
+                <span>{chainLabel(chainId)}{theme === "mss" && mss2BalanceState === "ready" ? ` · ~${mss2Balance} MSS2` : ""}</span>
                 <button type="button" onClick={forget}>CLEAR SITE CONNECTION</button>
               </div>
             </>
@@ -466,7 +494,7 @@ export default function WalletConnect({
           )}
 
           <p className={styles.disclosure}>{theme === "mss"
-            ? "Connecting shares the selected public address and current network. Balance display uses a free message signature. A live arcade entry may request one exact MSS2 transfer only after a separate on-site review; it never requests an unlimited token approval."
+            ? "Connecting once activates wallet features across this arcade page and reads a rounded Robinhood MSS2 balance without a signature. A future live arcade entry may request one exact MSS2 transfer only after a separate on-site review; it never requests an unlimited token approval."
             : "Connecting shares the selected public address and current network. Network buttons may ask the wallet to add or switch chains, but never request a signature, token approval, or transfer."}</p>
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>

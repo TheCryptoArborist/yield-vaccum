@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { MINT_FLYER_ACHIEVEMENTS, type MintFlyerAchievementId } from "../../lib/mint-flyer-achievements";
 import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
-import type { WalletConnection } from "../wallet-connect";
 import styles from "./mint-flyer-leaderboard.module.css";
 
 type Entry = {
@@ -42,7 +41,7 @@ function achievement(id: MintFlyerAchievementId) {
   return MINT_FLYER_ACHIEVEMENTS.find((item) => item.id === id);
 }
 
-export default function MintFlyerLeaderboard({ result, walletConnection }: { result: LeaderboardFlightResult | null; walletConnection: WalletConnection | null }) {
+export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFlightResult | null }) {
   const [playerKey, setPlayerKey] = useState("");
   const [nickname, setNickname] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -52,12 +51,6 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
   const [saving, setSaving] = useState(false);
   const [savedRunId, setSavedRunId] = useState("");
   const [message, setMessage] = useState("");
-  const [displayBalance, setDisplayBalance] = useState(false);
-  const [balanceLabel, setBalanceLabel] = useState<string | null>(null);
-  const [balanceBusy, setBalanceBusy] = useState(false);
-  const [connectedBalance, setConnectedBalance] = useState<string | null>(null);
-  const [connectedBalanceBusy, setConnectedBalanceBusy] = useState(false);
-  const [connectedBalanceError, setConnectedBalanceError] = useState("");
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -67,8 +60,6 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
       if (!response.ok) throw new Error(data.error || "Leaderboard unavailable.");
       setEntries(data.entries ?? []);
       setUnlocked(data.profile?.unlocked ?? []);
-      setDisplayBalance(data.profile?.displayMss2Balance === true);
-      setBalanceLabel(data.profile?.mss2HeldRounded ?? null);
       setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Leaderboard unavailable.");
@@ -87,73 +78,6 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
     });
     return () => window.cancelAnimationFrame(frame);
   }, [load]);
-
-  const loadConnectedBalance = useCallback(async (address: string, signal?: AbortSignal) => {
-    await Promise.resolve();
-    if (signal?.aborted) return;
-    setConnectedBalanceBusy(true);
-    setConnectedBalanceError("");
-    try {
-      const response = await fetch(`/api/mss2-balance?address=${encodeURIComponent(address)}`, { cache: "no-store", signal });
-      const data = await response.json() as { error?: string; rounded?: string };
-      if (!response.ok || typeof data.rounded !== "string") throw new Error(data.error || "The Robinhood MSS2 balance is temporarily unavailable.");
-      setConnectedBalance(data.rounded);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      setConnectedBalance(null);
-      setConnectedBalanceError(error instanceof Error ? error.message : "The Robinhood MSS2 balance is temporarily unavailable.");
-    } finally {
-      if (!signal?.aborted) setConnectedBalanceBusy(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const address = walletConnection?.account;
-    if (!address) return;
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => void loadConnectedBalance(address, controller.signal), 0);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [loadConnectedBalance, walletConnection?.account]);
-
-  const updateBalanceDisplay = async (display: boolean) => {
-    if (balanceBusy || (display && !walletConnection?.account)) return;
-    setBalanceBusy(true);
-    setMessage("");
-    try {
-      let signature = "";
-      if (display && walletConnection) {
-        setMessage("Check your wallet and sign the free verification message. This is not a transaction.");
-        const challengeResponse = await fetch("/api/arcade-leaderboard", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ playerKey, walletAddress: walletConnection.account }),
-        });
-        const challenge = await challengeResponse.json() as { error?: string; message?: string };
-        if (!challengeResponse.ok || !challenge.message) throw new Error(challenge.error || "Wallet verification could not start.");
-        signature = await walletConnection.signMessage(challenge.message);
-        setMessage("Signature received. Verifying the Robinhood MSS2 balance…");
-      }
-      const response = await fetch("/api/arcade-leaderboard", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerKey, walletAddress: walletConnection?.account ?? "", signature, display }),
-      });
-      const data = await response.json() as { error?: string; profile?: Entry; entries?: Entry[] };
-      if (!response.ok) throw new Error(data.error || "The MSS2 balance could not be verified.");
-      setDisplayBalance(data.profile?.displayMss2Balance === true);
-      setBalanceLabel(data.profile?.mss2HeldRounded ?? null);
-      setEntries(data.entries ?? []);
-      if (display && data.profile?.mss2HeldRounded) setConnectedBalance(data.profile.mss2HeldRounded);
-      setMessage(display ? `Rounded Robinhood balance added to your public pilot profile: ${data.profile?.mss2HeldRounded ?? "0"} MSS2.` : "MSS2 balance hidden from the leaderboard.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The MSS2 balance could not be verified.");
-    } finally {
-      setBalanceBusy(false);
-    }
-  };
 
   const submit = async () => {
     if (!result || !result.reachedMoon || saving) return;
@@ -210,26 +134,6 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
       {message && <p className={styles.message} role="status">{message}</p>}
       {newAchievements.length > 0 && <div className={styles.unlocks}>{newAchievements.map((id) => { const item = achievement(id); return item ? <span key={id}><i>{item.icon}</i><b>{item.name}</b></span> : null; })}</div>}
 
-      <div className={styles.balancePanel}>
-        <i className={styles.balanceIcon} aria-hidden="true">M</i>
-        <span>
-          <small>CONNECTED WALLET · READ ONLY ON ROBINHOOD CHAIN</small>
-          <strong>{walletConnection ? connectedBalanceBusy ? "READING YOUR MSS2 BALANCE…" : connectedBalance !== null ? `~${connectedBalance} MSS2` : "MSS2 BALANCE UNAVAILABLE" : "CONNECT ONCE AT THE TOP"}</strong>
-          <em>{walletConnection
-            ? connectedBalanceError || (displayBalance && balanceLabel
-              ? `${balanceLabel} MSS2 is also displayed beside your pilot name.`
-              : "Your rounded balance appears automatically. No second connection, approval, or transaction is needed.")
-            : "The wallet connection at the top is shared across the entire arcade page."}</em>
-        </span>
-        <div>
-          {walletConnection ? <small>{walletConnection.account.slice(0, 6)}…{walletConnection.account.slice(-4)}</small> : <small>USE HEADER WALLET</small>}
-          {walletConnection && connectedBalanceError && <button type="button" onClick={() => void loadConnectedBalance(walletConnection.account)} disabled={connectedBalanceBusy}>{connectedBalanceBusy ? "CHECKING…" : "RETRY BALANCE"}</button>}
-          {displayBalance
-            ? <><button type="button" onClick={() => updateBalanceDisplay(true)} disabled={balanceBusy || !walletConnection}>{balanceBusy ? "UPDATING…" : "UPDATE PUBLIC BADGE"}</button><button type="button" className={styles.hideBalance} onClick={() => updateBalanceDisplay(false)} disabled={balanceBusy}>HIDE BADGE</button></>
-            : <button type="button" onClick={() => updateBalanceDisplay(true)} disabled={balanceBusy || !walletConnection || connectedBalanceBusy || connectedBalance === null}>{balanceBusy ? "ADDING…" : "ADD TO LEADERBOARD"}</button>}
-        </div>
-      </div>
-
       <section className={styles.rankingArena} aria-label="Mint Flyer rankings">
         <div className={styles.arenaHeading}><span><small>TOP PILOTS</small><strong>MOON PODIUM</strong></span><b>WEEKLY GLORY · PERSONAL BESTS</b></div>
         {loading ? <div className={styles.loadingCard}>SCANNING THE FLIGHT LOG…</div> : (
@@ -283,7 +187,6 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
         })}</div>
       </div>
 
-      <footer><b>CONNECTED BALANCE + OPTIONAL PUBLIC BADGE</b><span>Your connected wallet balance is read automatically and rounded for this page. Publishing it beside your pilot name requires one free proof signature; it never approves, moves, or spends tokens. This is not staking data.</span></footer>
     </section>
   );
 }
