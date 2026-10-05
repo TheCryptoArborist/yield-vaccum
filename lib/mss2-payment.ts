@@ -1,5 +1,5 @@
-import { getAddress, id, parseUnits, verifyMessage, zeroPadValue } from "ethers";
-import { MSS2_PAYMENT_RECIPIENT, MSS2_RECIPIENT_CONFIRMATION_MESSAGE } from "./mss2-payment-shared";
+import { getAddress, id, parseUnits, zeroPadValue } from "ethers";
+import { MSS2_COMMUNITY_AIRDROP_RESERVE } from "./mss2-payment-shared";
 
 export const ROBINHOOD_CHAIN_ID = 4663;
 export const ROBINHOOD_CHAIN_HEX = "0x1237";
@@ -10,8 +10,7 @@ export const MSS2_DECIMALS = 18;
 export const MSS2_PAIR = "0xdfcc6ad671033f7d3eceb24cbae5c0f7f6f8d91e";
 export const MSS2_PAIR_URL = `https://dexscreener.com/robinhood/${MSS2_PAIR}`;
 export const MSS2_PRICE_API = `https://api.dexscreener.com/latest/dex/pairs/robinhood/${MSS2_PAIR}`;
-export const EXPECTED_PAYMENT_RECIPIENT = MSS2_PAYMENT_RECIPIENT;
-export const RECIPIENT_CONFIRMATION_MESSAGE = MSS2_RECIPIENT_CONFIRMATION_MESSAGE;
+export const EXPECTED_PAYMENT_RECIPIENT = MSS2_COMMUNITY_AIRDROP_RESERVE;
 export const ENTRY_PRICE_USD = 1;
 export const PAYMENT_QUOTE_LIFETIME_MS = 90_000;
 export const PAYMENT_CONFIRMATION_GRACE_MS = 180_000;
@@ -53,33 +52,11 @@ export type VerifiedMarketQuote = {
   checkedAt: string;
 };
 
-function configuredRecipient() {
-  const value = process.env.MSS2_PAYMENT_RECIPIENT || EXPECTED_PAYMENT_RECIPIENT;
-  try {
-    return getAddress(value);
-  } catch {
-    return EXPECTED_PAYMENT_RECIPIENT;
-  }
-}
-
 export function paymentReadiness(): PaymentReadiness {
-  const recipient = configuredRecipient();
-  let recipientConfirmed = false;
-  const signature = process.env.MSS2_PAYMENT_RECIPIENT_SIGNATURE || "";
-  try {
-    recipientConfirmed = recipient.toLowerCase() === EXPECTED_PAYMENT_RECIPIENT.toLowerCase()
-      && /^0x[0-9a-fA-F]{130}$/.test(signature)
-      && verifyMessage(RECIPIENT_CONFIRMATION_MESSAGE, signature).toLowerCase() === recipient.toLowerCase();
-  } catch {
-    recipientConfirmed = false;
-  }
-  const enabled = process.env.CONTEXT === "production"
-    && process.env.MSS2_PAYMENTS_ENABLED === "true"
-    && recipientConfirmed;
-  let reason: string | null = null;
-  if (!recipientConfirmed) reason = "The payment recipient still needs an ownership confirmation.";
-  else if (process.env.CONTEXT !== "production") reason = "Real transfers stay disabled on preview deployments.";
-  else if (process.env.MSS2_PAYMENTS_ENABLED !== "true") reason = "The production payment switch is off.";
+  const recipient = getAddress(EXPECTED_PAYMENT_RECIPIENT);
+  const recipientConfirmed = false;
+  const enabled = false;
+  const reason = "Real MSS2 entries remain locked until the 50/50 entry router is deployed and verified.";
 
   return {
     enabled,

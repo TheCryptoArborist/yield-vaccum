@@ -7,7 +7,7 @@ import WalletConnect, { type WalletConnection } from "../wallet-connect";
 import Mss2Commitments from "./mss2-commitments";
 import MintFlyerLeaderboard, { type LeaderboardFlightResult } from "./mint-flyer-leaderboard";
 import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
-import { MSS2_PAYMENT_RECIPIENT, MSS2_RECIPIENT_CONFIRMATION_MESSAGE } from "../../lib/mss2-payment-shared";
+import { MSS2_COMMUNITY_AIRDROP_RESERVE, MSS2_DEAD_ADDRESS } from "../../lib/mss2-payment-shared";
 import styles from "./mint-flyer.module.css";
 
 type FlightPhase = "ready" | "countdown" | "playing" | "paused" | "crashed" | "victory";
@@ -78,7 +78,8 @@ const MAX_LIVES = 3;
 const DEMO_CONTINUE_COST = 100;
 const STARTING_DEMO_CREDITS = 100;
 const BEST_SCORE_KEY = "yield-vacuum-mss2-mint-flyer-best";
-const DEVELOPER_WALLET = MSS2_PAYMENT_RECIPIENT;
+const COMMUNITY_AIRDROP_WALLET = MSS2_COMMUNITY_AIRDROP_RESERVE;
+const DEAD_ADDRESS = MSS2_DEAD_ADDRESS;
 const ENTRY_PRICE_USD = 1;
 const SOUND_PREFERENCE_KEY = "yield-vacuum-mss2-mint-flyer-sound";
 const MOON_DISTANCE = 3000;
@@ -151,8 +152,6 @@ export default function MintFlyer() {
   const [paymentTxHash, setPaymentTxHash] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
-  const [recipientProof, setRecipientProof] = useState("");
-  const [recipientProofMessage, setRecipientProofMessage] = useState("");
 
   const playerYRef = useRef(0.5);
   const targetYRef = useRef(0.5);
@@ -426,21 +425,6 @@ export default function MintFlyer() {
     setPaymentMessage("");
     if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) void loadEntryQuote();
   }, [entryQuote, loadEntryQuote]);
-
-  const signRecipientProof = useCallback(async () => {
-    if (!walletConnection || walletConnection.account.toLowerCase() !== DEVELOPER_WALLET.toLowerCase()) {
-      setRecipientProofMessage(`Connect the recipient wallet ${DEVELOPER_WALLET.slice(0, 6)}…${DEVELOPER_WALLET.slice(-4)} first.`);
-      return;
-    }
-    setRecipientProofMessage("Check the wallet and sign the plain-text ownership message. This is not a transaction.");
-    try {
-      const signature = await walletConnection.signMessage(MSS2_RECIPIENT_CONFIRMATION_MESSAGE);
-      setRecipientProof(signature);
-      setRecipientProofMessage("Recipient control proved. Copy this signature for the final Netlify payment configuration.");
-    } catch (error) {
-      setRecipientProofMessage(error instanceof Error ? error.message : "The recipient confirmation was cancelled.");
-    }
-  }, [walletConnection]);
 
   const continueFlight = useCallback(() => {
     if (continued || demoCredits < DEMO_CONTINUE_COST) return;
@@ -866,8 +850,8 @@ export default function MintFlyer() {
                 </div>
                 <div className={styles.routePreview} aria-label="Three flight stages"><span>1 <b>MINT STREAM</b></span><i>→</i><span>2 <b>BLOCK SURGE</b></span><i>→</i><span>3 <b>MOON RUN</b></span></div>
                 <p className={styles.demoGameNote}>{paymentReadiness?.enabled
-                  ? <><b>LIVE ENTRY:</b> The exact MSS2 payment goes to the disclosed developer wallet after your approval. It is not burned. The optional dead-address commitment program is separate.</>
-                  : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed game entry supports development and planned manual liquidity—not a token burn. Permanent dead-address commitments remain a separate disabled demo.</>}</p>
+                  ? <><b>LIVE ENTRY:</b> The verified entry router sends 50% to the dead address and 50% to the Community Airdrop Reserve in one transaction.</>
+                  : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed entry split sends 50% to the dead address and 50% to the designated Community Airdrop Reserve. Real transfers remain disabled.</>}</p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 <button onClick={() => void reviewEntry()} disabled={paymentBusy || (paymentReadiness?.enabled ? !walletConnection || !playerKey : !entryQuote || quoteExpired)}>{paymentBusy ? "PREPARING…" : paymentReadiness?.enabled ? walletConnection ? "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : !entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "REVIEW SAFE DEMO"}</button>
               </> : <>
@@ -884,10 +868,11 @@ export default function MintFlyer() {
                   <span><small>{paymentReadiness?.enabled ? "EXACT TRANSFER" : "INDICATIVE AMOUNT"}</small><strong>{paymentReadiness?.enabled ? livePaymentQuote ? `${livePaymentQuote.displayAmount} MSS2` : "UNAVAILABLE" : entryQuote ? `${entryQuote.indicativeMss2ForEntry} MSS2` : "UNAVAILABLE"}</strong></span>
                   <span><small>PRICE REFERENCE</small><strong>ROBINHOOD CHAIN · TOPAZ</strong></span>
                   <span><small>QUOTE EXPIRES</small><strong className={(paymentReadiness?.enabled ? liveQuoteExpired : quoteExpired) ? styles.expiredText : ""}>{paymentReadiness?.enabled ? liveQuoteExpired ? "EXPIRED" : `${liveQuoteSecondsRemaining}s` : quoteExpired ? "EXPIRED" : `${quoteSecondsRemaining}s`}</strong></span>
-                  <span className={styles.reviewWide}><small>{paymentReadiness?.enabled ? "PAYMENT RECIPIENT" : "PROPOSED RECIPIENT"}</small><code>{paymentReadiness?.enabled ? livePaymentQuote?.recipient : DEVELOPER_WALLET}</code></span>
+                  <span className={styles.reviewWide}><small>50% · DEAD ADDRESS</small><code>{DEAD_ADDRESS}</code></span>
+                  <span className={styles.reviewWide}><small>50% · COMMUNITY AIRDROP RESERVE</small><code>{COMMUNITY_AIRDROP_WALLET}</code></span>
                   <span className={styles.reviewWide}><small>{paymentReadiness?.enabled ? "SERVER PAYMENT ID" : "DEMO QUOTE REFERENCE"}</small><code>{paymentReadiness?.enabled ? livePaymentQuote?.paymentId : entryQuote?.quoteId ?? "UNAVAILABLE"}</code></span>
                 </div>
-                <p className={styles.entryWarning}><b>{paymentReadiness?.enabled ? "FINAL TRANSFER" : "NO FUNDS MOVE"}</b><span>{paymentReadiness?.enabled ? "After wallet approval, MSS2 is sent directly to the disclosed developer wallet. The transfer is intended to be final and non-refundable. It does not guarantee rewards, income, token value, or uninterrupted service." : "This review is simulated. Real entry payments stay disabled on previews and until the recipient-control check is complete."}</span></p>
+                <p className={styles.entryWarning}><b>{paymentReadiness?.enabled ? "FINAL TRANSFER" : "NO FUNDS MOVE"}</b><span>{paymentReadiness?.enabled ? "After wallet approval, the router splits the MSS2 entry 50/50 between the dead address and Community Airdrop Reserve. Transfers are intended to be final and do not guarantee an airdrop, income, token value, or uninterrupted service." : "This review is simulated. Real entry payments stay disabled until the 50/50 router and backend verification are complete."}</span></p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 {paymentTxHash && <a className={styles.paymentTxLink} href={`https://robin.etherscan.io/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">VIEW SUBMITTED TRANSACTION ↗</a>}
                 <div className={styles.entryActions}>
@@ -929,10 +914,10 @@ export default function MintFlyer() {
               <section className={styles.lockedPayments} aria-label="Token payment readiness">
                 <div><small>MSS2 GAME ENTRY</small><strong>{paymentReadiness?.enabled ? "ROBINHOOD LIVE" : "RELEASE LOCKED"}</strong></div>
                 <ul>
-                  <li><b>ROBINHOOD CHAIN</b><span>{paymentReadiness?.enabled ? "Each scored run uses one exact MSS2 transfer. The server checks the chain, token, sender, recipient, amount, successful receipt, confirmations, and duplicate use." : "The payment code is gated until the recipient-control confirmation and production switch are complete."}</span></li>
+                  <li><b>ROBINHOOD CHAIN</b><span>{paymentReadiness?.enabled ? "Each scored run uses one exact MSS2 entry split. The server checks the chain, token, sender, both destinations, both amounts, receipt, confirmations, and duplicate use." : "The payment code is gated until the 50/50 router and matching backend verifier are complete."}</span></li>
                   <li><b>ARC</b><span>Locked until the live Arc MSS2 pool, quote source, RPC receipt path, and end-to-end verifier pass independently.</span></li>
                 </ul>
-                <p>{paymentReadiness?.enabled ? "The wallet shows the final transaction before anything moves. MSS2 entry payments go to the disclosed developer wallet. Permanent MSS2 commitments remain a separate demo." : "This preview requests no token approval or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only demo."}</p>
+                <p>{paymentReadiness?.enabled ? "The wallet shows the final router transaction before anything moves. Half goes to the dead address and half goes to the Community Airdrop Reserve." : "This preview requests no token approval or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only demo."}</p>
               </section>
             </div>
           )}
@@ -992,16 +977,8 @@ export default function MintFlyer() {
         <summary><span><small>PAYMENT SAFETY</small><strong>{paymentReadiness?.enabled ? "ROBINHOOD MSS2 ENTRY IS LIVE" : "REAL MSS2 REMAINS LOCKED"}</strong></span><b>VIEW DETAILS +</b></summary>
         <div className={styles.drawerBody}>
           <p>Continue credits are game-only. They have no cash value and cannot be purchased, transferred, withdrawn, or redeemed.</p>
-          <p>Disclosed developer recipient: <code>{DEVELOPER_WALLET}</code>. The entry target is $1.00 in MSS2 using a short-lived Robinhood/Topaz market quote. Payments are final after wallet approval and successful on-chain verification.</p>
-          <p>The developer has stated an intention to add proceeds to liquidity manually. Yield Vacuum does not perform that action automatically and does not guarantee it. An entry does not provide investment returns, token appreciation, or preferential leaderboard treatment.</p>
-          {!paymentReadiness?.recipientConfirmed && (
-            <div className={styles.recipientProof}>
-              <div><small>FINAL RELEASE CHECK</small><strong>PROVE CONTROL OF THE RECIPIENT WALLET</strong><p>Connect the disclosed recipient wallet and sign a plain-text message. The signature cannot move funds and is used only to prevent payments being enabled to an unverified address.</p></div>
-              <button type="button" onClick={() => void signRecipientProof()}>SIGN RECIPIENT CONFIRMATION</button>
-              {recipientProofMessage && <p role="status">{recipientProofMessage}</p>}
-              {recipientProof && <><textarea readOnly aria-label="Recipient confirmation signature" value={recipientProof} /><button type="button" onClick={() => void navigator.clipboard.writeText(recipientProof)}>COPY SIGNATURE</button></>}
-            </div>
-          )}
+          <p>The proposed entry target is $1.00 in MSS2 using a short-lived Robinhood/Topaz market quote. A future verified router would send <b>50%</b> to <code>{DEAD_ADDRESS}</code> and <b>50%</b> to the Community Airdrop Reserve at <code>{COMMUNITY_AIRDROP_WALLET}</code>.</p>
+          <p>The reserve is designated for a possible future community airdrop. No distribution, eligibility rule, timing, income, token appreciation, or preferential leaderboard treatment is promised. Real payments remain locked until the router and backend verifier are reviewed and tested.</p>
         </div>
       </details>
 
