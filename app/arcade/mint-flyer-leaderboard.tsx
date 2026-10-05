@@ -55,6 +55,9 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
   const [displayBalance, setDisplayBalance] = useState(false);
   const [balanceLabel, setBalanceLabel] = useState<string | null>(null);
   const [balanceBusy, setBalanceBusy] = useState(false);
+  const [connectedBalance, setConnectedBalance] = useState<string | null>(null);
+  const [connectedBalanceBusy, setConnectedBalanceBusy] = useState(false);
+  const [connectedBalanceError, setConnectedBalanceError] = useState("");
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -85,6 +88,36 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
     return () => window.cancelAnimationFrame(frame);
   }, [load]);
 
+  const loadConnectedBalance = useCallback(async (address: string, signal?: AbortSignal) => {
+    await Promise.resolve();
+    if (signal?.aborted) return;
+    setConnectedBalanceBusy(true);
+    setConnectedBalanceError("");
+    try {
+      const response = await fetch(`/api/mss2-balance?address=${encodeURIComponent(address)}`, { cache: "no-store", signal });
+      const data = await response.json() as { error?: string; rounded?: string };
+      if (!response.ok || typeof data.rounded !== "string") throw new Error(data.error || "The Robinhood MSS2 balance is temporarily unavailable.");
+      setConnectedBalance(data.rounded);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setConnectedBalance(null);
+      setConnectedBalanceError(error instanceof Error ? error.message : "The Robinhood MSS2 balance is temporarily unavailable.");
+    } finally {
+      if (!signal?.aborted) setConnectedBalanceBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const address = walletConnection?.account;
+    if (!address) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => void loadConnectedBalance(address, controller.signal), 0);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [loadConnectedBalance, walletConnection?.account]);
+
   const updateBalanceDisplay = async (display: boolean) => {
     if (balanceBusy || (display && !walletConnection?.account)) return;
     setBalanceBusy(true);
@@ -113,7 +146,8 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
       setDisplayBalance(data.profile?.displayMss2Balance === true);
       setBalanceLabel(data.profile?.mss2HeldRounded ?? null);
       setEntries(data.entries ?? []);
-      setMessage(display ? `Wallet ownership and rounded Robinhood balance verified: ${data.profile?.mss2HeldRounded ?? "0"} MSS2.` : "MSS2 balance hidden from the leaderboard.");
+      if (display && data.profile?.mss2HeldRounded) setConnectedBalance(data.profile.mss2HeldRounded);
+      setMessage(display ? `Rounded Robinhood balance added to your public pilot profile: ${data.profile?.mss2HeldRounded ?? "0"} MSS2.` : "MSS2 balance hidden from the leaderboard.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The MSS2 balance could not be verified.");
     } finally {
@@ -178,10 +212,21 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
 
       <div className={styles.balancePanel}>
         <i className={styles.balanceIcon} aria-hidden="true">M</i>
-        <span><small>OPTIONAL · VERIFIED ON ROBINHOOD CHAIN</small><strong>SHOW YOUR MSS2 HOLDING</strong><em>{displayBalance && balanceLabel ? `${balanceLabel} MSS2 is displayed beside your pilot name.` : "Add a rounded holding badge to your leaderboard profile. Your exact balance stays private."}</em></span>
+        <span>
+          <small>CONNECTED WALLET · READ ONLY ON ROBINHOOD CHAIN</small>
+          <strong>{walletConnection ? connectedBalanceBusy ? "READING YOUR MSS2 BALANCE…" : connectedBalance !== null ? `~${connectedBalance} MSS2` : "MSS2 BALANCE UNAVAILABLE" : "CONNECT ONCE AT THE TOP"}</strong>
+          <em>{walletConnection
+            ? connectedBalanceError || (displayBalance && balanceLabel
+              ? `${balanceLabel} MSS2 is also displayed beside your pilot name.`
+              : "Your rounded balance appears automatically. No second connection, approval, or transaction is needed.")
+            : "The wallet connection at the top is shared across the entire arcade page."}</em>
+        </span>
         <div>
-          {walletConnection ? <small>{walletConnection.account.slice(0, 6)}…{walletConnection.account.slice(-4)}</small> : <small>CONNECT ABOVE FIRST</small>}
-          {displayBalance ? <><button type="button" onClick={() => updateBalanceDisplay(true)} disabled={balanceBusy || !walletConnection}>{balanceBusy ? "CHECKING…" : "VERIFY + REFRESH"}</button><button type="button" className={styles.hideBalance} onClick={() => updateBalanceDisplay(false)} disabled={balanceBusy}>HIDE</button></> : <button type="button" onClick={() => updateBalanceDisplay(true)} disabled={balanceBusy || !walletConnection}>{balanceBusy ? "VERIFYING…" : "SIGN + DISPLAY BALANCE"}</button>}
+          {walletConnection ? <small>{walletConnection.account.slice(0, 6)}…{walletConnection.account.slice(-4)}</small> : <small>USE HEADER WALLET</small>}
+          {walletConnection && connectedBalanceError && <button type="button" onClick={() => void loadConnectedBalance(walletConnection.account)} disabled={connectedBalanceBusy}>{connectedBalanceBusy ? "CHECKING…" : "RETRY BALANCE"}</button>}
+          {displayBalance
+            ? <><button type="button" onClick={() => updateBalanceDisplay(true)} disabled={balanceBusy || !walletConnection}>{balanceBusy ? "UPDATING…" : "UPDATE PUBLIC BADGE"}</button><button type="button" className={styles.hideBalance} onClick={() => updateBalanceDisplay(false)} disabled={balanceBusy}>HIDE BADGE</button></>
+            : <button type="button" onClick={() => updateBalanceDisplay(true)} disabled={balanceBusy || !walletConnection || connectedBalanceBusy || connectedBalance === null}>{balanceBusy ? "ADDING…" : "ADD TO LEADERBOARD"}</button>}
         </div>
       </div>
 
@@ -238,7 +283,7 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
         })}</div>
       </div>
 
-      <footer><b>VERIFIED ROUNDED HOLDINGS</b><span>A free message signature proves wallet control without approving or moving tokens. Balances are then read from the MSS2 contract on Robinhood and rounded for display. This is not staking data.</span></footer>
+      <footer><b>CONNECTED BALANCE + OPTIONAL PUBLIC BADGE</b><span>Your connected wallet balance is read automatically and rounded for this page. Publishing it beside your pilot name requires one free proof signature; it never approves, moves, or spends tokens. This is not staking data.</span></footer>
     </section>
   );
 }
