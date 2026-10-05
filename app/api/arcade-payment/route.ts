@@ -1,10 +1,19 @@
 import { createArcadePaymentQuote, verifyArcadePayment } from "../../../db/arcade-payments";
-import { paymentReadiness } from "../../../lib/mss2-payment";
+import { paymentReadiness, readVerifiedMarketQuote } from "../../../lib/mss2-payment";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  return Response.json(paymentReadiness(), { headers: { "Cache-Control": "no-store" } });
+export async function GET(request: Request) {
+  const readiness = paymentReadiness();
+  if (new URL(request.url).searchParams.get("diagnostics") !== "1") {
+    return Response.json(readiness, { headers: { "Cache-Control": "no-store" } });
+  }
+  try {
+    const market = await readVerifiedMarketQuote(BigInt(0));
+    return Response.json({ ...readiness, diagnostics: { deployment: "VERIFIED", decimals: 18, priceSource: "DEX Screener · Robinhood · Topaz", priceUsd: market.priceUsd, liquidityUsd: market.liquidityUsd, indicativeAmount: market.displayAmount, checkedAt: market.checkedAt } }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    return Response.json({ ...readiness, diagnostics: { deployment: "UNAVAILABLE", error: error instanceof Error ? error.message : "Payment diagnostics failed." } }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
 }
 
 export async function POST(request: Request) {
