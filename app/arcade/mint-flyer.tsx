@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import WalletConnect from "../wallet-connect";
 import Mss2Commitments from "./mss2-commitments";
+import MintFlyerLeaderboard, { type LeaderboardFlightResult } from "./mint-flyer-leaderboard";
 import styles from "./mint-flyer.module.css";
 
 type FlightPhase = "ready" | "countdown" | "playing" | "paused" | "crashed" | "victory";
@@ -105,6 +106,7 @@ export default function MintFlyer() {
   const [stage, setStage] = useState<FlightStage>(1);
   const [stageNotice, setStageNotice] = useState(false);
   const [moonBonus, setMoonBonus] = useState(0);
+  const [runId, setRunId] = useState("");
 
   const playerYRef = useRef(0.5);
   const targetYRef = useRef(0.5);
@@ -254,6 +256,7 @@ export default function MintFlyer() {
     setContinued(false);
     setNewBest(false);
     setReviewingEntry(false);
+    setRunId(crypto.randomUUID());
     setCountdown(3);
     setPhase("countdown");
   }, []);
@@ -525,6 +528,17 @@ export default function MintFlyer() {
     : maxCombo < 10
       ? "Chain 10 Mint Credits without a hit to unlock the 5X multiplier."
       : "Clean flight. Hold the 5X combo longer and collect more Mint Credits to raise your score.";
+  const leaderboardResult: LeaderboardFlightResult | null = phase === "victory" && runId ? {
+    runId,
+    score,
+    distance,
+    mintsCollected,
+    maxCombo,
+    hits: totalHits,
+    lives,
+    reachedMoon: true,
+    continued,
+  } : null;
 
   return (
     <main className={styles.arcadeShell}>
@@ -789,6 +803,7 @@ export default function MintFlyer() {
                 <span><small>BLOCK HITS</small><strong>{totalHits}</strong></span>
               </div>
               <p className={styles.replayTarget}>{nextGradeTarget ? <><b>{(nextGradeTarget.score - score).toLocaleString()} MORE POINTS FOR GRADE {nextGradeTarget.grade}</b><span>{replayCoach}</span></> : <><b>GRADE S ACHIEVED</b><span>{replayCoach} Replay to beat your local best of {bestScore.toLocaleString()}.</span></>}</p>
+              <a className={styles.leaderboardJump} href="#mint-flyer-leaderboard">SAVE SCORE + VIEW LEADERBOARD ↓</a>
               <button className={styles.moonReplayButton} onClick={prepareAnotherRun}>↻ FLY TO THE MOON AGAIN</button>
             </div>
           )}
@@ -800,6 +815,8 @@ export default function MintFlyer() {
           <span><b>AVOID</b> PINK BLOCKS · -1 LIFE</span>
         </footer>
       </section>
+
+      <MintFlyerLeaderboard result={leaderboardResult} />
 
       <details className={styles.infoDrawer} id="payment-safety">
         <summary><span><small>DEMO SAFETY</small><strong>NO REAL MSS2 IS CHARGED</strong></span><b>VIEW DETAILS +</b></summary>
