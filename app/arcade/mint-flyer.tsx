@@ -844,7 +844,12 @@ export default function MintFlyer() {
               {!reviewingEntry ? <>
                 <small>HOW TO PLAY · {paymentReadiness?.enabled ? "PAID ROBINHOOD FLIGHT" : "SAFE DEMO FLIGHT"}</small>
                 <h2>FLY. COLLECT. SURVIVE.</h2>
-                <p className={styles.briefingLead}>Move the <b>MSS2 flyer</b>. Collect cyan. Avoid pink. Reach the Moon before three hits end the flight.</p>
+                <p className={styles.briefingLead}>Pilot the <b>MSS2 flyer</b> through all three stages, build the biggest combo, and reach the Moon with the highest score you can.</p>
+                <div className={styles.whyPlay} aria-label="Why play Mint Flyer">
+                  <span><i aria-hidden="true">🌕</i><b>REACH THE MOON</b><small>Survive 3,000 meters</small></span>
+                  <span><i aria-hidden="true">🏆</i><b>CLIMB THE BOARD</b><small>Beat the top score</small></span>
+                  <span><i aria-hidden="true">★</i><b>UNLOCK BADGES</b><small>Master clean runs and combos</small></span>
+                </div>
                 <div className={styles.howToGrid} aria-label="How to play Mint Flyer">
                   <article>
                     <i className={styles.howToMove}>↕</i>
@@ -861,8 +866,8 @@ export default function MintFlyer() {
                 </div>
                 <div className={styles.routePreview} aria-label="Three flight stages"><span>1 <b>MINT STREAM</b></span><i>→</i><span>2 <b>BLOCK SURGE</b></span><i>→</i><span>3 <b>MOON RUN</b></span></div>
                 <p className={styles.demoGameNote}>{paymentReadiness?.enabled
-                  ? <><b>LIVE ENTRY:</b> Connect a wallet and pay the exact quoted MSS2 amount on Robinhood Chain. The backend verifies the receipt before flight.</>
-                  : <><b>PAYMENT REVIEW MODE:</b> This preview moves no funds. {paymentReadiness?.reason || "The production payment switch is off."}</>}</p>
+                  ? <><b>LIVE ENTRY:</b> The exact MSS2 payment goes to the disclosed developer wallet after your approval. It is not burned. The optional dead-address commitment program is separate.</>
+                  : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed game entry supports development and planned manual liquidity—not a token burn. Permanent dead-address commitments remain a separate disabled demo.</>}</p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 <button onClick={() => void reviewEntry()} disabled={paymentBusy || (paymentReadiness?.enabled ? !walletConnection || !playerKey : !entryQuote || quoteExpired)}>{paymentBusy ? "PREPARING…" : paymentReadiness?.enabled ? walletConnection ? "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : !entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "REVIEW SAFE DEMO"}</button>
               </> : <>
