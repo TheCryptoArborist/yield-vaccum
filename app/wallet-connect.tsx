@@ -374,7 +374,9 @@ export default function WalletConnect({
             </div>
           )}
 
-          <p className={styles.disclosure}>Connecting shares the selected public address and current network. Network buttons never request a payment. In the MSS2 Arcade, choosing to display a balance requests a free plain-text ownership signature—never a token approval or transfer.</p>
+          <p className={styles.disclosure}>{theme === "mss"
+            ? "Connecting shares the selected public address and current network. Choosing to display a balance requests a free plain-text ownership signature—never a token approval or transfer."
+            : "Connecting shares the selected public address and current network. Network buttons may ask the wallet to add or switch chains, but never request a signature, token approval, or transfer."}</p>
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>
       )}
