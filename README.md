@@ -39,7 +39,7 @@ The MSS2 Commitments panel is a separate Robinhood-only demonstration for propos
 
 ## Wallet foundation
 
-The campaign header and MSS2 Arcade can discover MetaMask, Rabby, and other EIP-6963 browser wallets. Connecting reads the selected public account and current chain after user consent. The MSS2 arcade can request Robinhood network selection and one exact ERC-20 transfer only after the user reviews a live server quote. It never asks for an unlimited token approval.
+The campaign header and MSS2 Arcade can discover MetaMask, Rabby, and other EIP-6963 browser wallets. Connecting reads the selected public account and current chain after user consent. The arcade header reads a rounded MSS2 wallet balance from the currently selected Robinhood or Arc chain; BNB Chain is clearly marked as unsupported for MSS2 balances. The MSS2 arcade can request Robinhood network selection and one exact ERC-20 transfer only after the user reviews a live server quote. It never asks for an unlimited token approval.
 
 The Mint Flyer entry and result screens show the current payment readiness. MSS2 is the required entry asset when production payments are enabled. TOPAZ remains outside this release. Game-credit continues remain separate from token entry payments.
 

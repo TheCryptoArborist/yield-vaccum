@@ -134,8 +134,11 @@ export default function WalletConnect({
   const [busy, setBusy] = useState(false);
   const [switchingChain, setSwitchingChain] = useState("");
   const [message, setMessage] = useState("");
-  const [mss2Balance, setMss2Balance] = useState<string | null>(null);
-  const [mss2BalanceState, setMss2BalanceState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [mss2BalanceResult, setMss2BalanceResult] = useState<{
+    key: string;
+    balance: string | null;
+    state: "loading" | "ready" | "error";
+  }>({ key: "", balance: null, state: "loading" });
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -264,26 +267,28 @@ export default function WalletConnect({
 
   useEffect(() => {
     if (theme !== "mss" || !account) return;
+    const activeChainId = chainId.toLowerCase();
+    if (activeChainId !== "0x1237" && activeChainId !== "0x13b2") return;
+    const requestKey = `${account.toLowerCase()}:${activeChainId}`;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
-      setMss2BalanceState("loading");
+      setMss2BalanceResult({ key: requestKey, balance: null, state: "loading" });
       try {
-        const response = await fetch(`/api/mss2-balance?address=${encodeURIComponent(account)}`, { cache: "no-store", signal: controller.signal });
+        const params = new URLSearchParams({ address: account, chainId: activeChainId });
+        const response = await fetch(`/api/mss2-balance?${params.toString()}`, { cache: "no-store", signal: controller.signal });
         const data = await response.json() as { error?: string; rounded?: string };
         if (!response.ok || typeof data.rounded !== "string") throw new Error(data.error || "Balance unavailable.");
-        setMss2Balance(data.rounded);
-        setMss2BalanceState("ready");
+        setMss2BalanceResult({ key: requestKey, balance: data.rounded, state: "ready" });
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setMss2Balance(null);
-        setMss2BalanceState("error");
+        setMss2BalanceResult({ key: requestKey, balance: null, state: "error" });
       }
     }, 0);
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [account, theme]);
+  }, [account, chainId, theme]);
 
   useEffect(() => {
     if (!open && !networkOpen) return;
@@ -377,6 +382,17 @@ export default function WalletConnect({
   };
 
   const currentNetwork = SUPPORTED_NETWORKS.find((network) => network.chainId === chainId.toLowerCase());
+  const balanceChainId = chainId.toLowerCase();
+  const supportsMss2Balance = balanceChainId === "0x1237" || balanceChainId === "0x13b2";
+  const activeBalanceKey = account ? `${account.toLowerCase()}:${balanceChainId}` : "";
+  const mss2BalanceState: "idle" | "loading" | "ready" | "unsupported" | "error" = theme !== "mss" || !account
+    ? "idle"
+    : !supportsMss2Balance
+      ? "unsupported"
+      : mss2BalanceResult.key === activeBalanceKey
+        ? mss2BalanceResult.state
+        : "loading";
+  const mss2Balance = mss2BalanceResult.key === activeBalanceKey ? mss2BalanceResult.balance : null;
 
   return (
     <div ref={rootRef} className={`${styles.walletConnect} ${compact ? styles.compact : ""} ${theme === "mss" ? styles.mss : ""}`}>
@@ -395,7 +411,13 @@ export default function WalletConnect({
           <span>
             <small>{account ? `CONNECTED · ${selectedWallet?.info.name || "WALLET"}` : "METAMASK · RABBY"}</small>
             <strong>{account && theme === "mss"
-              ? mss2BalanceState === "ready" ? `~${mss2Balance} MSS2` : mss2BalanceState === "error" ? "BALANCE UNAVAILABLE" : "CHECKING MSS2…"
+              ? mss2BalanceState === "ready"
+                ? `~${mss2Balance} MSS2`
+                : mss2BalanceState === "unsupported"
+                  ? "MSS2 NOT ON THIS CHAIN"
+                  : mss2BalanceState === "error"
+                    ? "BALANCE UNAVAILABLE"
+                    : "CHECKING MSS2…"
               : account ? shortAddress(account) : "CONNECT WALLET"}</strong>
             {account && theme === "mss" && <em>{shortAddress(account)}</em>}
           </span>
@@ -494,7 +516,7 @@ export default function WalletConnect({
           )}
 
           <p className={styles.disclosure}>{theme === "mss"
-            ? "Connecting once activates wallet features across this arcade page and reads a rounded Robinhood MSS2 balance without a signature. A future live arcade entry may request one exact MSS2 transfer only after a separate on-site review; it never requests an unlimited token approval."
+            ? "Connecting once activates wallet features across this arcade page and reads the rounded MSS2 balance for the selected Robinhood or Arc network without a signature. A future live arcade entry may request one exact MSS2 transfer only after a separate on-site review; it never requests an unlimited token approval."
             : "Connecting shares the selected public address and current network. Network buttons may ask the wallet to add or switch chains, but never request a signature, token approval, or transfer."}</p>
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>
