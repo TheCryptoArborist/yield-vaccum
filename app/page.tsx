@@ -1768,10 +1768,23 @@ export default function YieldVacuumGame() {
             <img src="/topaz-mark.png" alt="Topaz" />
           </div>
           <h1 className="splashTitle"><span>YIELD</span><strong>VACUUM</strong></h1>
-          <p className="splashNetwork">AN INDEPENDENT GAME ABOUT TOPAZ DEX · BNB CHAIN + ROBINHOOD CHAIN EXPANSION</p>
-          <div className="splashActions">
-            <button className="splashEnter" onClick={() => prepareBriefing()}>ENTER THE VACUUM</button>
-            <a className="splashArcadeLink" href="/arcade"><small>OPTIONAL MSS2 ARCADE</small><strong>PLAY MINT FLYER →</strong></a>
+          <p className="splashNetwork">TWO GAME EXPERIENCES · CHOOSE YOUR PATH</p>
+          <div className="splashGameMenu" aria-label="Choose a Yield Vacuum game">
+            <p>CHOOSE YOUR GAME</p>
+            <div className="splashActions">
+              <button className="splashGameChoice splashTopazChoice" onClick={() => prepareBriefing()}>
+                <span className="splashChoiceBrand"><i>TOPAZ</i><small>EDUCATIONAL CAMPAIGN</small></span>
+                <strong>YIELD VACUUM MISSIONS</strong>
+                <b>11 lessons · achievements · leaderboard</b>
+                <em>PLAY TOPAZ CAMPAIGN →</em>
+              </button>
+              <a className="splashGameChoice splashMss2Choice" href="/arcade">
+                <span className="splashChoiceBrand"><i>MSS2</i><small>ARCADE GAME</small></span>
+                <strong>MINT FLYER</strong>
+                <b>Demo entry · real token payments disabled</b>
+                <em>OPEN MSS2 ARCADE →</em>
+              </a>
+            </div>
           </div>
         </section>
       )}

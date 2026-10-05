@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@netlify/blobs": "^10.0.11",
+    "ethers": "6.15.0",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6"
