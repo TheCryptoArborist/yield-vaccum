@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { MINT_FLYER_ACHIEVEMENTS, type MintFlyerAchievementId } from "../../lib/mint-flyer-achievements";
+import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
 import type { WalletConnection } from "../wallet-connect";
 import styles from "./mint-flyer-leaderboard.module.css";
 
@@ -32,9 +33,9 @@ export type LeaderboardFlightResult = {
   lives: number;
   reachedMoon: boolean;
   continued: boolean;
+  paymentId?: string;
 };
 
-const PLAYER_KEY = "yield-vacuum-mint-flyer-player";
 const NICKNAME_KEY = "yield-vacuum-mint-flyer-nickname";
 
 function achievement(id: MintFlyerAchievementId) {
@@ -75,9 +76,8 @@ export default function MintFlyerLeaderboard({ result, walletConnection }: { res
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const key = window.localStorage.getItem(PLAYER_KEY) || crypto.randomUUID();
+      const key = ensureMintFlyerPlayerKey();
       const storedNickname = window.localStorage.getItem(NICKNAME_KEY) || "";
-      window.localStorage.setItem(PLAYER_KEY, key);
       setPlayerKey(key);
       setNickname(storedNickname);
       void load(key);

@@ -45,6 +45,8 @@ export type WalletConnection = {
   account: string;
   chainId: string;
   signMessage: (message: string) => Promise<string>;
+  switchChain: (chainId: `0x${string}`) => Promise<void>;
+  sendTransaction: (transaction: { to: string; data: string; value?: string }) => Promise<string>;
 };
 
 declare global {
@@ -70,7 +72,7 @@ const SUPPORTED_NETWORKS: WalletNetwork[] = [
     shortName: "ROBINHOOD CHAIN",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: ["https://rpc.mainnet.chain.robinhood.com"],
-    blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
+    blockExplorerUrls: ["https://robin.etherscan.io"],
   },
   {
     chainId: "0x13b2",
@@ -78,7 +80,7 @@ const SUPPORTED_NETWORKS: WalletNetwork[] = [
     shortName: "ARC",
     nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
     rpcUrls: ["https://rpc.mainnet.arc.io"],
-    blockExplorerUrls: ["https://explorer.arc.io"],
+    blockExplorerUrls: ["https://arc.etherscan.io"],
   },
 ];
 
@@ -218,6 +220,38 @@ export default function WalletConnect({
         if (typeof signature !== "string") throw new Error("The wallet did not return a valid signature.");
         return signature;
       },
+      switchChain: async (targetChainId: `0x${string}`) => {
+        const network = SUPPORTED_NETWORKS.find((item) => item.chainId === targetChainId.toLowerCase());
+        if (!network) throw new Error("That network is not supported by Yield Vacuum.");
+        try {
+          await selectedWallet.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: network.chainId }] });
+        } catch (error) {
+          if (providerErrorCode(error) !== 4902) throw error;
+          await selectedWallet.provider.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: network.chainId,
+              chainName: network.name,
+              nativeCurrency: network.nativeCurrency,
+              rpcUrls: network.rpcUrls,
+              blockExplorerUrls: network.blockExplorerUrls,
+            }],
+          });
+          await selectedWallet.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: network.chainId }] });
+        }
+        const activeChain = await selectedWallet.provider.request({ method: "eth_chainId" });
+        const normalized = typeof activeChain === "string" ? activeChain.toLowerCase() : "";
+        if (normalized !== network.chainId) throw new Error(`The wallet did not switch to ${network.name}.`);
+        setChainId(normalized);
+      },
+      sendTransaction: async (transaction) => {
+        const txHash = await selectedWallet.provider.request({
+          method: "eth_sendTransaction",
+          params: [{ from: account, to: transaction.to, data: transaction.data, value: transaction.value ?? "0x0" }],
+        });
+        if (typeof txHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error("The wallet did not return a valid transaction hash.");
+        return txHash;
+      },
     });
   }, [account, chainId, onConnectionChange, selectedWallet]);
 
@@ -328,7 +362,7 @@ export default function WalletConnect({
             <button type="button" onClick={() => setOpen(false)} aria-label="Close wallet panel">×</button>
           </header>
 
-          <p className={styles.locked}>WALLET + NETWORK ONLY · GAME PAYMENTS LOCKED</p>
+          <p className={styles.locked}>WALLET + NETWORK · REVIEW EVERY REQUEST</p>
 
           {account ? (
             <>
@@ -375,7 +409,7 @@ export default function WalletConnect({
           )}
 
           <p className={styles.disclosure}>{theme === "mss"
-            ? "Connecting shares the selected public address and current network. Choosing to display a balance requests a free plain-text ownership signature—never a token approval or transfer."
+            ? "Connecting shares the selected public address and current network. Balance display uses a free message signature. A live arcade entry may request one exact MSS2 transfer only after a separate on-site review; it never requests an unlimited token approval."
             : "Connecting shares the selected public address and current network. Network buttons may ask the wallet to add or switch chains, but never request a signature, token approval, or transfer."}</p>
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>

@@ -1781,7 +1781,7 @@ export default function YieldVacuumGame() {
               <a className="splashGameChoice splashMss2Choice" href="/arcade">
                 <span className="splashChoiceBrand"><i>MSS2</i><small>ARCADE GAME</small></span>
                 <strong>MINT FLYER</strong>
-                <b>Demo entry · real token payments disabled</b>
+                <b>Robinhood MSS2 entry · wallet verification</b>
                 <em>OPEN MSS2 ARCADE →</em>
               </a>
             </div>
