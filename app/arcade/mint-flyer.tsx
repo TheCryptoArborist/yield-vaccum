@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import WalletConnect from "../wallet-connect";
+import WalletConnect, { type WalletConnection } from "../wallet-connect";
 import Mss2Commitments from "./mss2-commitments";
 import MintFlyerLeaderboard, { type LeaderboardFlightResult } from "./mint-flyer-leaderboard";
 import styles from "./mint-flyer.module.css";
@@ -107,6 +107,7 @@ export default function MintFlyer() {
   const [stageNotice, setStageNotice] = useState(false);
   const [moonBonus, setMoonBonus] = useState(0);
   const [runId, setRunId] = useState("");
+  const [walletConnection, setWalletConnection] = useState<WalletConnection | null>(null);
 
   const playerYRef = useRef(0.5);
   const targetYRef = useRef(0.5);
@@ -560,7 +561,7 @@ export default function MintFlyer() {
           </span>
         </div>
         <div className={styles.walletZone}>
-          <WalletConnect theme="mss" />
+          <WalletConnect theme="mss" onConnectionChange={setWalletConnection} />
           <div className={styles.paymentStatus}><i aria-hidden="true" /><span><small>REAL PAYMENTS</small><strong>DISABLED</strong></span></div>
         </div>
       </header>
@@ -817,7 +818,7 @@ export default function MintFlyer() {
         </footer>
       </section>
 
-      <MintFlyerLeaderboard result={leaderboardResult} />
+      <MintFlyerLeaderboard result={leaderboardResult} walletConnection={walletConnection} />
 
       <details className={styles.infoDrawer} id="payment-safety">
         <summary><span><small>DEMO SAFETY</small><strong>NO REAL MSS2 IS CHARGED</strong></span><b>VIEW DETAILS +</b></summary>

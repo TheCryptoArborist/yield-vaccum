@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { MINT_FLYER_ACHIEVEMENTS, type MintFlyerAchievementId } from "../../lib/mint-flyer-achievements";
+import type { WalletConnection } from "../wallet-connect";
 import styles from "./mint-flyer-leaderboard.module.css";
 
 type Entry = {
@@ -15,7 +16,9 @@ type Entry = {
   moonClears: number;
   unlocked: MintFlyerAchievementId[];
   displayedAchievements: MintFlyerAchievementId[];
-  mss2Held: null;
+  displayMss2Balance?: boolean;
+  mss2HeldRounded?: string | null;
+  mss2BalanceCheckedAt?: string | null;
 };
 
 export type LeaderboardFlightResult = {
@@ -37,7 +40,7 @@ function achievement(id: MintFlyerAchievementId) {
   return MINT_FLYER_ACHIEVEMENTS.find((item) => item.id === id);
 }
 
-export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFlightResult | null }) {
+export default function MintFlyerLeaderboard({ result, walletConnection }: { result: LeaderboardFlightResult | null; walletConnection: WalletConnection | null }) {
   const [playerKey, setPlayerKey] = useState("");
   const [nickname, setNickname] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -47,6 +50,9 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
   const [saving, setSaving] = useState(false);
   const [savedRunId, setSavedRunId] = useState("");
   const [message, setMessage] = useState("");
+  const [displayBalance, setDisplayBalance] = useState(false);
+  const [balanceLabel, setBalanceLabel] = useState<string | null>(null);
+  const [balanceBusy, setBalanceBusy] = useState(false);
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -56,6 +62,8 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
       if (!response.ok) throw new Error(data.error || "Leaderboard unavailable.");
       setEntries(data.entries ?? []);
       setUnlocked(data.profile?.unlocked ?? []);
+      setDisplayBalance(data.profile?.displayMss2Balance === true);
+      setBalanceLabel(data.profile?.mss2HeldRounded ?? null);
       setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Leaderboard unavailable.");
@@ -75,6 +83,29 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
     });
     return () => window.cancelAnimationFrame(frame);
   }, [load]);
+
+  const updateBalanceDisplay = async (display: boolean) => {
+    if (balanceBusy || (display && !walletConnection?.account)) return;
+    setBalanceBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/arcade-leaderboard", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerKey, walletAddress: walletConnection?.account ?? "", display }),
+      });
+      const data = await response.json() as { error?: string; profile?: Entry; entries?: Entry[] };
+      if (!response.ok) throw new Error(data.error || "The MSS2 balance could not be verified.");
+      setDisplayBalance(data.profile?.displayMss2Balance === true);
+      setBalanceLabel(data.profile?.mss2HeldRounded ?? null);
+      setEntries(data.entries ?? []);
+      setMessage(display ? `Rounded Robinhood balance verified: ${data.profile?.mss2HeldRounded ?? "0"} MSS2.` : "MSS2 balance hidden from the leaderboard.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The MSS2 balance could not be verified.");
+    } finally {
+      setBalanceBusy(false);
+    }
+  };
 
   const submit = async () => {
     if (!result || !result.reachedMoon || saving) return;
@@ -122,12 +153,20 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
       {message && <p className={styles.message} role="status">{message}</p>}
       {newAchievements.length > 0 && <div className={styles.unlocks}>{newAchievements.map((id) => { const item = achievement(id); return item ? <span key={id}><i>{item.icon}</i><b>{item.name}</b></span> : null; })}</div>}
 
+      <div className={styles.balancePanel}>
+        <span><small>OPTIONAL · READ ONLY · ROBINHOOD</small><strong>ROUNDED MSS2 BALANCE</strong><em>{displayBalance && balanceLabel ? `${balanceLabel} MSS2 is visible beside your leaderboard name.` : "Connect a wallet to display an approximate holding such as 1.28M MSS2."}</em></span>
+        <div>
+          {walletConnection ? <small>{walletConnection.account.slice(0, 6)}…{walletConnection.account.slice(-4)}</small> : <small>CONNECT ABOVE FIRST</small>}
+          {displayBalance ? <><button type="button" onClick={() => updateBalanceDisplay(true)} disabled={balanceBusy || !walletConnection}>{balanceBusy ? "CHECKING…" : "REFRESH"}</button><button type="button" className={styles.hideBalance} onClick={() => updateBalanceDisplay(false)} disabled={balanceBusy}>HIDE</button></> : <button type="button" onClick={() => updateBalanceDisplay(true)} disabled={balanceBusy || !walletConnection}>{balanceBusy ? "VERIFYING…" : "DISPLAY MY BALANCE"}</button>}
+        </div>
+      </div>
+
       <div className={styles.table}>
         <div className={styles.tableHead}><span>RANK</span><span>PLAYER + BADGES</span><span>MOON CLEARS</span><span>BEST</span></div>
         {loading ? <p>LOADING FLIGHT RECORDS…</p> : entries.length === 0 ? <p>NO MOON RUNS RECORDED YET. CLAIM THE FIRST RANK.</p> : entries.map((entry, index) => (
           <div className={`${styles.row} ${index < 3 ? styles.podium : ""}`} key={entry.playerKey}>
             <span className={styles.rank}>{index + 1}</span>
-            <span className={styles.identity}><strong>{entry.nickname}</strong><em>{entry.displayedAchievements.map((id) => { const item = achievement(id); return item ? <i key={id} title={`${item.name}: ${item.description}`}>{item.icon}</i> : null; })}</em><small>{entry.unlocked.length} BADGES · {entry.totalMints} MINT CREDITS</small></span>
+            <span className={styles.identity}><strong>{entry.nickname}</strong><em>{entry.displayedAchievements.map((id) => { const item = achievement(id); return item ? <i key={id} title={`${item.name}: ${item.description}`}>{item.icon}</i> : null; })}</em><small>{entry.unlocked.length} BADGES · {entry.totalMints} MINT CREDITS</small>{entry.mss2HeldRounded && <b className={styles.heldBalance}>RH MSS2 · {entry.mss2HeldRounded}</b>}</span>
             <span className={styles.clears}>{entry.moonClears}</span>
             <span className={styles.score}><b>{entry.bestScore.toLocaleString()}</b><small>GRADE {entry.bestGrade}</small></span>
           </div>
@@ -142,7 +181,7 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
         })}</div>
       </div>
 
-      <footer><b>WALLET DATA IS OFF</b><span>MSS2 held is not displayed until the token deployment, network reads, and player opt-in are verified. Permanent dead-address commitments are not labeled as staking.</span></footer>
+      <footer><b>ROUNDED HOLDINGS ONLY</b><span>Balances are opt-in, read directly from the verified MSS2 contract on Robinhood, rounded for display, and may be delayed. This is not staking data. Permanent dead-address commitments remain separate.</span></footer>
     </section>
   );
 }

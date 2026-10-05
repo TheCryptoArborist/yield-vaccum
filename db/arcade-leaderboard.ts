@@ -1,5 +1,6 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
 import { MINT_FLYER_ACHIEVEMENTS, mintFlyerGrade, type MintFlyerAchievementId } from "../lib/mint-flyer-achievements";
+import { readRoundedRobinhoodMss2Balance } from "../lib/mss2-balance";
 
 export type MintFlyerRun = {
   runId: string;
@@ -27,12 +28,15 @@ export type MintFlyerProfile = {
   runs: number;
   moonClears: number;
   unlocked: MintFlyerAchievementId[];
+  displayMss2Balance?: boolean;
+  mss2Wallet?: string | null;
+  mss2HeldRounded?: string | null;
+  mss2BalanceCheckedAt?: string | null;
   updatedAt: string;
 };
 
 export type MintFlyerLeaderboardEntry = MintFlyerProfile & {
   displayedAchievements: MintFlyerAchievementId[];
-  mss2Held: null;
 };
 
 function arcadeStore() {
@@ -91,14 +95,39 @@ export async function saveMintFlyerRun(input: Omit<MintFlyerRun, "grade" | "crea
   return { duplicate: false, profile, newAchievements: profile.unlocked.filter((id) => !previous.has(id)) };
 }
 
+export async function updateMintFlyerBalanceDisplay(playerKey: string, display: boolean, walletAddress = "") {
+  const store = arcadeStore();
+  const profile = await readMintFlyerProfile(playerKey);
+  if (!display) {
+    profile.displayMss2Balance = false;
+    profile.mss2Wallet = null;
+    profile.mss2HeldRounded = null;
+    profile.mss2BalanceCheckedAt = null;
+  } else {
+    const rounded = await readRoundedRobinhoodMss2Balance(walletAddress);
+    profile.displayMss2Balance = true;
+    profile.mss2Wallet = walletAddress.toLowerCase();
+    profile.mss2HeldRounded = rounded;
+    profile.mss2BalanceCheckedAt = new Date().toISOString();
+  }
+  profile.updatedAt = new Date().toISOString();
+  await store.setJSON(`profiles/${playerKey}.json`, profile);
+  return profile;
+}
+
 export async function readMintFlyerLeaderboard() {
   const store = arcadeStore();
   const { blobs } = await store.list({ prefix: "profiles/" });
   const profiles = (await Promise.all(blobs.map((blob) => store.get(blob.key, { type: "json" }) as Promise<MintFlyerProfile | null>)))
     .filter((profile): profile is MintFlyerProfile => Boolean(profile));
   return profiles
+    .filter((profile) => profile.moonClears > 0)
     .sort((a, b) => b.bestScore - a.bestScore || b.moonClears - a.moonClears || a.updatedAt.localeCompare(b.updatedAt))
     .slice(0, 25)
-    .map((profile): MintFlyerLeaderboardEntry => ({ ...profile, displayedAchievements: profile.unlocked.slice(-3).reverse(), mss2Held: null }));
+    .map((profile): MintFlyerLeaderboardEntry => ({
+      ...profile,
+      mss2Wallet: null,
+      mss2HeldRounded: profile.displayMss2Balance ? profile.mss2HeldRounded ?? null : null,
+      displayedAchievements: profile.unlocked.slice(-3).reverse(),
+    }));
 }
-

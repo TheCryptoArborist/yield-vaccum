@@ -41,6 +41,11 @@ type WalletProviderError = Error & { code?: number };
 
 type ProviderAnnouncement = CustomEvent<{ info: WalletInfo; provider: WalletProvider }>;
 
+export type WalletConnection = {
+  account: string;
+  chainId: string;
+};
+
 declare global {
   interface Window {
     ethereum?: WalletProvider;
@@ -104,7 +109,15 @@ function legacyWalletName(provider: WalletProvider, index: number) {
   return index ? `Browser wallet ${index + 1}` : "Browser wallet";
 }
 
-export default function WalletConnect({ compact = false, theme = "topaz" }: { compact?: boolean; theme?: "topaz" | "mss" }) {
+export default function WalletConnect({
+  compact = false,
+  theme = "topaz",
+  onConnectionChange,
+}: {
+  compact?: boolean;
+  theme?: "topaz" | "mss";
+  onConnectionChange?: (connection: WalletConnection | null) => void;
+}) {
   const [wallets, setWallets] = useState<WalletOption[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletOption | null>(null);
   const [account, setAccount] = useState("");
@@ -190,6 +203,10 @@ export default function WalletConnect({ compact = false, theme = "topaz" }: { co
       selectedWallet.provider.removeListener?.("chainChanged", handleChain);
     };
   }, [selectedWallet]);
+
+  useEffect(() => {
+    onConnectionChange?.(account ? { account, chainId } : null);
+  }, [account, chainId, onConnectionChange]);
 
   useEffect(() => {
     if (!open) return;

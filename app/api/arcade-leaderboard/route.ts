@@ -1,4 +1,4 @@
-import { readMintFlyerLeaderboard, readMintFlyerProfile, saveMintFlyerRun } from "../../../db/arcade-leaderboard";
+import { readMintFlyerLeaderboard, readMintFlyerProfile, saveMintFlyerRun, updateMintFlyerBalanceDisplay } from "../../../db/arcade-leaderboard";
 import { MINT_FLYER_ACHIEVEMENTS } from "../../../lib/mint-flyer-achievements";
 
 function cleanNickname(value: unknown) {
@@ -10,11 +10,17 @@ function boundedInteger(value: unknown, min: number, max: number) {
   return Number.isInteger(number) && number >= min && number <= max ? number : null;
 }
 
+function publicProfile<T extends { mss2Wallet?: string | null }>(profile: T) {
+  const { mss2Wallet: _wallet, ...publicFields } = profile;
+  void _wallet;
+  return publicFields;
+}
+
 export async function GET(request: Request) {
   try {
     const playerKey = new URL(request.url).searchParams.get("playerKey") ?? "";
     const profile = /^[a-zA-Z0-9-]{16,80}$/.test(playerKey) ? await readMintFlyerProfile(playerKey) : null;
-    return Response.json({ entries: await readMintFlyerLeaderboard(), profile, achievements: MINT_FLYER_ACHIEVEMENTS, holdingsStatus: "DISABLED_PENDING_VERIFICATION" });
+    return Response.json({ entries: await readMintFlyerLeaderboard(), profile: profile ? publicProfile(profile) : null, achievements: MINT_FLYER_ACHIEVEMENTS, holdingsStatus: "ROBINHOOD_READ_ONLY_ROUNDED" });
   } catch {
     return Response.json({ error: "The Mint Flyer leaderboard is temporarily unavailable." }, { status: 503 });
   }
@@ -46,8 +52,28 @@ export async function POST(request: Request) {
     }
 
     const result = await saveMintFlyerRun({ playerKey, runId, nickname, score: score!, distance: distance!, mintsCollected: mintsCollected!, maxCombo: maxCombo!, hits: hits!, lives: lives!, reachedMoon, continued });
-    return Response.json({ saved: true, ...result });
+    return Response.json({ saved: true, ...result, profile: publicProfile(result.profile) });
   } catch {
     return Response.json({ error: "The flight result could not be saved right now." }, { status: 503 });
+  }
+}
+
+
+export async function PUT(request: Request) {
+  try {
+    const payload = await request.json() as Record<string, unknown>;
+    const playerKey = String(payload.playerKey ?? "").trim();
+    const walletAddress = String(payload.walletAddress ?? "").trim();
+    const display = payload.display === true;
+    if (!/^[a-zA-Z0-9-]{16,80}$/.test(playerKey)) {
+      return Response.json({ error: "That arcade profile could not be validated." }, { status: 400 });
+    }
+    if (display && !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+      return Response.json({ error: "Connect a valid EVM wallet before displaying a balance." }, { status: 400 });
+    }
+    const profile = await updateMintFlyerBalanceDisplay(playerKey, display, walletAddress);
+    return Response.json({ saved: true, profile: publicProfile(profile), entries: await readMintFlyerLeaderboard() });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "The MSS2 balance could not be verified right now." }, { status: 502 });
   }
 }
