@@ -81,6 +81,8 @@ const BEST_SCORE_KEY = "yield-vacuum-mss2-mint-flyer-best";
 const COMMUNITY_AIRDROP_WALLET = MSS2_COMMUNITY_AIRDROP_RESERVE;
 const DEAD_ADDRESS = MSS2_DEAD_ADDRESS;
 const ENTRY_PRICE_USD = 1;
+const ROBINHOOD_CHAIN_HEX = "0x1237";
+const ARC_CHAIN_HEX = "0x13b2";
 const SOUND_PREFERENCE_KEY = "yield-vacuum-mss2-mint-flyer-sound";
 const MOON_DISTANCE = 3000;
 const FLIGHT_STAGES: Array<{ id: FlightStage; name: string; start: number; instruction: string }> = [
@@ -152,6 +154,24 @@ export default function MintFlyer() {
   const [paymentTxHash, setPaymentTxHash] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
+
+  const connectedChainId = walletConnection?.chainId.toLowerCase() ?? "";
+  const selectedMss2Network = connectedChainId === ARC_CHAIN_HEX
+    ? "arc"
+    : connectedChainId === ROBINHOOD_CHAIN_HEX || !walletConnection
+      ? "robinhood"
+      : "unsupported";
+  const isArcContext = selectedMss2Network === "arc";
+  const isRobinhoodContext = selectedMss2Network === "robinhood";
+  const liveEntryEnabled = Boolean(paymentReadiness?.enabled && isRobinhoodContext);
+  const selectedNetworkLabel = isArcContext ? "ARC" : isRobinhoodContext ? "ROBINHOOD CHAIN" : "SELECT NETWORK";
+  const handleWalletConnectionChange = useCallback((connection: WalletConnection | null) => {
+    setWalletConnection(connection);
+    setReviewingEntry(false);
+    setLivePaymentQuote(null);
+    setPaymentTxHash("");
+    setPaymentMessage("");
+  }, []);
 
   const playerYRef = useRef(0.5);
   const targetYRef = useRef(0.5);
@@ -247,14 +267,14 @@ export default function MintFlyer() {
   }, []);
 
   useEffect(() => {
-    if (reviewingEntry) return;
+    if (reviewingEntry || !isRobinhoodContext) return;
     const initial = window.setTimeout(loadEntryQuote, 0);
     const refresh = window.setInterval(loadEntryQuote, 30_000);
     return () => {
       window.clearTimeout(initial);
       window.clearInterval(refresh);
     };
-  }, [loadEntryQuote, reviewingEntry]);
+  }, [isRobinhoodContext, loadEntryQuote, reviewingEntry]);
 
   useEffect(() => {
     const clock = window.setInterval(() => setQuoteClock(Date.now()), 1_000);
@@ -325,7 +345,17 @@ export default function MintFlyer() {
   }, []);
 
   const reviewEntry = useCallback(async () => {
-    if (paymentReadiness?.enabled) {
+    if (selectedMss2Network === "unsupported") {
+      setPaymentMessage("Select Robinhood Chain or Arc in the wallet bar before reviewing a run.");
+      return;
+    }
+    if (isArcContext) {
+      setPaymentMessage("");
+      setReviewingEntry(true);
+      return;
+    }
+    if (liveEntryEnabled) {
+      if (!paymentReadiness) return;
       if (!walletConnection || !playerKey || paymentBusy) {
         setPaymentMessage("Connect MetaMask or Rabby above before requesting a live MSS2 entry quote.");
         return;
@@ -363,19 +393,19 @@ export default function MintFlyer() {
     }
     setQuoteClock(Date.now());
     setReviewingEntry(true);
-  }, [entryQuote, loadEntryQuote, paymentBusy, paymentReadiness, playerKey, walletConnection]);
+  }, [entryQuote, isArcContext, liveEntryEnabled, loadEntryQuote, paymentBusy, paymentReadiness, playerKey, selectedMss2Network, walletConnection]);
 
   const confirmDemoEntry = useCallback(() => {
-    if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) {
+    if (isRobinhoodContext && (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil))) {
       setQuoteClock(Date.now());
       return;
     }
     primeAudio();
     resetFlight();
-  }, [entryQuote, primeAudio, resetFlight]);
+  }, [entryQuote, isRobinhoodContext, primeAudio, resetFlight]);
 
   const confirmLivePayment = useCallback(async () => {
-    if (!paymentReadiness?.enabled || !walletConnection || !livePaymentQuote || paymentBusy) return;
+    if (!liveEntryEnabled || !paymentReadiness || !walletConnection || !livePaymentQuote || paymentBusy) return;
     if (Date.now() >= Date.parse(livePaymentQuote.expiresAt)) {
       setPaymentMessage("This live quote expired. Go back and request a new one.");
       setQuoteClock(Date.now());
@@ -414,7 +444,7 @@ export default function MintFlyer() {
     } finally {
       setPaymentBusy(false);
     }
-  }, [livePaymentQuote, paymentBusy, paymentReadiness, paymentTxHash, playerKey, primeAudio, resetFlight, walletConnection]);
+  }, [liveEntryEnabled, livePaymentQuote, paymentBusy, paymentReadiness, paymentTxHash, playerKey, primeAudio, resetFlight, walletConnection]);
 
   const prepareAnotherRun = useCallback(() => {
     setPhase("ready");
@@ -423,8 +453,8 @@ export default function MintFlyer() {
     setActivePaymentId("");
     setPaymentTxHash("");
     setPaymentMessage("");
-    if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) void loadEntryQuote();
-  }, [entryQuote, loadEntryQuote]);
+    if (isRobinhoodContext && (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil))) void loadEntryQuote();
+  }, [entryQuote, isRobinhoodContext, loadEntryQuote]);
 
   const continueFlight = useCallback(() => {
     if (continued || demoCredits < DEMO_CONTINUE_COST) return;
@@ -701,8 +731,8 @@ export default function MintFlyer() {
           </span>
         </div>
         <div className={styles.walletZone}>
-          <WalletConnect theme="mss" onConnectionChange={setWalletConnection} />
-          <div className={`${styles.paymentStatus} ${paymentReadiness?.enabled ? styles.paymentLive : ""}`}><i aria-hidden="true" /><span><small>ROBINHOOD MSS2</small><strong>{paymentReadiness?.enabled ? "LIVE" : "LOCKED"}</strong></span></div>
+          <WalletConnect theme="mss" onConnectionChange={handleWalletConnectionChange} />
+          <div className={`${styles.paymentStatus} ${liveEntryEnabled ? styles.paymentLive : ""}`}><i aria-hidden="true" /><span><small>{selectedNetworkLabel} MSS2</small><strong>{liveEntryEnabled ? "LIVE" : isArcContext ? "ENTRY COMING SOON" : selectedMss2Network === "unsupported" ? "SELECT NETWORK" : "DEMO ONLY"}</strong></span></div>
         </div>
       </header>
 
@@ -714,8 +744,8 @@ export default function MintFlyer() {
         </div>
         <aside>
           <small>GAME STATUS</small>
-          <b>{paymentReadiness?.enabled ? "$1 MSS2 ENTRY" : "SAFE DEMO FLIGHT"}</b>
-          <span>{paymentReadiness?.enabled ? "One verified Robinhood MSS2 transfer unlocks one scored run." : "Real transfers remain off while the payment release is reviewed."}</span>
+          <b>{liveEntryEnabled ? "$1 MSS2 ENTRY" : isArcContext ? "ARC FREE DEMO" : "SAFE DEMO FLIGHT"}</b>
+          <span>{liveEntryEnabled ? "One verified Robinhood MSS2 transfer unlocks one scored run." : isArcContext ? "Your Arc MSS2 balance is visible above. Arc entry pricing and payments are not enabled." : "Real transfers remain off while the payment release is reviewed."}</span>
         </aside>
       </section>
 
@@ -746,6 +776,7 @@ export default function MintFlyer() {
 
         <div
           className={`${styles.playfield} ${stageClass} ${hasHitEffect ? styles.impactShake : ""} ${hasCollectEffect ? styles.collectGlow : ""}`}
+          data-stream-label={`MINT STREAM // ${isArcContext ? "ARC FREE DEMO" : "ROBINHOOD ENTRY"} // MSS2 ARCADE`}
           onPointerDown={(event) => {
             if (phase !== "playing") return;
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -826,7 +857,7 @@ export default function MintFlyer() {
           {phase === "ready" && (
             <div className={`${styles.overlay} ${reviewingEntry ? styles.entryReviewOverlay : styles.briefingOverlay}`}>
               {!reviewingEntry ? <>
-                <small>HOW TO PLAY · {paymentReadiness?.enabled ? "PAID ROBINHOOD FLIGHT" : "SAFE DEMO FLIGHT"}</small>
+                <small>HOW TO PLAY · {liveEntryEnabled ? "PAID ROBINHOOD FLIGHT" : isArcContext ? "ARC FREE DEMO" : "SAFE DEMO FLIGHT"}</small>
                 <h2>FLY. COLLECT. SURVIVE.</h2>
                 <p className={styles.briefingLead}>Pilot the <b>MSS2 flyer</b> through all three stages, build the biggest combo, and reach the Moon with the highest score you can.</p>
                 <div className={styles.whyPlay} aria-label="Why play Mint Flyer">
@@ -849,37 +880,47 @@ export default function MintFlyer() {
                   </article>
                 </div>
                 <div className={styles.routePreview} aria-label="Three flight stages"><span>1 <b>MINT STREAM</b></span><i>→</i><span>2 <b>BLOCK SURGE</b></span><i>→</i><span>3 <b>MOON RUN</b></span></div>
-                <p className={styles.demoGameNote}>{paymentReadiness?.enabled
+                <p className={styles.demoGameNote}>{liveEntryEnabled
                   ? <><b>LIVE ENTRY:</b> The verified entry router sends 20% to the dead address and 80% to the Community Airdrop Reserve in one transaction.</>
-                  : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed entry split sends 20% to the dead address and 80% to the designated Community Airdrop Reserve—a 4:1 community allocation. Real transfers remain disabled.</>}</p>
+                  : isArcContext
+                    ? <><b>ARC PREVIEW:</b> Play free while your connected Arc MSS2 balance remains visible above. No Arc price quote, approval, signature, or payment is requested.</>
+                    : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed entry split sends 20% to the dead address and 80% to the designated Community Airdrop Reserve—a 4:1 community allocation. Real transfers remain disabled.</>}</p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
-                <button onClick={() => void reviewEntry()} disabled={paymentBusy || (paymentReadiness?.enabled ? !walletConnection || !playerKey : !entryQuote || quoteExpired)}>{paymentBusy ? "PREPARING…" : paymentReadiness?.enabled ? walletConnection ? "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : !entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "REVIEW SAFE DEMO"}</button>
+                <button onClick={() => void reviewEntry()} disabled={paymentBusy || selectedMss2Network === "unsupported" || (liveEntryEnabled ? !walletConnection || !playerKey : isRobinhoodContext && (!entryQuote || quoteExpired))}>{paymentBusy ? "PREPARING…" : selectedMss2Network === "unsupported" ? "SELECT ROBINHOOD OR ARC ABOVE" : liveEntryEnabled ? walletConnection ? "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : isArcContext ? "REVIEW FREE ARC DEMO" : !entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "REVIEW SAFE DEMO"}</button>
               </> : <>
-                <small>{paymentReadiness?.enabled ? "LIVE MSS2 ENTRY · ROBINHOOD CHAIN" : "SAFE ENTRY REVIEW · NO TRANSACTION"}</small>
-                <h2>{paymentReadiness?.enabled ? "REVIEW + PAY" : "REVIEW THE RUN"}</h2>
-                <p>{paymentReadiness?.enabled ? "The wallet will request one exact MSS2 transfer. No token approval is needed. Check every field in your wallet before approving." : "Confirm the simulated entry details below, then start the flight. This screen does not request a token approval, signature, network switch, or transfer."}</p>
+                <small>{liveEntryEnabled ? "LIVE MSS2 ENTRY · ROBINHOOD CHAIN" : isArcContext ? "ARC ENTRY COMING SOON · FREE DEMO" : "SAFE ENTRY REVIEW · NO TRANSACTION"}</small>
+                <h2>{liveEntryEnabled ? "REVIEW + PAY" : "REVIEW THE RUN"}</h2>
+                <p>{liveEntryEnabled ? "The wallet will request one exact MSS2 transfer. No token approval is needed. Check every field in your wallet before approving." : isArcContext ? "Arc is selected. Start a free flight without a price quote, token approval, signature, network switch, or transfer." : "Confirm the simulated entry details below, then start the flight. This screen does not request a token approval, signature, network switch, or transfer."}</p>
                 <div className={styles.reviewReminder}>
                   <span><i className={styles.guideMintIcon}><Image className={styles.mintGuideLogo} src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></i><b>MSS2 LOGO = COLLECT</b><small>+250 POINTS</small></span>
                   <span><i className={styles.guideHazardIcon}>!</i><b>PINK = AVOID</b><small>-1 LIFE</small></span>
                   <span><i className={styles.guideMoveIcon}>↕</i><b><span className={styles.desktopControlText}>MOUSE OR KEYS</span><span className={styles.mobileControlText}>PRESS + SLIDE</span></b><small>MOVE UP + DOWN</small></span>
                 </div>
-                <div className={styles.entryReview} aria-label="Demo MSS2 entry review">
-                  <span><small>RUN PRICE</small><strong>${paymentReadiness?.enabled ? livePaymentQuote?.entryPriceUsd : entryQuote?.entryPriceUsd ?? ENTRY_PRICE_USD.toFixed(2)} USD</strong></span>
-                  <span><small>{paymentReadiness?.enabled ? "EXACT TRANSFER" : "INDICATIVE AMOUNT"}</small><strong>{paymentReadiness?.enabled ? livePaymentQuote ? `${livePaymentQuote.displayAmount} MSS2` : "UNAVAILABLE" : entryQuote ? `${entryQuote.indicativeMss2ForEntry} MSS2` : "UNAVAILABLE"}</strong></span>
-                  <span><small>PRICE REFERENCE</small><strong>ROBINHOOD CHAIN · TOPAZ</strong></span>
-                  <span><small>QUOTE EXPIRES</small><strong className={(paymentReadiness?.enabled ? liveQuoteExpired : quoteExpired) ? styles.expiredText : ""}>{paymentReadiness?.enabled ? liveQuoteExpired ? "EXPIRED" : `${liveQuoteSecondsRemaining}s` : quoteExpired ? "EXPIRED" : `${quoteSecondsRemaining}s`}</strong></span>
-                  <span className={styles.reviewWide}><small>20% · DEAD ADDRESS</small><code>{DEAD_ADDRESS}</code></span>
-                  <span className={styles.reviewWide}><small>80% · COMMUNITY AIRDROP RESERVE</small><code>{COMMUNITY_AIRDROP_WALLET}</code></span>
-                  <span className={styles.reviewWide}><small>{paymentReadiness?.enabled ? "SERVER PAYMENT ID" : "DEMO QUOTE REFERENCE"}</small><code>{paymentReadiness?.enabled ? livePaymentQuote?.paymentId : entryQuote?.quoteId ?? "UNAVAILABLE"}</code></span>
+                <div className={styles.entryReview} aria-label="MSS2 entry review">
+                  {isArcContext ? <>
+                    <span><small>SELECTED NETWORK</small><strong>ARC</strong></span>
+                    <span><small>ENTRY STATUS</small><strong>COMING SOON</strong></span>
+                    <span><small>FREE DEMO</small><strong>AVAILABLE</strong></span>
+                    <span><small>MSS2 BALANCE</small><strong>SHOWN IN WALLET BAR</strong></span>
+                    <span className={styles.reviewWide}><small>PAYMENT REQUEST</small><code>NONE · DEMO FLIGHT ONLY</code></span>
+                  </> : <>
+                    <span><small>RUN PRICE</small><strong>${liveEntryEnabled ? livePaymentQuote?.entryPriceUsd : entryQuote?.entryPriceUsd ?? ENTRY_PRICE_USD.toFixed(2)} USD</strong></span>
+                    <span><small>{liveEntryEnabled ? "EXACT TRANSFER" : "INDICATIVE AMOUNT"}</small><strong>{liveEntryEnabled ? livePaymentQuote ? `${livePaymentQuote.displayAmount} MSS2` : "UNAVAILABLE" : entryQuote ? `${entryQuote.indicativeMss2ForEntry} MSS2` : "UNAVAILABLE"}</strong></span>
+                    <span><small>PRICE REFERENCE</small><strong>ROBINHOOD CHAIN · TOPAZ</strong></span>
+                    <span><small>QUOTE EXPIRES</small><strong className={(liveEntryEnabled ? liveQuoteExpired : quoteExpired) ? styles.expiredText : ""}>{liveEntryEnabled ? liveQuoteExpired ? "EXPIRED" : `${liveQuoteSecondsRemaining}s` : quoteExpired ? "EXPIRED" : `${quoteSecondsRemaining}s`}</strong></span>
+                    <span className={styles.reviewWide}><small>20% · DEAD ADDRESS</small><code>{DEAD_ADDRESS}</code></span>
+                    <span className={styles.reviewWide}><small>80% · COMMUNITY AIRDROP RESERVE</small><code>{COMMUNITY_AIRDROP_WALLET}</code></span>
+                    <span className={styles.reviewWide}><small>{liveEntryEnabled ? "SERVER PAYMENT ID" : "DEMO QUOTE REFERENCE"}</small><code>{liveEntryEnabled ? livePaymentQuote?.paymentId : entryQuote?.quoteId ?? "UNAVAILABLE"}</code></span>
+                  </>}
                 </div>
-                <p className={styles.entryWarning}><b>{paymentReadiness?.enabled ? "FINAL TRANSFER" : "NO FUNDS MOVE"}</b><span>{paymentReadiness?.enabled ? "After wallet approval, the router sends 20% of the MSS2 entry to the dead address and 80% to the Community Airdrop Reserve. Transfers are intended to be final and do not guarantee an airdrop, income, token value, or uninterrupted service." : "This review is simulated. Real entry payments stay disabled until the 20/80 router and backend verification are complete."}</span></p>
+                <p className={styles.entryWarning}><b>{liveEntryEnabled ? "FINAL TRANSFER" : "NO FUNDS MOVE"}</b><span>{liveEntryEnabled ? "After wallet approval, the router sends 20% of the MSS2 entry to the dead address and 80% to the Community Airdrop Reserve. Transfers are intended to be final and do not guarantee an airdrop, income, token value, or uninterrupted service." : isArcContext ? "Arc entry pricing and payments are not configured. This free demo does not create a quote or request a wallet action." : "This review is simulated. Real entry payments stay disabled until the 20/80 router and backend verification are complete."}</span></p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 {paymentTxHash && <a className={styles.paymentTxLink} href={`https://robin.etherscan.io/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">VIEW SUBMITTED TRANSACTION ↗</a>}
                 <div className={styles.entryActions}>
                   <button className={styles.secondaryEntryButton} onClick={() => setReviewingEntry(false)} disabled={paymentBusy}>← BACK</button>
-                  {paymentReadiness?.enabled
+                  {liveEntryEnabled
                     ? <button onClick={() => void confirmLivePayment()} disabled={paymentBusy || (liveQuoteExpired && !paymentTxHash) || !livePaymentQuote}>{paymentBusy ? "VERIFYING PAYMENT…" : paymentTxHash ? "RECHECK PAYMENT + START" : liveQuoteExpired ? "QUOTE EXPIRED" : "PAY MSS2 + START"}</button>
-                    : <button onClick={confirmDemoEntry} disabled={quoteExpired || !entryQuote}>{quoteExpired ? "QUOTE EXPIRED" : "CONFIRM SAFE DEMO + START"}</button>}
+                    : <button onClick={confirmDemoEntry} disabled={isRobinhoodContext && (quoteExpired || !entryQuote)}>{isArcContext ? "START FREE ARC DEMO" : quoteExpired ? "QUOTE EXPIRED" : "CONFIRM SAFE DEMO + START"}</button>}
                 </div>
               </>}
             </div>
@@ -908,16 +949,16 @@ export default function MintFlyer() {
                     <small>{DEMO_CONTINUE_COST} DEMO CREDITS · RESTORES 3 LIVES</small>
                   </button>
                 )}
-                <button className={styles.restartButton} onClick={prepareAnotherRun}>↻ {paymentReadiness?.enabled ? "REVIEW ANOTHER MSS2 ENTRY" : "REVIEW ANOTHER SAFE DEMO"} <small>EVERY NEW SCORED RUN USES A NEW QUOTE</small></button>
+                <button className={styles.restartButton} onClick={prepareAnotherRun}>↻ {liveEntryEnabled ? "REVIEW ANOTHER MSS2 ENTRY" : isArcContext ? "START ANOTHER ARC DEMO" : "REVIEW ANOTHER SAFE DEMO"} <small>{isArcContext ? "NO ARC PAYMENT OR QUOTE" : "EVERY NEW SCORED RUN USES A NEW QUOTE"}</small></button>
               </div>
               {continued && <p className={styles.usedNotice}>The one continue for this flight has been used. A new scored run requires a new entry review.</p>}
               <section className={styles.lockedPayments} aria-label="Token payment readiness">
-                <div><small>MSS2 GAME ENTRY</small><strong>{paymentReadiness?.enabled ? "ROBINHOOD LIVE" : "RELEASE LOCKED"}</strong></div>
+                <div><small>MSS2 GAME ENTRY · {selectedNetworkLabel}</small><strong>{liveEntryEnabled ? "ROBINHOOD LIVE" : isArcContext ? "ARC COMING SOON" : "RELEASE LOCKED"}</strong></div>
                 <ul>
-                  <li><b>ROBINHOOD CHAIN</b><span>{paymentReadiness?.enabled ? "Each scored run uses one exact MSS2 entry split. The server checks the chain, token, sender, both destinations, both amounts, receipt, confirmations, and duplicate use." : "The payment code is gated until the 20/80 router and matching backend verifier are complete."}</span></li>
-                  <li><b>ARC</b><span>Locked until the live Arc MSS2 pool, quote source, RPC receipt path, and end-to-end verifier pass independently.</span></li>
+                  <li><b>ROBINHOOD CHAIN</b><span>{liveEntryEnabled ? "Each scored run uses one exact MSS2 entry split. The server checks the chain, token, sender, both destinations, both amounts, receipt, confirmations, and duplicate use." : "Free demo available. Paid entry remains locked until the 20/80 router and matching backend verifier are complete."}</span></li>
+                  <li><b>ARC</b><span>Free demo available. Paid entry is coming later, after an Arc price source, RPC receipt path, and end-to-end verifier pass independently.</span></li>
                 </ul>
-                <p>{paymentReadiness?.enabled ? "The wallet shows the final router transaction before anything moves. 20% goes to the dead address and 80% goes to the Community Airdrop Reserve." : "This preview requests no token approval or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only demo."}</p>
+                <p>{liveEntryEnabled ? "The wallet shows the final router transaction before anything moves. 20% goes to the dead address and 80% goes to the Community Airdrop Reserve." : "Free demo runs request no token approval or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only demo."}</p>
               </section>
             </div>
           )}
@@ -974,10 +1015,12 @@ export default function MintFlyer() {
       <MintFlyerLeaderboard result={leaderboardResult} />
 
       <details className={styles.infoDrawer} id="payment-safety">
-        <summary><span><small>PAYMENT SAFETY</small><strong>{paymentReadiness?.enabled ? "ROBINHOOD MSS2 ENTRY IS LIVE" : "REAL MSS2 REMAINS LOCKED"}</strong></span><b>VIEW DETAILS +</b></summary>
+        <summary><span><small>PAYMENT SAFETY · {selectedNetworkLabel}</small><strong>{liveEntryEnabled ? "ROBINHOOD MSS2 ENTRY IS LIVE" : isArcContext ? "ARC ENTRY COMING SOON" : "REAL MSS2 REMAINS LOCKED"}</strong></span><b>VIEW DETAILS +</b></summary>
         <div className={styles.drawerBody}>
           <p>Continue credits are game-only. They have no cash value and cannot be purchased, transferred, withdrawn, or redeemed.</p>
-          <p>The proposed entry target is $1.00 in MSS2 using a short-lived Robinhood/Topaz market quote. A future verified router would send <b>20%</b> to <code>{DEAD_ADDRESS}</code> and <b>80%</b> to the Community Airdrop Reserve at <code>{COMMUNITY_AIRDROP_WALLET}</code>.</p>
+          {isArcContext
+            ? <p>Arc currently supports the connected-wallet MSS2 balance display and free demo play only. No Arc entry price, quote, approval, signature, or transfer is requested.</p>
+            : <p>The proposed entry target is $1.00 in MSS2 using a short-lived Robinhood/Topaz market quote. A future verified router would send <b>20%</b> to <code>{DEAD_ADDRESS}</code> and <b>80%</b> to the Community Airdrop Reserve at <code>{COMMUNITY_AIRDROP_WALLET}</code>.</p>}
           <p>The reserve is designated for a possible future community airdrop. No distribution, eligibility rule, timing, income, token appreciation, or preferential leaderboard treatment is promised. Real payments remain locked until the router and backend verifier are reviewed and tested.</p>
         </div>
       </details>
