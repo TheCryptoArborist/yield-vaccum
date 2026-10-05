@@ -32,6 +32,7 @@ type WalletNetwork = {
   chainId: `0x${string}`;
   name: string;
   shortName: string;
+  icon: string;
   nativeCurrency: { name: string; symbol: string; decimals: number };
   rpcUrls: string[];
   blockExplorerUrls: string[];
@@ -45,6 +46,8 @@ export type WalletConnection = {
   account: string;
   chainId: string;
   signMessage: (message: string) => Promise<string>;
+  switchChain: (chainId: `0x${string}`) => Promise<void>;
+  sendTransaction: (transaction: { to: string; data: string; value?: string }) => Promise<string>;
 };
 
 declare global {
@@ -60,6 +63,7 @@ const SUPPORTED_NETWORKS: WalletNetwork[] = [
     chainId: "0x38",
     name: "BNB Smart Chain",
     shortName: "BNB CHAIN",
+    icon: "/fee-bnb.png",
     nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
     rpcUrls: ["https://bsc-dataseed.bnbchain.org"],
     blockExplorerUrls: ["https://bscscan.com"],
@@ -68,14 +72,16 @@ const SUPPORTED_NETWORKS: WalletNetwork[] = [
     chainId: "0x1237",
     name: "Robinhood Chain",
     shortName: "ROBINHOOD CHAIN",
+    icon: "/network-robinhood-chain.jpg",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: ["https://rpc.mainnet.chain.robinhood.com"],
-    blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
+    blockExplorerUrls: ["https://robin.etherscan.io"],
   },
   {
     chainId: "0x13b2",
     name: "Arc",
     shortName: "ARC",
+    icon: "/network-arc.svg",
     nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
     rpcUrls: ["https://rpc.mainnet.arc.io"],
     blockExplorerUrls: ["https://explorer.arc.io"],
@@ -124,9 +130,15 @@ export default function WalletConnect({
   const [account, setAccount] = useState("");
   const [chainId, setChainId] = useState("");
   const [open, setOpen] = useState(false);
+  const [networkOpen, setNetworkOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [switchingChain, setSwitchingChain] = useState("");
   const [message, setMessage] = useState("");
+  const [mss2BalanceResult, setMss2BalanceResult] = useState<{
+    key: string;
+    balance: string | null;
+    state: "loading" | "ready" | "error";
+  }>({ key: "", balance: null, state: "loading" });
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -218,16 +230,79 @@ export default function WalletConnect({
         if (typeof signature !== "string") throw new Error("The wallet did not return a valid signature.");
         return signature;
       },
+      switchChain: async (targetChainId: `0x${string}`) => {
+        const network = SUPPORTED_NETWORKS.find((item) => item.chainId === targetChainId.toLowerCase());
+        if (!network) throw new Error("That network is not supported by Yield Vacuum.");
+        try {
+          await selectedWallet.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: network.chainId }] });
+        } catch (error) {
+          if (providerErrorCode(error) !== 4902) throw error;
+          await selectedWallet.provider.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: network.chainId,
+              chainName: network.name,
+              nativeCurrency: network.nativeCurrency,
+              rpcUrls: network.rpcUrls,
+              blockExplorerUrls: network.blockExplorerUrls,
+            }],
+          });
+          await selectedWallet.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: network.chainId }] });
+        }
+        const activeChain = await selectedWallet.provider.request({ method: "eth_chainId" });
+        const normalized = typeof activeChain === "string" ? activeChain.toLowerCase() : "";
+        if (normalized !== network.chainId) throw new Error(`The wallet did not switch to ${network.name}.`);
+        setChainId(normalized);
+      },
+      sendTransaction: async (transaction) => {
+        const txHash = await selectedWallet.provider.request({
+          method: "eth_sendTransaction",
+          params: [{ from: account, to: transaction.to, data: transaction.data, value: transaction.value ?? "0x0" }],
+        });
+        if (typeof txHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error("The wallet did not return a valid transaction hash.");
+        return txHash;
+      },
     });
   }, [account, chainId, onConnectionChange, selectedWallet]);
 
   useEffect(() => {
-    if (!open) return;
+    if (theme !== "mss" || !account) return;
+    const activeChainId = chainId.toLowerCase();
+    if (activeChainId !== "0x1237" && activeChainId !== "0x13b2") return;
+    const requestKey = `${account.toLowerCase()}:${activeChainId}`;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setMss2BalanceResult({ key: requestKey, balance: null, state: "loading" });
+      try {
+        const params = new URLSearchParams({ address: account, chainId: activeChainId });
+        const response = await fetch(`/api/mss2-balance?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+        const data = await response.json() as { error?: string; rounded?: string };
+        if (!response.ok || typeof data.rounded !== "string") throw new Error(data.error || "Balance unavailable.");
+        setMss2BalanceResult({ key: requestKey, balance: data.rounded, state: "ready" });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setMss2BalanceResult({ key: requestKey, balance: null, state: "error" });
+      }
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [account, chainId, theme]);
+
+  useEffect(() => {
+    if (!open && !networkOpen) return;
     const closeOnOutside = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+        setNetworkOpen(false);
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        setNetworkOpen(false);
+      }
     };
     document.addEventListener("mousedown", closeOnOutside);
     document.addEventListener("keydown", closeOnEscape);
@@ -235,7 +310,7 @@ export default function WalletConnect({
       document.removeEventListener("mousedown", closeOnOutside);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [open]);
+  }, [networkOpen, open]);
 
   const connect = useCallback(async (wallet: WalletOption) => {
     setBusy(true);
@@ -287,6 +362,7 @@ export default function WalletConnect({
       const chainValue = await selectedWallet.provider.request({ method: "eth_chainId" });
       setChainId(typeof chainValue === "string" ? chainValue : network.chainId);
       setMessage(`${network.name} selected. No transaction was requested.`);
+      setNetworkOpen(false);
     } catch (error) {
       const walletError = error as WalletProviderError;
       setMessage(walletError?.message || `The request to switch to ${network.name} was cancelled.`);
@@ -302,24 +378,109 @@ export default function WalletConnect({
     setChainId("");
     setMessage("Site connection cleared. Disconnect permissions inside your wallet if desired.");
     setOpen(false);
+    setNetworkOpen(false);
   };
+
+  const currentNetwork = SUPPORTED_NETWORKS.find((network) => network.chainId === chainId.toLowerCase());
+  const balanceChainId = chainId.toLowerCase();
+  const supportsMss2Balance = balanceChainId === "0x1237" || balanceChainId === "0x13b2";
+  const activeBalanceKey = account ? `${account.toLowerCase()}:${balanceChainId}` : "";
+  const mss2BalanceState: "idle" | "loading" | "ready" | "unsupported" | "error" = theme !== "mss" || !account
+    ? "idle"
+    : !supportsMss2Balance
+      ? "unsupported"
+      : mss2BalanceResult.key === activeBalanceKey
+        ? mss2BalanceResult.state
+        : "loading";
+  const mss2Balance = mss2BalanceResult.key === activeBalanceKey ? mss2BalanceResult.balance : null;
 
   return (
     <div ref={rootRef} className={`${styles.walletConnect} ${compact ? styles.compact : ""} ${theme === "mss" ? styles.mss : ""}`}>
-      <button
-        type="button"
-        className={`${styles.trigger} ${account ? styles.connected : ""}`}
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-      >
-        <i aria-hidden="true" />
-        <span>
-          <small>{account ? selectedWallet?.info.name || "WALLET CONNECTED" : "METAMASK · RABBY"}</small>
-          <strong>{account ? shortAddress(account) : "CONNECT WALLET"}</strong>
-        </span>
-        {account && <em>{chainLabel(chainId)}</em>}
-      </button>
+      <div className={styles.topControls}>
+        <button
+          type="button"
+          className={`${styles.trigger} ${account ? styles.connected : ""}`}
+          onClick={() => {
+            setNetworkOpen(false);
+            setOpen((current) => !current);
+          }}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+        >
+          <i aria-hidden="true" />
+          <span>
+            <small>{account ? `CONNECTED · ${selectedWallet?.info.name || "WALLET"}` : "METAMASK · RABBY"}</small>
+            <strong>{account && theme === "mss"
+              ? mss2BalanceState === "ready"
+                ? `~${mss2Balance} MSS2`
+                : mss2BalanceState === "unsupported"
+                  ? "MSS2 NOT ON THIS CHAIN"
+                  : mss2BalanceState === "error"
+                    ? "BALANCE UNAVAILABLE"
+                    : "CHECKING MSS2…"
+              : account ? shortAddress(account) : "CONNECT WALLET"}</strong>
+            {account && theme === "mss" && <em>{shortAddress(account)}</em>}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.networkTrigger} ${account ? styles.networkReady : ""}`}
+          onClick={() => {
+            if (!account) {
+              setNetworkOpen(false);
+              setOpen(true);
+              return;
+            }
+            setOpen(false);
+            setNetworkOpen((current) => !current);
+          }}
+          aria-expanded={networkOpen}
+          aria-haspopup="menu"
+        >
+          {currentNetwork
+            ? <img src={currentNetwork.icon} alt="" aria-hidden="true" />
+            : <i aria-hidden="true" />}
+          <span><small>NETWORK</small><strong>{account ? chainLabel(chainId) : "CONNECT FIRST"}</strong></span>
+          <b aria-hidden="true">{networkOpen ? "▲" : "▼"}</b>
+        </button>
+      </div>
+
+      {networkOpen && account && (
+        <section className={`${styles.popover} ${styles.networkPopover}`} role="menu" aria-label="Select wallet network">
+          <header>
+            <span><small>WALLET NETWORK</small><strong>CHOOSE A CHAIN</strong></span>
+            <button type="button" onClick={() => setNetworkOpen(false)} aria-label="Close network menu">×</button>
+          </header>
+          <div className={styles.networkPicker}>
+            {SUPPORTED_NETWORKS.map((network) => {
+              const active = chainId.toLowerCase() === network.chainId;
+              const switching = switchingChain === network.chainId;
+              const paymentNote = network.chainId === "0x1237"
+                ? "MSS2 PAYMENT TARGET"
+                : network.chainId === "0x13b2"
+                  ? "MSS2 PAYMENT LOCKED"
+                  : "WALLET + TOPAZ SUPPORT";
+              return (
+                <button
+                  key={network.chainId}
+                  type="button"
+                  role="menuitem"
+                  className={active ? styles.activeNetwork : ""}
+                  onClick={() => switchNetwork(network)}
+                  disabled={Boolean(switchingChain) || active}
+                >
+                  <img src={network.icon} alt="" aria-hidden="true" />
+                  <span><b>{network.shortName}</b><small>CHAIN {Number.parseInt(network.chainId, 16)} · {paymentNote}</small></span>
+                  <em>{active ? "ACTIVE" : switching ? "CHECK WALLET" : "SWITCH"}</em>
+                </button>
+              );
+            })}
+            <p>Switching networks never moves tokens. Robinhood is the only MSS2 payment target in this preview. Arc payments stay locked until its MSS2 deployment and verifier are confirmed.</p>
+          </div>
+          {message && <p className={styles.message} role="status">{message}</p>}
+        </section>
+      )}
 
       {open && (
         <section className={styles.popover} role="dialog" aria-label="Wallet connection">
@@ -328,35 +489,15 @@ export default function WalletConnect({
             <button type="button" onClick={() => setOpen(false)} aria-label="Close wallet panel">×</button>
           </header>
 
-          <p className={styles.locked}>WALLET + NETWORK ONLY · GAME PAYMENTS LOCKED</p>
+          <p className={styles.locked}>WALLET + NETWORK · REVIEW EVERY REQUEST</p>
 
           {account ? (
             <>
               <div className={styles.accountCard}>
                 <small>{selectedWallet?.info.name || "CONNECTED WALLET"}</small>
                 <strong>{shortAddress(account)}</strong>
-                <span>{chainLabel(chainId)}</span>
+                <span>{chainLabel(chainId)}{theme === "mss" && mss2BalanceState === "ready" ? ` · ~${mss2Balance} MSS2` : ""}</span>
                 <button type="button" onClick={forget}>CLEAR SITE CONNECTION</button>
-              </div>
-              <div className={styles.networkPicker} aria-label="Select wallet network">
-                <div className={styles.networkPickerTitle}><small>SUPPORTED NETWORKS</small><strong>CHOOSE A CHAIN</strong></div>
-                {SUPPORTED_NETWORKS.map((network) => {
-                  const active = chainId.toLowerCase() === network.chainId;
-                  const switching = switchingChain === network.chainId;
-                  return (
-                    <button
-                      key={network.chainId}
-                      type="button"
-                      className={active ? styles.activeNetwork : ""}
-                      onClick={() => switchNetwork(network)}
-                      disabled={Boolean(switchingChain) || active}
-                    >
-                      <span><b>{network.shortName}</b><small>CHAIN {Number.parseInt(network.chainId, 16)} · GAS {network.nativeCurrency.symbol}</small></span>
-                      <em>{active ? "ACTIVE" : switching ? "CHECK WALLET" : "SWITCH"}</em>
-                    </button>
-                  );
-                })}
-                <p>Network selection does not enable a game payment. MSS2 Arcade payments are planned for Robinhood Chain and Arc only after each token deployment and backend verifier is confirmed.</p>
               </div>
             </>
           ) : wallets.length ? (
@@ -375,7 +516,7 @@ export default function WalletConnect({
           )}
 
           <p className={styles.disclosure}>{theme === "mss"
-            ? "Connecting shares the selected public address and current network. Choosing to display a balance requests a free plain-text ownership signature—never a token approval or transfer."
+            ? "Connecting once activates wallet features across this arcade page and reads the rounded MSS2 balance for the selected Robinhood or Arc network without a signature. A future live arcade entry may request one exact MSS2 transfer only after a separate on-site review; it never requests an unlimited token approval."
             : "Connecting shares the selected public address and current network. Network buttons may ask the wallet to add or switch chains, but never request a signature, token approval, or transfer."}</p>
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>

@@ -1,5 +1,6 @@
 import { readMintFlyerLeaderboard, readMintFlyerProfile, saveMintFlyerRun, updateMintFlyerBalanceDisplay } from "../../../db/arcade-leaderboard";
 import { createWalletChallenge, verifyAndConsumeWalletChallenge } from "../../../db/mss2-wallet-proof";
+import { requirePaymentForScore } from "../../../db/arcade-payments";
 import { MINT_FLYER_ACHIEVEMENTS } from "../../../lib/mint-flyer-achievements";
 
 function cleanNickname(value: unknown) {
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
     const lives = boundedInteger(payload.lives, 0, 3);
     const reachedMoon = payload.reachedMoon === true;
     const continued = payload.continued === true;
+    const paymentId = String(payload.paymentId ?? "").trim();
 
     if (!/^[a-zA-Z0-9-]{16,80}$/.test(playerKey) || !/^[a-zA-Z0-9-]{16,80}$/.test(runId) || nickname.length < 2) {
       return Response.json({ error: "Choose a nickname with at least two letters or numbers." }, { status: 400 });
@@ -52,6 +54,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "That flight result is inconsistent." }, { status: 400 });
     }
 
+    await requirePaymentForScore(paymentId, playerKey, runId);
     const result = await saveMintFlyerRun({ playerKey, runId, nickname, score: score!, distance: distance!, mintsCollected: mintsCollected!, maxCombo: maxCombo!, hits: hits!, lives: lives!, reachedMoon, continued });
     return Response.json({ saved: true, ...result, profile: publicProfile(result.profile) });
   } catch {

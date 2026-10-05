@@ -6,6 +6,8 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import WalletConnect, { type WalletConnection } from "../wallet-connect";
 import Mss2Commitments from "./mss2-commitments";
 import MintFlyerLeaderboard, { type LeaderboardFlightResult } from "./mint-flyer-leaderboard";
+import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
+import { MSS2_COMMUNITY_AIRDROP_RESERVE, MSS2_DEAD_ADDRESS } from "../../lib/mss2-payment-shared";
 import styles from "./mint-flyer.module.css";
 
 type FlightPhase = "ready" | "countdown" | "playing" | "paused" | "crashed" | "victory";
@@ -21,6 +23,40 @@ type EntryQuote = {
   liquidityUsd: number | null;
   checkedAt: string;
   validUntil: string;
+};
+type PaymentReadiness = {
+  enabled: boolean;
+  recipient: string;
+  recipientConfirmed: boolean;
+  chainId: number;
+  chainHex: `0x${string}`;
+  network: string;
+  tokenAddress: string;
+  tokenSymbol: "MSS2";
+  tokenDecimals: number;
+  entryPriceUsd: string;
+  confirmations: number;
+  arcEnabled: false;
+  reason: string | null;
+};
+type LivePaymentQuote = {
+  paymentId: string;
+  runId: string;
+  chainId: number;
+  tokenAddress: string;
+  recipient: string;
+  amountRaw: string;
+  displayAmount: string;
+  entryPriceUsd: string;
+  priceUsd: string;
+  liquidityUsd: number;
+  pairAddress: string;
+  pairUrl: string;
+  createdAt: string;
+  expiresAt: string;
+  status: "pending";
+  walletAddress: string;
+  transfer: { from: string; to: string; data: string; value: string };
 };
 type FlyerEntity = {
   id: number;
@@ -42,7 +78,8 @@ const MAX_LIVES = 3;
 const DEMO_CONTINUE_COST = 100;
 const STARTING_DEMO_CREDITS = 100;
 const BEST_SCORE_KEY = "yield-vacuum-mss2-mint-flyer-best";
-const DEVELOPER_WALLET = "0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789";
+const COMMUNITY_AIRDROP_WALLET = MSS2_COMMUNITY_AIRDROP_RESERVE;
+const DEAD_ADDRESS = MSS2_DEAD_ADDRESS;
 const ENTRY_PRICE_USD = 1;
 const SOUND_PREFERENCE_KEY = "yield-vacuum-mss2-mint-flyer-sound";
 const MOON_DISTANCE = 3000;
@@ -108,6 +145,13 @@ export default function MintFlyer() {
   const [moonBonus, setMoonBonus] = useState(0);
   const [runId, setRunId] = useState("");
   const [walletConnection, setWalletConnection] = useState<WalletConnection | null>(null);
+  const [playerKey, setPlayerKey] = useState("");
+  const [paymentReadiness, setPaymentReadiness] = useState<PaymentReadiness | null>(null);
+  const [livePaymentQuote, setLivePaymentQuote] = useState<LivePaymentQuote | null>(null);
+  const [activePaymentId, setActivePaymentId] = useState("");
+  const [paymentTxHash, setPaymentTxHash] = useState("");
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
 
   const playerYRef = useRef(0.5);
   const targetYRef = useRef(0.5);
@@ -133,12 +177,25 @@ export default function MintFlyer() {
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
+      setPlayerKey(ensureMintFlyerPlayerKey());
       setBestScore(Number(window.localStorage.getItem(BEST_SCORE_KEY) || 0));
       const storedSound = window.localStorage.getItem(SOUND_PREFERENCE_KEY) !== "off";
       soundEnabledRef.current = storedSound;
       setSoundEnabled(storedSound);
     });
     return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/arcade-payment", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Payment readiness unavailable.");
+        return await response.json() as PaymentReadiness;
+      })
+      .then((status) => { if (!cancelled) setPaymentReadiness(status); })
+      .catch(() => { if (!cancelled) setPaymentReadiness(null); });
+    return () => { cancelled = true; };
   }, []);
 
   const primeAudio = useCallback(() => {
@@ -209,6 +266,11 @@ export default function MintFlyer() {
     ? Math.max(0, Math.ceil((quoteExpiry - quoteClock) / 1_000))
     : 0;
   const quoteExpired = Boolean(entryQuote) && quoteSecondsRemaining <= 0;
+  const liveQuoteExpiry = livePaymentQuote ? Date.parse(livePaymentQuote.expiresAt) : 0;
+  const liveQuoteSecondsRemaining = livePaymentQuote && Number.isFinite(liveQuoteExpiry)
+    ? Math.max(0, Math.ceil((liveQuoteExpiry - quoteClock) / 1_000))
+    : 0;
+  const liveQuoteExpired = Boolean(livePaymentQuote) && liveQuoteSecondsRemaining <= 0;
 
   const publishBest = useCallback((finalScore: number) => {
     const stored = Number(window.localStorage.getItem(BEST_SCORE_KEY) || 0);
@@ -222,7 +284,7 @@ export default function MintFlyer() {
     }
   }, []);
 
-  const resetFlight = useCallback(() => {
+  const resetFlight = useCallback((verifiedRunId?: string) => {
     if (stageNoticeTimerRef.current !== null) window.clearTimeout(stageNoticeTimerRef.current);
     stageNoticeTimerRef.current = null;
     playerYRef.current = 0.5;
@@ -257,12 +319,43 @@ export default function MintFlyer() {
     setContinued(false);
     setNewBest(false);
     setReviewingEntry(false);
-    setRunId(crypto.randomUUID());
+    setRunId(verifiedRunId || crypto.randomUUID());
     setCountdown(3);
     setPhase("countdown");
   }, []);
 
-  const reviewEntry = useCallback(() => {
+  const reviewEntry = useCallback(async () => {
+    if (paymentReadiness?.enabled) {
+      if (!walletConnection || !playerKey || paymentBusy) {
+        setPaymentMessage("Connect MetaMask or Rabby above before requesting a live MSS2 entry quote.");
+        return;
+      }
+      setPaymentBusy(true);
+      setPaymentMessage("");
+      try {
+        if (walletConnection.chainId.toLowerCase() !== paymentReadiness.chainHex) {
+          setPaymentMessage("Switching the wallet to Robinhood Chain…");
+          await walletConnection.switchChain(paymentReadiness.chainHex);
+        }
+        const pendingRunId = crypto.randomUUID();
+        const response = await fetch("/api/arcade-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "quote", playerKey, runId: pendingRunId, walletAddress: walletConnection.account }),
+        });
+        const data = await response.json() as LivePaymentQuote & { error?: string };
+        if (!response.ok) throw new Error(data.error || "A live MSS2 entry quote could not be created.");
+        setLivePaymentQuote(data);
+        setPaymentTxHash("");
+        setQuoteClock(Date.now());
+        setReviewingEntry(true);
+      } catch (error) {
+        setPaymentMessage(error instanceof Error ? error.message : "The live MSS2 entry quote could not be created.");
+      } finally {
+        setPaymentBusy(false);
+      }
+      return;
+    }
     if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) {
       setQuoteClock(Date.now());
       void loadEntryQuote();
@@ -270,7 +363,7 @@ export default function MintFlyer() {
     }
     setQuoteClock(Date.now());
     setReviewingEntry(true);
-  }, [entryQuote, loadEntryQuote]);
+  }, [entryQuote, loadEntryQuote, paymentBusy, paymentReadiness, playerKey, walletConnection]);
 
   const confirmDemoEntry = useCallback(() => {
     if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) {
@@ -281,9 +374,55 @@ export default function MintFlyer() {
     resetFlight();
   }, [entryQuote, primeAudio, resetFlight]);
 
+  const confirmLivePayment = useCallback(async () => {
+    if (!paymentReadiness?.enabled || !walletConnection || !livePaymentQuote || paymentBusy) return;
+    if (Date.now() >= Date.parse(livePaymentQuote.expiresAt)) {
+      setPaymentMessage("This live quote expired. Go back and request a new one.");
+      setQuoteClock(Date.now());
+      return;
+    }
+    setPaymentBusy(true);
+    setPaymentMessage("Check your wallet. Review the MSS2 token, exact amount, Robinhood Chain, and recipient before approving.");
+    try {
+      if (walletConnection.chainId.toLowerCase() !== paymentReadiness.chainHex) await walletConnection.switchChain(paymentReadiness.chainHex);
+      const txHash = paymentTxHash || await walletConnection.sendTransaction(livePaymentQuote.transfer);
+      if (!paymentTxHash) setPaymentTxHash(txHash);
+      setPaymentMessage(`${paymentTxHash ? "Rechecking" : "Transfer submitted. Checking"} the Robinhood receipt and confirmations…`);
+      let verified = false;
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        const response = await fetch("/api/arcade-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "verify", paymentId: livePaymentQuote.paymentId, playerKey, walletAddress: walletConnection.account, txHash }),
+        });
+        const data = await response.json() as { pending?: boolean; confirmations?: number; error?: string };
+        if (response.ok && !data.pending) {
+          verified = true;
+          break;
+        }
+        if (response.status !== 202) throw new Error(data.error || "The MSS2 transfer could not be verified.");
+        setPaymentMessage(`Transfer found. Waiting for ${paymentReadiness.confirmations} confirmations (${data.confirmations ?? 0}/${paymentReadiness.confirmations})…`);
+        await new Promise((resolve) => window.setTimeout(resolve, 2_000));
+      }
+      if (!verified) throw new Error("The payment is still pending. Keep the transaction hash and try verification again shortly.");
+      setActivePaymentId(livePaymentQuote.paymentId);
+      setPaymentMessage("MSS2 payment verified. Starting the paid flight.");
+      primeAudio();
+      resetFlight(livePaymentQuote.runId);
+    } catch (error) {
+      setPaymentMessage(error instanceof Error ? error.message : "The MSS2 payment could not be completed.");
+    } finally {
+      setPaymentBusy(false);
+    }
+  }, [livePaymentQuote, paymentBusy, paymentReadiness, paymentTxHash, playerKey, primeAudio, resetFlight, walletConnection]);
+
   const prepareAnotherRun = useCallback(() => {
     setPhase("ready");
     setReviewingEntry(false);
+    setLivePaymentQuote(null);
+    setActivePaymentId("");
+    setPaymentTxHash("");
+    setPaymentMessage("");
     if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) void loadEntryQuote();
   }, [entryQuote, loadEntryQuote]);
 
@@ -539,6 +678,7 @@ export default function MintFlyer() {
     lives,
     reachedMoon: true,
     continued,
+    paymentId: activePaymentId || undefined,
   } : null;
 
   return (
@@ -562,7 +702,7 @@ export default function MintFlyer() {
         </div>
         <div className={styles.walletZone}>
           <WalletConnect theme="mss" onConnectionChange={setWalletConnection} />
-          <div className={styles.paymentStatus}><i aria-hidden="true" /><span><small>REAL PAYMENTS</small><strong>DISABLED</strong></span></div>
+          <div className={`${styles.paymentStatus} ${paymentReadiness?.enabled ? styles.paymentLive : ""}`}><i aria-hidden="true" /><span><small>ROBINHOOD MSS2</small><strong>{paymentReadiness?.enabled ? "LIVE" : "LOCKED"}</strong></span></div>
         </div>
       </header>
 
@@ -574,8 +714,8 @@ export default function MintFlyer() {
         </div>
         <aside>
           <small>GAME STATUS</small>
-          <b>FREE DEMO FLIGHT</b>
-          <span>No wallet or real tokens required.</span>
+          <b>{paymentReadiness?.enabled ? "$1 MSS2 ENTRY" : "SAFE DEMO FLIGHT"}</b>
+          <span>{paymentReadiness?.enabled ? "One verified Robinhood MSS2 transfer unlocks one scored run." : "Real transfers remain off while the payment release is reviewed."}</span>
         </aside>
       </section>
 
@@ -593,7 +733,7 @@ export default function MintFlyer() {
           <span className={styles.mintCounter}><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
           <span className={combo >= 3 ? styles.comboActive : ""}><small>COMBO</small><strong>{combo} · {currentMultiplier}X</strong></span>
           <span><small>LIVES</small><strong>{"◆".repeat(lives)}<i>{"◇".repeat(MAX_LIVES - lives)}</i></strong></span>
-          <span className={styles.demoBalance}><small>DEMO CREDITS</small><strong>{demoCredits}</strong></span>
+          <span className={styles.demoBalance}><small>CONTINUE CREDITS</small><strong>{demoCredits}</strong></span>
         </div>
 
         <div className={styles.flightProgress} aria-label={`Stage ${stage} of 3: ${currentStage.name}. ${Math.round(flightProgress)} percent to the Moon.`}>
@@ -686,9 +826,14 @@ export default function MintFlyer() {
           {phase === "ready" && (
             <div className={`${styles.overlay} ${reviewingEntry ? styles.entryReviewOverlay : styles.briefingOverlay}`}>
               {!reviewingEntry ? <>
-                <small>HOW TO PLAY · DEMO FLIGHT</small>
+                <small>HOW TO PLAY · {paymentReadiness?.enabled ? "PAID ROBINHOOD FLIGHT" : "SAFE DEMO FLIGHT"}</small>
                 <h2>FLY. COLLECT. SURVIVE.</h2>
-                <p className={styles.briefingLead}>Move the <b>MSS2 flyer</b>. Collect cyan. Avoid pink. Reach the Moon before three hits end the flight.</p>
+                <p className={styles.briefingLead}>Pilot the <b>MSS2 flyer</b> through all three stages, build the biggest combo, and reach the Moon with the highest score you can.</p>
+                <div className={styles.whyPlay} aria-label="Why play Mint Flyer">
+                  <span><i aria-hidden="true">🌕</i><b>REACH THE MOON</b><small>Survive 3,000 meters</small></span>
+                  <span><i aria-hidden="true">🏆</i><b>CLIMB THE BOARD</b><small>Beat the top score</small></span>
+                  <span><i aria-hidden="true">★</i><b>UNLOCK BADGES</b><small>Master clean runs and combos</small></span>
+                </div>
                 <div className={styles.howToGrid} aria-label="How to play Mint Flyer">
                   <article>
                     <i className={styles.howToMove}>↕</i>
@@ -704,29 +849,37 @@ export default function MintFlyer() {
                   </article>
                 </div>
                 <div className={styles.routePreview} aria-label="Three flight stages"><span>1 <b>MINT STREAM</b></span><i>→</i><span>2 <b>BLOCK SURGE</b></span><i>→</i><span>3 <b>MOON RUN</b></span></div>
-                <p className={styles.demoGameNote}><b>DEMO MODE:</b> Free to play. No wallet or real MSS2 required.</p>
-                <button onClick={reviewEntry} disabled={!entryQuote || quoteExpired}>{!entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "REVIEW DEMO ENTRY"}</button>
+                <p className={styles.demoGameNote}>{paymentReadiness?.enabled
+                  ? <><b>LIVE ENTRY:</b> The verified entry router sends 20% to the dead address and 80% to the Community Airdrop Reserve in one transaction.</>
+                  : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed entry split sends 20% to the dead address and 80% to the designated Community Airdrop Reserve—a 4:1 community allocation. Real transfers remain disabled.</>}</p>
+                {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
+                <button onClick={() => void reviewEntry()} disabled={paymentBusy || (paymentReadiness?.enabled ? !walletConnection || !playerKey : !entryQuote || quoteExpired)}>{paymentBusy ? "PREPARING…" : paymentReadiness?.enabled ? walletConnection ? "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : !entryQuote ? quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING DEMO" : quoteExpired ? "REFRESHING DEMO" : "REVIEW SAFE DEMO"}</button>
               </> : <>
-                <small>DEMO ENTRY REVIEW · NO TRANSACTION</small>
-                <h2>REVIEW THE RUN</h2>
-                <p>Confirm the simulated entry details below, then start the flight. This screen does not request a token approval, signature, network switch, or transfer.</p>
+                <small>{paymentReadiness?.enabled ? "LIVE MSS2 ENTRY · ROBINHOOD CHAIN" : "SAFE ENTRY REVIEW · NO TRANSACTION"}</small>
+                <h2>{paymentReadiness?.enabled ? "REVIEW + PAY" : "REVIEW THE RUN"}</h2>
+                <p>{paymentReadiness?.enabled ? "The wallet will request one exact MSS2 transfer. No token approval is needed. Check every field in your wallet before approving." : "Confirm the simulated entry details below, then start the flight. This screen does not request a token approval, signature, network switch, or transfer."}</p>
                 <div className={styles.reviewReminder}>
                   <span><i className={styles.guideMintIcon}><Image className={styles.mintGuideLogo} src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></i><b>MSS2 LOGO = COLLECT</b><small>+250 POINTS</small></span>
                   <span><i className={styles.guideHazardIcon}>!</i><b>PINK = AVOID</b><small>-1 LIFE</small></span>
                   <span><i className={styles.guideMoveIcon}>↕</i><b><span className={styles.desktopControlText}>MOUSE OR KEYS</span><span className={styles.mobileControlText}>PRESS + SLIDE</span></b><small>MOVE UP + DOWN</small></span>
                 </div>
                 <div className={styles.entryReview} aria-label="Demo MSS2 entry review">
-                  <span><small>RUN PRICE</small><strong>${entryQuote?.entryPriceUsd ?? ENTRY_PRICE_USD.toFixed(2)} USD</strong></span>
-                  <span><small>INDICATIVE AMOUNT</small><strong>{entryQuote ? `${entryQuote.indicativeMss2ForEntry} MSS2` : "UNAVAILABLE"}</strong></span>
+                  <span><small>RUN PRICE</small><strong>${paymentReadiness?.enabled ? livePaymentQuote?.entryPriceUsd : entryQuote?.entryPriceUsd ?? ENTRY_PRICE_USD.toFixed(2)} USD</strong></span>
+                  <span><small>{paymentReadiness?.enabled ? "EXACT TRANSFER" : "INDICATIVE AMOUNT"}</small><strong>{paymentReadiness?.enabled ? livePaymentQuote ? `${livePaymentQuote.displayAmount} MSS2` : "UNAVAILABLE" : entryQuote ? `${entryQuote.indicativeMss2ForEntry} MSS2` : "UNAVAILABLE"}</strong></span>
                   <span><small>PRICE REFERENCE</small><strong>ROBINHOOD CHAIN · TOPAZ</strong></span>
-                  <span><small>QUOTE EXPIRES</small><strong className={quoteExpired ? styles.expiredText : ""}>{quoteExpired ? "EXPIRED" : `${quoteSecondsRemaining}s`}</strong></span>
-                  <span className={styles.reviewWide}><small>PROPOSED RECIPIENT</small><code>{DEVELOPER_WALLET}</code></span>
-                  <span className={styles.reviewWide}><small>DEMO QUOTE REFERENCE</small><code>{entryQuote?.quoteId ?? "UNAVAILABLE"}</code></span>
+                  <span><small>QUOTE EXPIRES</small><strong className={(paymentReadiness?.enabled ? liveQuoteExpired : quoteExpired) ? styles.expiredText : ""}>{paymentReadiness?.enabled ? liveQuoteExpired ? "EXPIRED" : `${liveQuoteSecondsRemaining}s` : quoteExpired ? "EXPIRED" : `${quoteSecondsRemaining}s`}</strong></span>
+                  <span className={styles.reviewWide}><small>20% · DEAD ADDRESS</small><code>{DEAD_ADDRESS}</code></span>
+                  <span className={styles.reviewWide}><small>80% · COMMUNITY AIRDROP RESERVE</small><code>{COMMUNITY_AIRDROP_WALLET}</code></span>
+                  <span className={styles.reviewWide}><small>{paymentReadiness?.enabled ? "SERVER PAYMENT ID" : "DEMO QUOTE REFERENCE"}</small><code>{paymentReadiness?.enabled ? livePaymentQuote?.paymentId : entryQuote?.quoteId ?? "UNAVAILABLE"}</code></span>
                 </div>
-                <p className={styles.entryWarning}><b>DEMO ONLY</b><span>A future live entry would be final and non-refundable after explicit wallet approval and successful backend verification. This preview moves no funds.</span></p>
+                <p className={styles.entryWarning}><b>{paymentReadiness?.enabled ? "FINAL TRANSFER" : "NO FUNDS MOVE"}</b><span>{paymentReadiness?.enabled ? "After wallet approval, the router sends 20% of the MSS2 entry to the dead address and 80% to the Community Airdrop Reserve. Transfers are intended to be final and do not guarantee an airdrop, income, token value, or uninterrupted service." : "This review is simulated. Real entry payments stay disabled until the 20/80 router and backend verification are complete."}</span></p>
+                {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
+                {paymentTxHash && <a className={styles.paymentTxLink} href={`https://robin.etherscan.io/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">VIEW SUBMITTED TRANSACTION ↗</a>}
                 <div className={styles.entryActions}>
-                  <button className={styles.secondaryEntryButton} onClick={() => setReviewingEntry(false)}>← BACK</button>
-                  <button onClick={confirmDemoEntry} disabled={quoteExpired || !entryQuote}>{quoteExpired ? "QUOTE EXPIRED" : "CONFIRM DEMO ENTRY + START"}</button>
+                  <button className={styles.secondaryEntryButton} onClick={() => setReviewingEntry(false)} disabled={paymentBusy}>← BACK</button>
+                  {paymentReadiness?.enabled
+                    ? <button onClick={() => void confirmLivePayment()} disabled={paymentBusy || (liveQuoteExpired && !paymentTxHash) || !livePaymentQuote}>{paymentBusy ? "VERIFYING PAYMENT…" : paymentTxHash ? "RECHECK PAYMENT + START" : liveQuoteExpired ? "QUOTE EXPIRED" : "PAY MSS2 + START"}</button>
+                    : <button onClick={confirmDemoEntry} disabled={quoteExpired || !entryQuote}>{quoteExpired ? "QUOTE EXPIRED" : "CONFIRM SAFE DEMO + START"}</button>}
                 </div>
               </>}
             </div>
@@ -755,16 +908,16 @@ export default function MintFlyer() {
                     <small>{DEMO_CONTINUE_COST} DEMO CREDITS · RESTORES 3 LIVES</small>
                   </button>
                 )}
-                <button className={styles.restartButton} onClick={prepareAnotherRun}>↻ REVIEW ANOTHER DEMO ENTRY <small>EVERY NEW SCORED RUN USES A NEW QUOTE</small></button>
+                <button className={styles.restartButton} onClick={prepareAnotherRun}>↻ {paymentReadiness?.enabled ? "REVIEW ANOTHER MSS2 ENTRY" : "REVIEW ANOTHER SAFE DEMO"} <small>EVERY NEW SCORED RUN USES A NEW QUOTE</small></button>
               </div>
-              {continued && <p className={styles.usedNotice}>The one demo continue for this flight has been used. A new demo run simulates a new MSS2 entry.</p>}
-              <section className={styles.lockedPayments} aria-label="Token continue readiness">
-                <div><small>FUTURE MSS2 GAME PAYMENTS</small><strong>LOCKED</strong></div>
+              {continued && <p className={styles.usedNotice}>The one continue for this flight has been used. A new scored run requires a new entry review.</p>}
+              <section className={styles.lockedPayments} aria-label="Token payment readiness">
+                <div><small>MSS2 GAME ENTRY</small><strong>{paymentReadiness?.enabled ? "ROBINHOOD LIVE" : "RELEASE LOCKED"}</strong></div>
                 <ul>
-                  <li><b>ROBINHOOD CHAIN</b><span>Planned MSS2 run and continue payments. Token decimals, transfer behavior, pricing, recipient, and backend verification must be confirmed before activation.</span></li>
-                  <li><b>ARC</b><span>Planned MSS2 run and continue payments after the Arc MSS2 contract deployment and liquidity source are independently verified.</span></li>
+                  <li><b>ROBINHOOD CHAIN</b><span>{paymentReadiness?.enabled ? "Each scored run uses one exact MSS2 entry split. The server checks the chain, token, sender, both destinations, both amounts, receipt, confirmations, and duplicate use." : "The payment code is gated until the 20/80 router and matching backend verifier are complete."}</span></li>
+                  <li><b>ARC</b><span>Locked until the live Arc MSS2 pool, quote source, RPC receipt path, and end-to-end verifier pass independently.</span></li>
                 </ul>
-                <p>The wallet may add or switch networks, but this preview requests no token approval, signature, or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only proposal.</p>
+                <p>{paymentReadiness?.enabled ? "The wallet shows the final router transaction before anything moves. 20% goes to the dead address and 80% goes to the Community Airdrop Reserve." : "This preview requests no token approval or transfer. Permanent MSS2 commitments remain a separate Robinhood Chain-only demo."}</p>
               </section>
             </div>
           )}
@@ -818,13 +971,14 @@ export default function MintFlyer() {
         </footer>
       </section>
 
-      <MintFlyerLeaderboard result={leaderboardResult} walletConnection={walletConnection} />
+      <MintFlyerLeaderboard result={leaderboardResult} />
 
       <details className={styles.infoDrawer} id="payment-safety">
-        <summary><span><small>DEMO SAFETY</small><strong>NO REAL MSS2 IS CHARGED</strong></span><b>VIEW DETAILS +</b></summary>
+        <summary><span><small>PAYMENT SAFETY</small><strong>{paymentReadiness?.enabled ? "ROBINHOOD MSS2 ENTRY IS LIVE" : "REAL MSS2 REMAINS LOCKED"}</strong></span><b>VIEW DETAILS +</b></summary>
         <div className={styles.drawerBody}>
-          <p>Demo credits only test the continue screen. They have no cash value and cannot be purchased, transferred, withdrawn, or redeemed.</p>
-          <p>Proposed developer recipient: <code>{DEVELOPER_WALLET}</code>. Each scored run currently simulates a $1.00 MSS2 entry. No automatic liquidity action, payment, or guarantee is active.</p>
+          <p>Continue credits are game-only. They have no cash value and cannot be purchased, transferred, withdrawn, or redeemed.</p>
+          <p>The proposed entry target is $1.00 in MSS2 using a short-lived Robinhood/Topaz market quote. A future verified router would send <b>20%</b> to <code>{DEAD_ADDRESS}</code> and <b>80%</b> to the Community Airdrop Reserve at <code>{COMMUNITY_AIRDROP_WALLET}</code>.</p>
+          <p>The reserve is designated for a possible future community airdrop. No distribution, eligibility rule, timing, income, token appreciation, or preferential leaderboard treatment is promised. Real payments remain locked until the router and backend verifier are reviewed and tested.</p>
         </div>
       </details>
 
