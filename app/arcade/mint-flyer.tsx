@@ -733,6 +733,23 @@ export default function MintFlyer() {
     : maxCombo < 10
       ? "Chain 10 Mint Credits without a hit to unlock the 5X multiplier."
       : "Clean flight. Hold the 5X combo longer and collect more Mint Credits to raise your score.";
+  const headerQuoteAmount = livePaymentQuote && !liveQuoteExpired
+    ? livePaymentQuote.displayAmount
+    : entryQuote && !quoteExpired
+      ? entryQuote.indicativeMss2ForEntry
+      : "";
+  const headerQuoteStatus = selectedMss2Network === "unsupported"
+    ? "SELECT NETWORK"
+    : headerQuoteAmount
+      ? `$1 = ${headerQuoteAmount} MSS2`
+      : quoteUnavailable
+        ? "QUOTE UNAVAILABLE"
+        : quoteExpired
+          ? "REFRESHING QUOTE"
+          : "LOADING QUOTE";
+  const headerQuoteMeta = headerQuoteAmount
+    ? `${livePaymentQuote && !liveQuoteExpired ? "ENTRY QUOTE" : "DEMO QUOTE"} · ${livePaymentQuote && !liveQuoteExpired ? liveQuoteSecondsRemaining : quoteSecondsRemaining}s`
+    : liveEntryEnabled ? "LIVE PAYMENT MODE" : "REAL PAYMENTS LOCKED";
   const leaderboardResult: LeaderboardFlightResult | null = phase === "victory" && runId ? {
     runId,
     score,
@@ -769,7 +786,10 @@ export default function MintFlyer() {
         </div>
         <div className={styles.walletZone}>
           <WalletConnect theme="mss" onConnectionChange={handleWalletConnectionChange} />
-          <div className={`${styles.paymentStatus} ${liveEntryEnabled ? styles.paymentLive : ""}`}><i aria-hidden="true" /><span><small>{selectedNetworkLabel} MSS2</small><strong>{liveEntryEnabled ? "LIVE" : selectedMss2Network === "unsupported" ? "SELECT NETWORK" : entryQuote ? "$1 QUOTE · DEMO" : quoteUnavailable ? "QUOTE UNAVAILABLE" : "LOADING QUOTE"}</strong></span></div>
+          <div className={`${styles.paymentStatus} ${headerQuoteAmount ? styles.quoteReady : ""} ${liveEntryEnabled ? styles.paymentLive : ""}`} aria-label={`${selectedNetworkLabel} MSS2 one dollar quote`}>
+            <i aria-hidden="true" />
+            <span><small>{selectedNetworkLabel} MSS2</small><strong>{headerQuoteStatus}</strong><em>{headerQuoteMeta}</em></span>
+          </div>
         </div>
       </header>
 
