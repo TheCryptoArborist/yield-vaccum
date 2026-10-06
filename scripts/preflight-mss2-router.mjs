@@ -56,16 +56,25 @@ if (symbol !== "UNAVAILABLE" && symbol.toUpperCase() !== configuration.tokenSymb
 
 let deployerBalanceWei;
 let estimatedGas;
+let gasPriceWei;
 if (deployer) {
-  [deployerBalanceWei, estimatedGas] = await Promise.all([
+  [deployerBalanceWei, estimatedGas, gasPriceWei] = await Promise.all([
     rpc(network.rpcUrl, "eth_getBalance", [deployer, "latest"]),
     rpc(network.rpcUrl, "eth_estimateGas", [{ from: deployer, data: artifact.bytecode, value: "0x0" }]),
+    rpc(network.rpcUrl, "eth_gasPrice", []),
   ]);
-  if (BigInt(deployerBalanceWei) === 0n) throw new Error(`The deployer has no native gas balance on ${network.name}.`);
 }
 
+const estimatedDeploymentCostWei = estimatedGas && gasPriceWei
+  ? BigInt(estimatedGas) * BigInt(gasPriceWei)
+  : null;
+const recommendedFundingWei = estimatedDeploymentCostWei
+  ? (estimatedDeploymentCostWei * 125n + 99n) / 100n
+  : null;
+const needsNativeGas = Boolean(deployer && BigInt(deployerBalanceWei ?? "0x0") < (recommendedFundingWei ?? 1n));
+
 console.log(JSON.stringify({
-  status: "READY_FOR_WALLET_SIGNATURE",
+  status: needsNativeGas ? "NEEDS_NATIVE_GAS" : "READY_FOR_WALLET_SIGNATURE",
   signedOrBroadcast: false,
   network: networkId,
   networkName: network.name,
@@ -80,6 +89,9 @@ console.log(JSON.stringify({
   deployer: deployer ?? null,
   deployerBalanceWei: deployerBalanceWei ? BigInt(deployerBalanceWei).toString() : null,
   estimatedGas: estimatedGas ? BigInt(estimatedGas).toString() : null,
+  gasPriceWei: gasPriceWei ? BigInt(gasPriceWei).toString() : null,
+  estimatedDeploymentCostWei: estimatedDeploymentCostWei?.toString() ?? null,
+  recommendedFundingWei: recommendedFundingWei?.toString() ?? null,
   deploymentTransaction: { to: null, value: "0x0", data: artifact.bytecode },
   compilerVersion: artifact.compilerVersion,
   optimizer: artifact.optimizer,

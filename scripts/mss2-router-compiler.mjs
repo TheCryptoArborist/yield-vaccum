@@ -9,6 +9,7 @@ export const ROUTER_CONTRACT_NAME = "Mss2EntryRouter";
 export const ROUTER_SOURCE_PATH = new URL(`../contracts/${ROUTER_SOURCE_NAME}`, import.meta.url);
 
 export async function compileMss2EntryRouter() {
+  assert.match(solc.version(), /^0\.8\.30\+commit\./, "Solidity compiler must be the reviewed 0.8.30 release");
   const source = await readFile(ROUTER_SOURCE_PATH, "utf8");
   const input = {
     language: "Solidity",

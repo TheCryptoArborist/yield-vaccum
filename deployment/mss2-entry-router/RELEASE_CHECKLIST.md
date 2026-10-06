@@ -38,7 +38,7 @@ npm run deploy:preflight -- --network robinhood --deployer 0xPUBLIC_DEPLOYER_ADD
 
 Require all of the following before signing anything:
 
-- Status is `READY_FOR_WALLET_SIGNATURE`.
+- Status is `READY_FOR_WALLET_SIGNATURE`. If it is `NEEDS_NATIVE_GAS`, fund only the listed public deployer with enough native gas to meet `recommendedFundingWei`, then rerun the preflight.
 - `signedOrBroadcast` is `false`.
 - Chain ID is `4663`.
 - MSS2 code exists at the canonical token address and reports 18 decimals.
