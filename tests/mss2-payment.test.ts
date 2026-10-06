@@ -1,9 +1,19 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { AbiCoder } from "ethers";
 import {
   ENTRY_PAID_TOPIC,
+  ARC_CHAIN_HEX,
+  ARC_CHAIN_ID,
+  ARC_EXPLORER_URL,
+  ARC_RPC_URL,
   MSS2_TOKEN,
+  MSS2_DECIMALS,
+  ROBINHOOD_CHAIN_HEX,
+  ROBINHOOD_CHAIN_ID,
+  ROBINHOOD_EXPLORER_URL,
+  ROBINHOOD_RPC_URL,
   TRANSFER_TOPIC,
   addressTopic,
   encodeRouterEntry,
@@ -13,7 +23,16 @@ import {
   splitEntryAmount,
 } from "../lib/mss2-payment";
 import { validatePaymentEvidence, type PaymentEvidenceReceipt } from "../lib/mss2-payment-verifier";
-import { MSS2_COMMUNITY_AIRDROP_RESERVE, MSS2_DEAD_ADDRESS } from "../lib/mss2-payment-shared";
+import {
+  MSS2_COMMUNITY_AIRDROP_RESERVE,
+  MSS2_DEAD_ADDRESS,
+  MSS2_ENTRY_AIRDROP_RESERVE_BPS,
+  MSS2_ENTRY_DEAD_ADDRESS_BPS,
+} from "../lib/mss2-payment-shared";
+
+const deploymentConfiguration = JSON.parse(
+  readFileSync(new URL("../deployment/mss2-entry-router/networks.json", import.meta.url), "utf8"),
+);
 
 const paymentId = "12345678-1234-4abc-8def-1234567890ab";
 const wallet = "0x1111111111111111111111111111111111111111";
@@ -74,6 +93,31 @@ test("network configuration keeps Robinhood and Arc independent", () => {
   assert.equal(paymentNetworkConfig("robinhood").confirmations, 2);
   assert.equal(paymentNetworkConfig("arc").chainId, 5042);
   assert.equal(paymentNetworkConfig("arc").confirmations, 1);
+});
+
+test("deployment configuration cannot drift from application constants", () => {
+  assert.equal(deploymentConfiguration.token, MSS2_TOKEN);
+  assert.equal(deploymentConfiguration.tokenDecimals, MSS2_DECIMALS);
+  assert.equal(deploymentConfiguration.deadAddress, MSS2_DEAD_ADDRESS);
+  assert.equal(deploymentConfiguration.communityAirdropReserve, MSS2_COMMUNITY_AIRDROP_RESERVE);
+  assert.equal(deploymentConfiguration.deadAddressBps, MSS2_ENTRY_DEAD_ADDRESS_BPS);
+  assert.equal(deploymentConfiguration.communityAirdropReserveBps, MSS2_ENTRY_AIRDROP_RESERVE_BPS);
+  assert.deepEqual(deploymentConfiguration.networks.robinhood, {
+    name: "Robinhood Chain",
+    chainId: ROBINHOOD_CHAIN_ID,
+    chainHex: ROBINHOOD_CHAIN_HEX,
+    rpcUrl: ROBINHOOD_RPC_URL,
+    explorerUrl: ROBINHOOD_EXPLORER_URL,
+    confirmations: 2,
+  });
+  assert.deepEqual(deploymentConfiguration.networks.arc, {
+    name: "Arc",
+    chainId: ARC_CHAIN_ID,
+    chainHex: ARC_CHAIN_HEX,
+    rpcUrl: ARC_RPC_URL,
+    explorerUrl: ARC_EXPLORER_URL,
+    confirmations: 1,
+  });
 });
 
 test("20/80 split preserves every raw token unit", () => {

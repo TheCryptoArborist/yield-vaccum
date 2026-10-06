@@ -12,7 +12,10 @@
     "lint": "eslint . --ignore-pattern .next",
     "test": "npm run test:contract && npm run test:payments",
     "test:contract": "node scripts/compile-mss2-router.mjs",
-    "test:payments": "node --import tsx --test tests/**/*.test.ts"
+    "test:payments": "node --import tsx --test tests/**/*.test.ts",
+    "deploy:artifact": "node scripts/build-mss2-router-artifact.mjs",
+    "deploy:preflight": "node scripts/preflight-mss2-router.mjs",
+    "deploy:verify": "node scripts/verify-mss2-router-deployment.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^10.0.11",

@@ -1,0 +1,27 @@
+{
+  "token": "0x091F0c7e675A787A4018eb47c30BeD3FA2013B65",
+  "tokenSymbol": "MSS2",
+  "tokenDecimals": 18,
+  "deadAddress": "0x000000000000000000000000000000000000dEaD",
+  "communityAirdropReserve": "0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7",
+  "deadAddressBps": 2000,
+  "communityAirdropReserveBps": 8000,
+  "networks": {
+    "robinhood": {
+      "name": "Robinhood Chain",
+      "chainId": 4663,
+      "chainHex": "0x1237",
+      "rpcUrl": "https://rpc.mainnet.chain.robinhood.com",
+      "explorerUrl": "https://robin.etherscan.io",
+      "confirmations": 2
+    },
+    "arc": {
+      "name": "Arc",
+      "chainId": 5042,
+      "chainHex": "0x13b2",
+      "rpcUrl": "https://rpc.mainnet.arc.io",
+      "explorerUrl": "https://explorer.arc.io",
+      "confirmations": 1
+    }
+  }
+}
