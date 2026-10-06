@@ -12,7 +12,7 @@
       "chainId": 4663,
       "chainHex": "0x1237",
       "rpcUrl": "https://rpc.mainnet.chain.robinhood.com",
-      "explorerUrl": "https://robin.etherscan.io",
+      "explorerUrl": "https://robinhoodchain.blockscout.com",
       "confirmations": 2
     },
     "arc": {

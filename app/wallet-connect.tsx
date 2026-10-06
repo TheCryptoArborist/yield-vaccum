@@ -47,7 +47,7 @@ export type WalletConnection = {
   chainId: string;
   signMessage: (message: string) => Promise<string>;
   switchChain: (chainId: `0x${string}`) => Promise<void>;
-  sendTransaction: (transaction: { to: string; data: string; value?: string }) => Promise<string>;
+  sendTransaction: (transaction: { to?: string; data: string; value?: string; gas?: string }) => Promise<string>;
 };
 
 declare global {
@@ -75,7 +75,7 @@ const SUPPORTED_NETWORKS: WalletNetwork[] = [
     icon: "/network-robinhood-chain.jpg",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: ["https://rpc.mainnet.chain.robinhood.com"],
-    blockExplorerUrls: ["https://robin.etherscan.io"],
+    blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
   },
   {
     chainId: "0x13b2",
@@ -255,9 +255,16 @@ export default function WalletConnect({
         setChainId(normalized);
       },
       sendTransaction: async (transaction) => {
+        const request: Record<string, string> = {
+          from: account,
+          data: transaction.data,
+          value: transaction.value ?? "0x0",
+        };
+        if (transaction.to) request.to = transaction.to;
+        if (transaction.gas) request.gas = transaction.gas;
         const txHash = await selectedWallet.provider.request({
           method: "eth_sendTransaction",
-          params: [{ from: account, to: transaction.to, data: transaction.data, value: transaction.value ?? "0x0" }],
+          params: [request],
         });
         if (typeof txHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error("The wallet did not return a valid transaction hash.");
         return txHash;
