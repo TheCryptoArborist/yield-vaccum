@@ -33,6 +33,8 @@ export type LeaderboardFlightResult = {
   reachedMoon: boolean;
   continued: boolean;
   paymentId?: string;
+  runAuthorizationId?: string;
+  entryNetwork: "robinhood" | "arc";
 };
 
 const NICKNAME_KEY = "yield-vacuum-mint-flyer-nickname";

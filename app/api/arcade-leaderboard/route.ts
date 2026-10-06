@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     const reachedMoon = payload.reachedMoon === true;
     const continued = payload.continued === true;
     const paymentId = String(payload.paymentId ?? "").trim();
+    const runAuthorizationId = String(payload.runAuthorizationId ?? "").trim();
 
     if (!/^[a-zA-Z0-9-]{16,80}$/.test(playerKey) || !/^[a-zA-Z0-9-]{16,80}$/.test(runId) || nickname.length < 2) {
       return Response.json({ error: "Choose a nickname with at least two letters or numbers." }, { status: 400 });
@@ -54,8 +55,8 @@ export async function POST(request: Request) {
       return Response.json({ error: "That flight result is inconsistent." }, { status: 400 });
     }
 
-    await requirePaymentForScore(paymentId, playerKey, runId);
-    const result = await saveMintFlyerRun({ playerKey, runId, nickname, score: score!, distance: distance!, mintsCollected: mintsCollected!, maxCombo: maxCombo!, hits: hits!, lives: lives!, reachedMoon, continued });
+    const entry = await requirePaymentForScore({ paymentId, runAuthorizationId, playerKey, runId });
+    const result = await saveMintFlyerRun({ playerKey, runId, nickname, score: score!, distance: distance!, mintsCollected: mintsCollected!, maxCombo: maxCombo!, hits: hits!, lives: lives!, reachedMoon, continued, entryMode: entry.mode, entryNetwork: entry.network });
     return Response.json({ saved: true, ...result, profile: publicProfile(result.profile) });
   } catch {
     return Response.json({ error: "The flight result could not be saved right now." }, { status: 503 });
