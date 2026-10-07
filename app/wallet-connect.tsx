@@ -106,6 +106,11 @@ function providerErrorCode(error: unknown) {
   return typeof error.code === "number" ? error.code : Number(error.code);
 }
 
+function isUnsupportedPermissionRequest(error: unknown) {
+  const code = providerErrorCode(error);
+  return code === -32601 || code === 4200;
+}
+
 function normalizedAccounts(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
@@ -323,6 +328,14 @@ export default function WalletConnect({
     setBusy(true);
     setMessage("");
     try {
+      try {
+        await wallet.provider.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
+      } catch (error) {
+        // MetaMask and Rabby receive the account-picker request. Wallets that
+        // do not implement EIP-2255 fall back to their standard connection
+        // screen, while a user rejection never reconnects silently.
+        if (!isUnsupportedPermissionRequest(error)) throw error;
+      }
       const accountsValue = await wallet.provider.request({ method: "eth_requestAccounts" });
       const accounts = normalizedAccounts(accountsValue);
       if (!accounts[0]) throw new Error("No account was selected.");
@@ -338,6 +351,32 @@ export default function WalletConnect({
       setBusy(false);
     }
   }, []);
+
+  const switchAccount = useCallback(async () => {
+    if (!selectedWallet || busy) return;
+    setBusy(true);
+    setMessage("Choose the account this site should use inside your wallet.");
+    try {
+      try {
+        await selectedWallet.provider.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
+      } catch (error) {
+        if (!isUnsupportedPermissionRequest(error)) throw error;
+      }
+      const accountsValue = await selectedWallet.provider.request({ method: "eth_requestAccounts" });
+      const accounts = normalizedAccounts(accountsValue);
+      if (!accounts[0]) throw new Error("No account was selected.");
+      const chainValue = await selectedWallet.provider.request({ method: "eth_chainId" });
+      setAccount(accounts[0]);
+      setChainId(typeof chainValue === "string" ? chainValue : chainId);
+      setMss2BalanceResult({ key: "", balance: null, state: "loading" });
+      window.sessionStorage.setItem(SELECTED_WALLET_KEY, selectedWallet.info.rdns);
+      setMessage(`Active account changed to ${shortAddress(accounts[0])}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The account selection was cancelled.");
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, chainId, selectedWallet]);
 
   const switchNetwork = useCallback(async (network: WalletNetwork) => {
     if (!selectedWallet) return;
@@ -383,7 +422,7 @@ export default function WalletConnect({
     setSelectedWallet(null);
     setAccount("");
     setChainId("");
-    setMessage("Site connection cleared. Disconnect permissions inside your wallet if desired.");
+    setMessage("Yield Vacuum cleared its local connection. Use Switch Account when reconnecting, or revoke the site under Connected sites inside your wallet.");
     setOpen(false);
     setNetworkOpen(false);
   };
@@ -515,7 +554,10 @@ export default function WalletConnect({
                 <small>{selectedWallet?.info.name || "CONNECTED WALLET"}</small>
                 <strong>{shortAddress(account)}</strong>
                 <span>{chainLabel(chainId)}{theme === "mss" && mss2BalanceState === "ready" ? ` · ~${mss2Balance} MSS2` : ""}</span>
-                <button type="button" onClick={forget}>CLEAR SITE CONNECTION</button>
+                <div className={styles.accountActions}>
+                  <button type="button" onClick={() => void switchAccount()} disabled={busy}>{busy ? "CHECK WALLET…" : "SWITCH ACCOUNT"}</button>
+                  <button type="button" onClick={forget} disabled={busy}>DISCONNECT FROM SITE</button>
+                </div>
               </div>
             </>
           ) : wallets.length ? (
@@ -534,7 +576,7 @@ export default function WalletConnect({
           )}
 
           <p className={styles.disclosure}>{theme === "mss"
-            ? "Connecting once activates wallet features across this arcade page and reads the rounded MSS2 balance for the selected Robinhood or Arc network without a signature. A future live arcade entry may request one exact MSS2 transfer only after a separate on-site review; it never requests an unlimited token approval."
+            ? "Connecting activates wallet features across this arcade page and reads the rounded MSS2 balance for the selected Robinhood or Arc network without a signature. Switch Account opens your wallet's account selector. Paid arcade entry uses an exact MSS2 allowance only after a separate on-site review; it never requests an unlimited token approval."
             : "Connecting shares the selected public address and current network. Network buttons may ask the wallet to add or switch chains, but never request a signature, token approval, or transfer."}</p>
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>
