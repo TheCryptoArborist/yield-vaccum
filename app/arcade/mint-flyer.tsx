@@ -987,7 +987,7 @@ export default function MintFlyer() {
               </> : <>
                 <small>{liveEntryEnabled ? `${canaryEntryEnabled ? "RESTRICTED CANARY" : "LIVE MSS2 ENTRY"} · ${selectedNetworkLabel}` : `${selectedNetworkLabel} $1 QUOTE · NO TRANSACTION`}</small>
                 <h2>{liveEntryEnabled ? canaryEntryEnabled ? "REVIEW CANARY + PAY" : "REVIEW + PAY" : "REVIEW THE RUN"}</h2>
-                <p>{liveEntryEnabled ? "The wallet will first request an exact MSS2 allowance for the verified router, then the entry transaction. Check the token, amount, router, network, and both destinations before approving." : `The current ${selectedNetworkLabel} price calculates how much MSS2 equals $1.00. This preview does not request approval, a signature, a network switch, or a transfer.`}</p>
+                <p>{liveEntryEnabled ? "The quote itself never moves tokens. Use the payment control below to open your wallet: confirmation 1 approves only the exact MSS2 amount, and confirmation 2 submits the 20/80 entry transaction." : `The current ${selectedNetworkLabel} price calculates how much MSS2 equals $1.00. This preview does not request approval, a signature, a network switch, or a transfer.`}</p>
                 <div className={styles.reviewReminder}>
                   <span><i className={styles.guideMintIcon}><Image className={styles.mintGuideLogo} src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></i><b>MSS2 LOGO = COLLECT</b><small>+250 POINTS</small></span>
                   <span><i className={styles.guideHazardIcon}>!</i><b>PINK = AVOID</b><small>-1 LIFE</small></span>
@@ -1005,10 +1005,10 @@ export default function MintFlyer() {
                 <p className={styles.entryWarning}><b>{liveEntryEnabled ? "FINAL TRANSFER" : "NO FUNDS MOVE"}</b><span>{liveEntryEnabled ? "After wallet approval, the router sends 20% of the MSS2 entry to the dead address and 80% to the Community Airdrop Reserve. Transfers are intended to be final and do not guarantee an airdrop, income, token value, or uninterrupted service." : `This ${selectedNetworkLabel} quote is simulated for review. Real entry payments stay disabled until that chain's 20/80 router and backend verifier are complete.`}</span></p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 {paymentTxHash && <a className={styles.paymentTxLink} href={`${livePaymentQuote?.explorerUrl}/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">VIEW SUBMITTED TRANSACTION ↗</a>}
-                <div className={styles.entryActions}>
+                <div className={styles.entryActions} aria-label={liveEntryEnabled ? "MSS2 payment controls" : "Demo flight controls"}>
                   <button className={styles.secondaryEntryButton} onClick={() => setReviewingEntry(false)} disabled={paymentBusy}>← BACK</button>
                   {liveEntryEnabled
-                    ? <button onClick={() => void confirmLivePayment()} disabled={paymentBusy || (liveQuoteExpired && !paymentTxHash) || !livePaymentQuote}>{paymentBusy ? "VERIFYING PAYMENT…" : paymentTxHash ? "RECHECK PAYMENT + START" : liveQuoteExpired ? "QUOTE EXPIRED" : "PAY MSS2 + START"}</button>
+                    ? <button onClick={() => void confirmLivePayment()} disabled={paymentBusy || (liveQuoteExpired && !paymentTxHash) || !livePaymentQuote}>{paymentBusy ? "CHECK WALLET · APPROVE, THEN PAY" : paymentTxHash ? "RECHECK PAYMENT + START" : liveQuoteExpired ? "QUOTE EXPIRED · GO BACK" : "OPEN WALLET · APPROVE + PAY MSS2"}</button>
                     : <button onClick={() => void confirmDemoEntry()} disabled={paymentBusy || quoteExpired || !entryQuote || !playerKey}>{paymentBusy ? "PREPARING FREE FLIGHT…" : quoteExpired ? "QUOTE EXPIRED" : `CONFIRM ${selectedNetworkLabel} DEMO + START`}</button>}
                 </div>
               </>}
