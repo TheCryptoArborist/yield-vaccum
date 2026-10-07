@@ -97,9 +97,10 @@ test("live payments remain source-code locked on both networks", () => {
 
 test("deploy-preview canary requires the explicitly allowlisted non-reserve wallet", () => {
   process.env.CONTEXT = "deploy-preview";
-  process.env.MSS2_CANARY_WALLET = wallet;
-  assert.equal(paymentReadiness("robinhood", wallet).enabled, true);
-  assert.equal(paymentReadiness("arc", wallet).enabled, true);
+  delete process.env.MSS2_CANARY_WALLET;
+  const canaryWallet = "0x90f9c1c0c675A0ce9D539c540DB7F4A1f7e583AE";
+  assert.equal(paymentReadiness("robinhood", canaryWallet).enabled, true);
+  assert.equal(paymentReadiness("arc", canaryWallet).enabled, true);
   assert.equal(paymentReadiness("arc", "0x3333333333333333333333333333333333333333").enabled, false);
   assert.equal(paymentReadiness("arc", MSS2_COMMUNITY_AIRDROP_RESERVE).enabled, false);
   assert.equal(paymentReadiness("arc").releaseMode, "canary");

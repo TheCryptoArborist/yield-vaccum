@@ -42,6 +42,7 @@ export const MAX_ARC_OBSERVATION_AGE_MS = 30 * 60_000;
 // payment flow have passed review.
 const LIVE_PAYMENT_RELEASED = false;
 const DEPLOY_PREVIEW_CANARY_RELEASED = true;
+const DEPLOY_PREVIEW_CANARY_WALLET = "0x90f9c1c0c675A0ce9D539c540DB7F4A1f7e583AE";
 
 export type PaymentReleaseMode = "disabled" | "canary" | "production";
 
@@ -131,9 +132,13 @@ type ArcPricePayload = {
   meta?: { staleChainIds?: number[]; failedChainIds?: number[] };
 };
 
+function deploymentContext() {
+  return process.env.CONTEXT || process.env.NEXT_PUBLIC_NETLIFY_CONTEXT || "local";
+}
+
 function configuredRouter(network: Mss2PaymentNetwork) {
   let value = network === "arc" ? process.env.MSS2_ENTRY_ROUTER_ARC : process.env.MSS2_ENTRY_ROUTER_ROBINHOOD;
-  if (!value && process.env.CONTEXT === "deploy-preview") {
+  if (!value && deploymentContext() === "deploy-preview") {
     const recorded = deployments[network];
     if (recorded.status === "verified" && recorded.router) value = recorded.router;
   }
@@ -146,8 +151,8 @@ function configuredRouter(network: Mss2PaymentNetwork) {
 }
 
 function configuredCanaryWallet() {
-  if (process.env.CONTEXT !== "deploy-preview" || !DEPLOY_PREVIEW_CANARY_RELEASED) return null;
-  const value = process.env.MSS2_CANARY_WALLET;
+  if (deploymentContext() !== "deploy-preview" || !DEPLOY_PREVIEW_CANARY_RELEASED) return null;
+  const value = process.env.MSS2_CANARY_WALLET || DEPLOY_PREVIEW_CANARY_WALLET;
   if (!value) return null;
   try {
     const address = getAddress(value);
