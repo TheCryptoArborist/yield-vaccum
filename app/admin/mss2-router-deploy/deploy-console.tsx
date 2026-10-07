@@ -6,8 +6,8 @@ import WalletConnect, { type WalletConnection } from "../../wallet-connect";
 import styles from "./deploy-console.module.css";
 
 const APPROVED_WALLET = "0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7";
-const ROBINHOOD_CHAIN_HEX = "0x1237";
-const CONFIRMATION = "DEPLOY ROBINHOOD";
+const ARC_CHAIN_HEX = "0x13b2";
+const CONFIRMATION = "DEPLOY ARC";
 
 type ArtifactSummary = {
   bytecode: string;
@@ -32,7 +32,7 @@ function short(value: string, lead = 10, tail = 8) {
   return value.length > lead + tail + 1 ? `${value.slice(0, lead)}…${value.slice(-tail)}` : value;
 }
 
-export default function DeployConsole({ previewEnabled, artifact }: { previewEnabled: boolean; artifact: ArtifactSummary }) {
+export default function DeployConsole({ previewEnabled, artifact, robinhoodRouter }: { previewEnabled: boolean; artifact: ArtifactSummary; robinhoodRouter: string }) {
   const [connection, setConnection] = useState<WalletConnection | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
@@ -42,19 +42,20 @@ export default function DeployConsole({ previewEnabled, artifact }: { previewEna
   const [verification, setVerification] = useState<Verification | null>(null);
 
   const correctWallet = connection?.account.toLowerCase() === APPROVED_WALLET.toLowerCase();
-  const correctNetwork = connection?.chainId.toLowerCase() === ROBINHOOD_CHAIN_HEX;
+  const correctNetwork = connection?.chainId.toLowerCase() === ARC_CHAIN_HEX;
   const armed = previewEnabled && correctWallet && correctNetwork && acknowledged && confirmation === CONFIRMATION && !busy && !txHash;
 
   const checkpoints = useMemo(() => [
     { label: "Preview-only release", ready: previewEnabled, detail: previewEnabled ? "Netlify deploy-preview context" : "Disabled outside an approved deploy preview" },
     { label: "Approved wallet", ready: Boolean(correctWallet), detail: connection ? short(connection.account) : short(APPROVED_WALLET) },
-    { label: "Robinhood Chain", ready: Boolean(correctNetwork), detail: connection ? `Active chain ${Number.parseInt(connection.chainId || "0", 16) || "unknown"}` : "Chain 4663 required" },
+    { label: "Robinhood prerequisite", ready: true, detail: `Verified · ${short(robinhoodRouter)}` },
+    { label: "Arc", ready: Boolean(correctNetwork), detail: connection ? `Active chain ${Number.parseInt(connection.chainId || "0", 16) || "unknown"}` : "Chain 5042 required" },
     { label: "Reviewed bytecode", ready: true, detail: short(artifact.creationCodeHash) },
-    { label: "Transaction value", ready: true, detail: "0 ETH · contract creation only" },
-  ], [artifact.creationCodeHash, connection, correctNetwork, correctWallet, previewEnabled]);
+    { label: "Transaction value", ready: true, detail: "0 USDC · contract creation only" },
+  ], [artifact.creationCodeHash, connection, correctNetwork, correctWallet, previewEnabled, robinhoodRouter]);
 
   const verify = useCallback(async (hash: string) => {
-    const response = await fetch(`/api/mss2-router-deployment?txHash=${encodeURIComponent(hash)}`, { cache: "no-store" });
+    const response = await fetch(`/api/mss2-router-deployment?network=arc&txHash=${encodeURIComponent(hash)}`, { cache: "no-store" });
     const result = await response.json() as Verification;
     if (!response.ok) throw new Error(result.error || "The deployment could not be verified.");
     setVerification(result);
@@ -71,11 +72,11 @@ export default function DeployConsole({ previewEnabled, artifact }: { previewEna
         const result = await verify(txHash);
         if (cancelled) return;
         if (result.state === "verified") {
-          setStatus("Robinhood router deployed and bytecode verified.");
+          setStatus("Arc router deployed and bytecode verified.");
           setBusy(false);
           return;
         }
-        setStatus(result.message || "Waiting for the Robinhood receipt…");
+        setStatus(result.message || "Waiting for the Arc receipt…");
       } catch (error) {
         if (cancelled) return;
         setStatus(error instanceof Error ? error.message : "Deployment verification failed.");
@@ -92,12 +93,12 @@ export default function DeployConsole({ previewEnabled, artifact }: { previewEna
     return () => { cancelled = true; };
   }, [txHash, verification?.state, verify]);
 
-  const switchToRobinhood = async () => {
+  const switchToArc = async () => {
     if (!connection) return;
     setStatus("Check your wallet to approve the network switch. This does not submit a transaction.");
     try {
-      await connection.switchChain(ROBINHOOD_CHAIN_HEX);
-      setStatus("Robinhood Chain selected. Review every checkpoint before deployment.");
+      await connection.switchChain(ARC_CHAIN_HEX);
+      setStatus("Arc selected. Review every checkpoint before deployment.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "The network switch was cancelled.");
     }
@@ -110,7 +111,7 @@ export default function DeployConsole({ previewEnabled, artifact }: { previewEna
     try {
       const hash = await connection.sendTransaction({ data: artifact.bytecode, value: "0x0" });
       setTxHash(hash);
-      setStatus("Transaction submitted. Waiting for the Robinhood receipt and bytecode verification…");
+      setStatus("Transaction submitted. Waiting for the Arc receipt and bytecode verification…");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "The deployment request was cancelled.");
       setBusy(false);
@@ -127,16 +128,16 @@ export default function DeployConsole({ previewEnabled, artifact }: { previewEna
 
       <section className={styles.hero}>
         <div>
-          <p className={styles.eyebrow}>MSS2 ENTRY ROUTER · RELEASE STEP 1</p>
-          <h1>Deploy on <em>Robinhood</em></h1>
+          <p className={styles.eyebrow}>MSS2 ENTRY ROUTER · RELEASE STEP 2</p>
+          <h1>Deploy on <em>Arc</em></h1>
           <p>This console prepares one immutable, zero-value contract-creation transaction. The router will later split each verified MSS2 arcade entry directly: 20% to the dead address and 80% to the Community Airdrop Reserve.</p>
         </div>
         <div className={styles.sequence}>
-          <span className={styles.active}><b>1</b> ROBINHOOD</span>
+          <span><b>✓</b> ROBINHOOD VERIFIED</span>
           <i />
-          <span><b>2</b> VERIFY</span>
+          <span className={styles.active}><b>2</b> ARC</span>
           <i />
-          <span className={styles.locked}><b>3</b> ARC LOCKED</span>
+          <span className={styles.locked}><b>3</b> VERIFY</span>
         </div>
       </section>
 
@@ -151,7 +152,7 @@ export default function DeployConsole({ previewEnabled, artifact }: { previewEna
             </div>)}
           </div>
           {connection && !correctWallet && <p className={styles.danger}>Wrong wallet connected. Switch to {short(APPROVED_WALLET)} inside MetaMask or Rabby.</p>}
-          {connection && correctWallet && !correctNetwork && <button className={styles.switchButton} type="button" onClick={switchToRobinhood}>SWITCH TO ROBINHOOD CHAIN</button>}
+          {connection && correctWallet && !correctNetwork && <button className={styles.switchButton} type="button" onClick={switchToArc}>SWITCH TO ARC</button>}
         </section>
 
         <section className={styles.panel}>
@@ -171,7 +172,7 @@ export default function DeployConsole({ previewEnabled, artifact }: { previewEna
           <div className={styles.panelHeading}><span>03</span><div><small>WALLET SIGNATURE</small><h2>Final confirmation</h2></div></div>
           <label className={styles.acknowledge}>
             <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} disabled={!previewEnabled || busy || Boolean(txHash)} />
-            <span>I understand this deploys an immutable router on Robinhood Chain and spends ETH only for network gas.</span>
+            <span>I understand this deploys an immutable router on Arc and spends USDC only for network gas.</span>
           </label>
           <label className={styles.confirmLabel}>
             <span>TYPE <b>{CONFIRMATION}</b></span>
@@ -181,7 +182,7 @@ export default function DeployConsole({ previewEnabled, artifact }: { previewEna
             {busy ? "WAITING FOR VERIFICATION…" : txHash ? "TRANSACTION SUBMITTED" : "OPEN WALLET DEPLOYMENT REVIEW"}
           </button>
           <p className={styles.status} role="status">{status}</p>
-          {txHash && <a className={styles.txLink} href={`https://robinhoodchain.blockscout.com/tx/${txHash}`} target="_blank" rel="noreferrer">VIEW TRANSACTION ↗</a>}
+          {txHash && <a className={styles.txLink} href={`https://explorer.arc.io/tx/${txHash}`} target="_blank" rel="noreferrer">VIEW TRANSACTION ↗</a>}
           {verification?.state === "verified" && verification.contractAddress && <div className={styles.success}>
             <strong>ROUTER VERIFIED</strong>
             <p>{verification.contractAddress}</p>

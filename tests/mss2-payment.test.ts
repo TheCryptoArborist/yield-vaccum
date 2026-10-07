@@ -33,6 +33,9 @@ import {
 const deploymentConfiguration = JSON.parse(
   readFileSync(new URL("../deployment/mss2-entry-router/networks.json", import.meta.url), "utf8"),
 );
+const deploymentRecords = JSON.parse(
+  readFileSync(new URL("../deployment/mss2-entry-router/deployments.json", import.meta.url), "utf8"),
+);
 
 const paymentId = "12345678-1234-4abc-8def-1234567890ab";
 const wallet = "0x1111111111111111111111111111111111111111";
@@ -117,6 +120,21 @@ test("deployment configuration cannot drift from application constants", () => {
     rpcUrl: ARC_RPC_URL,
     explorerUrl: ARC_EXPLORER_URL,
     confirmations: 1,
+  });
+});
+
+test("Robinhood deployment evidence is recorded before Arc release", () => {
+  assert.deepEqual(deploymentRecords.robinhood, {
+    status: "verified",
+    chainId: ROBINHOOD_CHAIN_ID,
+    router: "0x3eF32427eB1eA6cE7572358e22C800CeC740292A",
+    runtimeCodeHash: "0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a",
+  });
+  assert.deepEqual(deploymentRecords.arc, {
+    status: "pending",
+    chainId: ARC_CHAIN_ID,
+    router: null,
+    runtimeCodeHash: null,
   });
 });
 

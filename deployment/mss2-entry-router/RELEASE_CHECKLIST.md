@@ -50,6 +50,13 @@ The wallet—not a repository script—must perform final signing and broadcasti
 
 ## 3. Verify Robinhood deployment
 
+Verified deployment record:
+
+- Router: `0x3eF32427eB1eA6cE7572358e22C800CeC740292A`
+- Runtime-code hash: `0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a`
+- Independent verifier result: `DEPLOYMENT_VERIFIED`
+- Explorer: `https://robinhoodchain.blockscout.com/address/0x3eF32427eB1eA6cE7572358e22C800CeC740292A`
+
 After the receipt succeeds:
 
 ```sh

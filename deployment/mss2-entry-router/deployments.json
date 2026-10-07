@@ -1,0 +1,14 @@
+{
+  "robinhood": {
+    "status": "verified",
+    "chainId": 4663,
+    "router": "0x3eF32427eB1eA6cE7572358e22C800CeC740292A",
+    "runtimeCodeHash": "0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a"
+  },
+  "arc": {
+    "status": "pending",
+    "chainId": 5042,
+    "router": null,
+    "runtimeCodeHash": null
+  }
+}

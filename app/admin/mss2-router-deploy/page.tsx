@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import artifact from "../../../deployment/mss2-entry-router/Mss2EntryRouter.artifact.json";
+import deployments from "../../../deployment/mss2-entry-router/deployments.json";
 import DeployConsole from "./deploy-console";
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export default function Mss2RouterDeployPage() {
 
   return <DeployConsole
     previewEnabled={previewEnabled}
+    robinhoodRouter={deployments.robinhood.router}
     artifact={{
       bytecode: artifact.bytecode,
       compilerVersion: artifact.compilerVersion,
