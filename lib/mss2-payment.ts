@@ -1,4 +1,5 @@
 import { Interface, getAddress, id, parseUnits, zeroPadValue } from "ethers";
+import deployments from "../deployment/mss2-entry-router/deployments.json";
 import {
   MSS2_COMMUNITY_AIRDROP_RESERVE,
   MSS2_DEAD_ADDRESS,
@@ -40,6 +41,9 @@ export const MAX_ARC_OBSERVATION_AGE_MS = 30 * 60_000;
 // source-code gate stays false until both router deployments and the complete
 // payment flow have passed review.
 const LIVE_PAYMENT_RELEASED = false;
+const DEPLOY_PREVIEW_CANARY_RELEASED = true;
+
+export type PaymentReleaseMode = "disabled" | "canary" | "production";
 
 export const ENTRY_ROUTER_INTERFACE = new Interface([
   "function enter(bytes32 paymentId,uint256 totalAmount)",
@@ -69,6 +73,8 @@ export type PaymentReadiness = {
   entryPriceUsd: string;
   confirmations: number;
   routerAddress: string | null;
+  releaseMode: PaymentReleaseMode;
+  canaryWalletAddress: string | null;
   deadAddress: string;
   communityAirdropReserve: string;
   deadAddressBps: number;
@@ -126,13 +132,34 @@ type ArcPricePayload = {
 };
 
 function configuredRouter(network: Mss2PaymentNetwork) {
-  const value = network === "arc" ? process.env.MSS2_ENTRY_ROUTER_ARC : process.env.MSS2_ENTRY_ROUTER_ROBINHOOD;
+  let value = network === "arc" ? process.env.MSS2_ENTRY_ROUTER_ARC : process.env.MSS2_ENTRY_ROUTER_ROBINHOOD;
+  if (!value && process.env.CONTEXT === "deploy-preview") {
+    const recorded = deployments[network];
+    if (recorded.status === "verified" && recorded.router) value = recorded.router;
+  }
   if (!value) return null;
   try {
     return getAddress(value);
   } catch {
     return null;
   }
+}
+
+function configuredCanaryWallet() {
+  if (process.env.CONTEXT !== "deploy-preview" || !DEPLOY_PREVIEW_CANARY_RELEASED) return null;
+  const value = process.env.MSS2_CANARY_WALLET;
+  if (!value) return null;
+  try {
+    const address = getAddress(value);
+    return address === getAddress(MSS2_COMMUNITY_AIRDROP_RESERVE) ? null : address;
+  } catch {
+    return null;
+  }
+}
+
+function paymentReleaseMode(): PaymentReleaseMode {
+  if (LIVE_PAYMENT_RELEASED) return "production";
+  return configuredCanaryWallet() ? "canary" : "disabled";
 }
 
 export function paymentNetworkConfig(network: Mss2PaymentNetwork): PaymentNetworkConfig {
@@ -159,9 +186,24 @@ export function paymentNetworkConfig(network: Mss2PaymentNetwork): PaymentNetwor
       };
 }
 
-export function paymentReadiness(network: Mss2PaymentNetwork = "robinhood"): PaymentReadiness {
+export function paymentReadiness(network: Mss2PaymentNetwork = "robinhood", walletAddress = ""): PaymentReadiness {
   const config = paymentNetworkConfig(network);
-  const enabled = LIVE_PAYMENT_RELEASED && Boolean(config.routerAddress);
+  const releaseMode = paymentReleaseMode();
+  const canaryWalletAddress = configuredCanaryWallet();
+  let walletEligible = releaseMode === "production";
+  if (releaseMode === "canary" && canaryWalletAddress && walletAddress) {
+    try {
+      walletEligible = getAddress(walletAddress) === canaryWalletAddress;
+    } catch {
+      walletEligible = false;
+    }
+  }
+  const enabled = Boolean(config.routerAddress) && walletEligible;
+  const reason = enabled
+    ? null
+    : releaseMode === "canary"
+      ? `The payment canary on ${config.name} is restricted to its approved non-reserve tester wallet.`
+      : `Real MSS2 entries on ${config.name} remain locked while the payment canary is prepared.`;
   return {
     enabled,
     chainId: config.chainId,
@@ -174,11 +216,13 @@ export function paymentReadiness(network: Mss2PaymentNetwork = "robinhood"): Pay
     entryPriceUsd: ENTRY_PRICE_USD.toFixed(2),
     confirmations: config.confirmations,
     routerAddress: config.routerAddress,
+    releaseMode,
+    canaryWalletAddress,
     deadAddress: getAddress(MSS2_DEAD_ADDRESS),
     communityAirdropReserve: getAddress(MSS2_COMMUNITY_AIRDROP_RESERVE),
     deadAddressBps: MSS2_ENTRY_DEAD_ADDRESS_BPS,
     communityAirdropReserveBps: MSS2_ENTRY_AIRDROP_RESERVE_BPS,
-    reason: enabled ? null : `Real MSS2 entries on ${config.name} remain locked until its 20/80 router is deployed, verified, and explicitly released.`,
+    reason,
   };
 }
 

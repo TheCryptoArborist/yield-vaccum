@@ -67,6 +67,13 @@ The verifier must report `DEPLOYMENT_VERIFIED`. Publish the source and exact com
 
 ## 4. Repeat for Arc
 
+Verified deployment record:
+
+- Router: `0x3eF32427eB1eA6cE7572358e22C800CeC740292A`
+- Runtime-code hash: `0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a`
+- Independent verifier result: `DEPLOYMENT_VERIFIED`
+- Explorer: `https://explorer.arc.io/address/0x3eF32427eB1eA6cE7572358e22C800CeC740292A`
+
 Only after Robinhood verification is complete:
 
 ```sh
@@ -85,6 +92,8 @@ After both deployments verify, add the two router addresses to a non-production 
 - `MSS2_ENTRY_ROUTER_ARC`
 
 Do not change the source-code `LIVE_PAYMENT_RELEASED` gate yet. First review the complete UI and backend diff, then use a separately approved staging-only release to test the smallest practical real entry on each chain.
+
+The deploy-preview canary must be restricted to a separately selected tester wallet. The Community Airdrop Reserve cannot be the payer because the router verifies that the reserve balance increases by the exact 80% allocation; a transfer from the reserve wallet to itself intentionally fails that check.
 
 For each canary, retain:
 

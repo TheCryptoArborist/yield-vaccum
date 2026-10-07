@@ -87,8 +87,24 @@ function validReceipt(): PaymentEvidenceReceipt {
 }
 
 test("live payments remain source-code locked on both networks", () => {
+  process.env.CONTEXT = "production";
+  process.env.MSS2_CANARY_WALLET = wallet;
   assert.equal(paymentReadiness("robinhood").enabled, false);
   assert.equal(paymentReadiness("arc").enabled, false);
+  delete process.env.CONTEXT;
+  delete process.env.MSS2_CANARY_WALLET;
+});
+
+test("deploy-preview canary requires the explicitly allowlisted non-reserve wallet", () => {
+  process.env.CONTEXT = "deploy-preview";
+  process.env.MSS2_CANARY_WALLET = wallet;
+  assert.equal(paymentReadiness("robinhood", wallet).enabled, true);
+  assert.equal(paymentReadiness("arc", wallet).enabled, true);
+  assert.equal(paymentReadiness("arc", "0x3333333333333333333333333333333333333333").enabled, false);
+  assert.equal(paymentReadiness("arc", MSS2_COMMUNITY_AIRDROP_RESERVE).enabled, false);
+  assert.equal(paymentReadiness("arc").releaseMode, "canary");
+  delete process.env.CONTEXT;
+  delete process.env.MSS2_CANARY_WALLET;
 });
 
 test("network configuration keeps Robinhood and Arc independent", () => {
@@ -131,10 +147,10 @@ test("Robinhood deployment evidence is recorded before Arc release", () => {
     runtimeCodeHash: "0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a",
   });
   assert.deepEqual(deploymentRecords.arc, {
-    status: "pending",
+    status: "verified",
     chainId: ARC_CHAIN_ID,
-    router: null,
-    runtimeCodeHash: null,
+    router: "0x3eF32427eB1eA6cE7572358e22C800CeC740292A",
+    runtimeCodeHash: "0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a",
   });
 });
 

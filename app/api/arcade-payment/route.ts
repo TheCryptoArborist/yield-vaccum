@@ -10,7 +10,7 @@ function requestedNetwork(value: string | null): Mss2PaymentNetwork {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const network = requestedNetwork(url.searchParams.get("chain"));
-  const readiness = paymentReadiness(network);
+  const readiness = paymentReadiness(network, url.searchParams.get("wallet") ?? "");
   if (url.searchParams.get("diagnostics") !== "1") {
     return Response.json(readiness, { headers: { "Cache-Control": "no-store" } });
   }
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     if (action === "demo-run") {
       const network = String(payload.network ?? "").trim();
       if (network !== "robinhood" && network !== "arc") return Response.json({ error: "Choose Robinhood Chain or Arc." }, { status: 400 });
-      return Response.json(await createDemoRunAuthorization({ playerKey, network }), { headers: { "Cache-Control": "no-store" } });
+      return Response.json(await createDemoRunAuthorization({ playerKey, network, walletAddress: walletAddress || undefined }), { headers: { "Cache-Control": "no-store" } });
     }
     if (action === "quote") {
       const runId = String(payload.runId ?? "").trim();

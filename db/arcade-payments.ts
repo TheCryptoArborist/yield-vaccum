@@ -50,6 +50,7 @@ export type ArcadeDemoRunAuthorization = {
   runId: string;
   network: "robinhood" | "arc";
   mode: "demo";
+  walletAddress?: string;
   createdAt: string;
   expiresAt: string;
 };
@@ -76,9 +77,9 @@ function validKey(value: string) {
   return /^[a-zA-Z0-9-]{16,80}$/.test(value);
 }
 
-export async function createDemoRunAuthorization(input: { playerKey: string; network: "robinhood" | "arc" }) {
+export async function createDemoRunAuthorization(input: { playerKey: string; network: "robinhood" | "arc"; walletAddress?: string }) {
   if (!validKey(input.playerKey)) throw new Error("The arcade profile could not be validated.");
-  const readiness = paymentReadiness(input.network);
+  const readiness = paymentReadiness(input.network, input.walletAddress);
   if (readiness.enabled) throw new Error(`${readiness.network} scored runs now require a verified MSS2 entry.`);
 
   const createdAt = new Date();
@@ -88,6 +89,7 @@ export async function createDemoRunAuthorization(input: { playerKey: string; net
     runId: crypto.randomUUID(),
     network: input.network,
     mode: "demo",
+    walletAddress: input.walletAddress ? getAddress(input.walletAddress).toLowerCase() : undefined,
     createdAt: createdAt.toISOString(),
     expiresAt: new Date(createdAt.getTime() + 24 * 60 * 60_000).toISOString(),
   };
@@ -96,7 +98,7 @@ export async function createDemoRunAuthorization(input: { playerKey: string; net
 }
 
 export async function createArcadePaymentQuote(input: { playerKey: string; runId: string; walletAddress: string; network: Mss2PaymentNetwork }) {
-  const readiness = paymentReadiness(input.network);
+  const readiness = paymentReadiness(input.network, input.walletAddress);
   const networkConfig = paymentNetworkConfig(input.network);
   if (!readiness.enabled) throw new Error(readiness.reason || "Real MSS2 payments are disabled.");
   if (!readiness.routerAddress) throw new Error(`The ${readiness.network} entry router is not configured.`);
@@ -202,7 +204,7 @@ export async function requirePaymentForScore(input: { paymentId: string; runAuth
     throw new Error("This free flight could not be matched to its server-issued run authorization.");
   }
 
-  const readiness = paymentReadiness(authorization.network);
+  const readiness = paymentReadiness(authorization.network, authorization.walletAddress);
   if (readiness.enabled) throw new Error(`A verified MSS2 entry is now required for ${readiness.network} scored runs.`);
   return { mode: "demo" as const, network: authorization.network };
 }

@@ -40,6 +40,8 @@ type PaymentReadiness = {
   entryPriceUsd: string;
   confirmations: number;
   routerAddress: string | null;
+  releaseMode: "disabled" | "canary" | "production";
+  canaryWalletAddress: string | null;
   reason: string | null;
 };
 type LivePaymentQuote = {
@@ -181,6 +183,7 @@ export default function MintFlyer() {
   const isArcContext = selectedMss2Network === "arc";
   const isRobinhoodContext = selectedMss2Network === "robinhood";
   const liveEntryEnabled = Boolean(paymentReadiness?.enabled && paymentReadiness.networkId === selectedMss2Network);
+  const canaryEntryEnabled = liveEntryEnabled && paymentReadiness?.releaseMode === "canary";
   const selectedNetworkLabel = isArcContext ? "ARC" : isRobinhoodContext ? "ROBINHOOD CHAIN" : "SELECT NETWORK";
   const handleWalletConnectionChange = useCallback((connection: WalletConnection | null) => {
     setWalletConnection(connection);
@@ -229,7 +232,8 @@ export default function MintFlyer() {
   useEffect(() => {
     let cancelled = false;
     if (selectedMss2Network === "unsupported") return;
-    fetch(`/api/arcade-payment?chain=${selectedMss2Network}`, { cache: "no-store" })
+    const walletQuery = walletConnection?.account ? `&wallet=${encodeURIComponent(walletConnection.account)}` : "";
+    fetch(`/api/arcade-payment?chain=${selectedMss2Network}${walletQuery}`, { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Payment readiness unavailable.");
         return await response.json() as PaymentReadiness;
@@ -237,7 +241,7 @@ export default function MintFlyer() {
       .then((status) => { if (!cancelled) setPaymentReadiness(status); })
       .catch(() => { if (!cancelled) setPaymentReadiness(null); });
     return () => { cancelled = true; };
-  }, [selectedMss2Network]);
+  }, [selectedMss2Network, walletConnection?.account]);
 
   const primeAudio = useCallback(() => {
     if (!soundEnabledRef.current) return;
@@ -450,7 +454,7 @@ export default function MintFlyer() {
       const response = await fetch("/api/arcade-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "demo-run", playerKey, network: selectedMss2Network }),
+        body: JSON.stringify({ action: "demo-run", playerKey, network: selectedMss2Network, walletAddress: walletConnection?.account ?? "" }),
       });
       const authorization = await response.json() as DemoRunAuthorization & { error?: string };
       if (!response.ok) throw new Error(authorization.error || "The free flight could not be authorized.");
@@ -464,7 +468,7 @@ export default function MintFlyer() {
     } finally {
       setPaymentBusy(false);
     }
-  }, [entryQuote, paymentBusy, playerKey, primeAudio, resetFlight, selectedMss2Network]);
+  }, [entryQuote, paymentBusy, playerKey, primeAudio, resetFlight, selectedMss2Network, walletConnection]);
 
   const confirmLivePayment = useCallback(async () => {
     if (!liveEntryEnabled || !paymentReadiness || !walletConnection || !livePaymentQuote || paymentBusy) return;
@@ -948,7 +952,7 @@ export default function MintFlyer() {
           {phase === "ready" && (
             <div className={`${styles.overlay} ${reviewingEntry ? styles.entryReviewOverlay : styles.briefingOverlay}`}>
               {!reviewingEntry ? <>
-                <small>HOW TO PLAY · {liveEntryEnabled ? "PAID ROBINHOOD FLIGHT" : `${selectedNetworkLabel} $1 QUOTE DEMO`}</small>
+                <small>HOW TO PLAY · {canaryEntryEnabled ? `${selectedNetworkLabel} PAYMENT CANARY` : liveEntryEnabled ? `PAID ${selectedNetworkLabel} FLIGHT` : `${selectedNetworkLabel} $1 QUOTE DEMO`}</small>
                 <h2>FLY. COLLECT. SURVIVE.</h2>
                 <p className={styles.briefingLead}>Pilot the <b>MSS2 flyer</b> through all three stages, build the biggest combo, and reach the Moon with the highest score you can.</p>
                 <div className={styles.whyPlay} aria-label="Why play Mint Flyer">
@@ -972,15 +976,17 @@ export default function MintFlyer() {
                 </div>
                 <div className={styles.routePreview} aria-label="Three flight stages"><span>1 <b>MINT STREAM</b></span><i>→</i><span>2 <b>BLOCK SURGE</b></span><i>→</i><span>3 <b>MOON RUN</b></span></div>
                 <p className={styles.demoGameNote}>{liveEntryEnabled
-                  ? <><b>LIVE ENTRY:</b> The verified entry router sends 20% to the dead address and 80% to the Community Airdrop Reserve in one transaction.</>
+                  ? <><b>{canaryEntryEnabled ? "RESTRICTED CANARY:" : "LIVE ENTRY:"}</b> The verified entry router sends 20% to the dead address and 80% to the Community Airdrop Reserve in one transaction.</>
+                  : paymentReadiness?.routerAddress && paymentReadiness.releaseMode === "disabled"
+                    ? <><b>ROUTERS VERIFIED:</b> This remains a free preview while a separate non-reserve tester wallet is selected for the controlled payment canary.</>
                   : isArcContext
                     ? <><b>ARC PRICE PREVIEW:</b> See the current MSS2 equivalent of $1.00 from the Arc MSS2/USDC market, then play free. No approval, signature, or payment is requested.</>
                     : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed entry split sends 20% to the dead address and 80% to the designated Community Airdrop Reserve—a 4:1 community allocation. Real transfers remain disabled.</>}</p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
-                <button onClick={() => void reviewEntry()} disabled={paymentBusy || quoteBusy || selectedMss2Network === "unsupported" || (liveEntryEnabled && (!walletConnection || !playerKey))}>{paymentBusy ? "PREPARING…" : selectedMss2Network === "unsupported" ? "SELECT ROBINHOOD OR ARC ABOVE" : liveEntryEnabled ? walletConnection ? "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : quoteBusy ? "FETCHING VERIFIED MARKET…" : !entryQuote ? quoteUnavailable ? "RETRY $1 QUOTE" : "LOAD $1 QUOTE" : quoteExpired ? "REFRESH $1 QUOTE" : `REVIEW ${selectedNetworkLabel} $1 QUOTE`}</button>
+                <button onClick={() => void reviewEntry()} disabled={paymentBusy || quoteBusy || selectedMss2Network === "unsupported" || (liveEntryEnabled && (!walletConnection || !playerKey))}>{paymentBusy ? "PREPARING…" : selectedMss2Network === "unsupported" ? "SELECT ROBINHOOD OR ARC ABOVE" : liveEntryEnabled ? walletConnection ? canaryEntryEnabled ? "REVIEW CANARY ENTRY" : "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : quoteBusy ? "FETCHING VERIFIED MARKET…" : !entryQuote ? quoteUnavailable ? "RETRY $1 QUOTE" : "LOAD $1 QUOTE" : quoteExpired ? "REFRESH $1 QUOTE" : `REVIEW ${selectedNetworkLabel} $1 QUOTE`}</button>
               </> : <>
-                <small>{liveEntryEnabled ? `LIVE MSS2 ENTRY · ${selectedNetworkLabel}` : `${selectedNetworkLabel} $1 QUOTE · NO TRANSACTION`}</small>
-                <h2>{liveEntryEnabled ? "REVIEW + PAY" : "REVIEW THE RUN"}</h2>
+                <small>{liveEntryEnabled ? `${canaryEntryEnabled ? "RESTRICTED CANARY" : "LIVE MSS2 ENTRY"} · ${selectedNetworkLabel}` : `${selectedNetworkLabel} $1 QUOTE · NO TRANSACTION`}</small>
+                <h2>{liveEntryEnabled ? canaryEntryEnabled ? "REVIEW CANARY + PAY" : "REVIEW + PAY" : "REVIEW THE RUN"}</h2>
                 <p>{liveEntryEnabled ? "The wallet will first request an exact MSS2 allowance for the verified router, then the entry transaction. Check the token, amount, router, network, and both destinations before approving." : `The current ${selectedNetworkLabel} price calculates how much MSS2 equals $1.00. This preview does not request approval, a signature, a network switch, or a transfer.`}</p>
                 <div className={styles.reviewReminder}>
                   <span><i className={styles.guideMintIcon}><Image className={styles.mintGuideLogo} src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></i><b>MSS2 LOGO = COLLECT</b><small>+250 POINTS</small></span>

@@ -32,7 +32,7 @@ function short(value: string, lead = 10, tail = 8) {
   return value.length > lead + tail + 1 ? `${value.slice(0, lead)}…${value.slice(-tail)}` : value;
 }
 
-export default function DeployConsole({ previewEnabled, artifact, robinhoodRouter }: { previewEnabled: boolean; artifact: ArtifactSummary; robinhoodRouter: string }) {
+export default function DeployConsole({ previewEnabled, artifact, robinhoodRouter, arcRouter }: { previewEnabled: boolean; artifact: ArtifactSummary; robinhoodRouter: string; arcRouter: string | null }) {
   const [connection, setConnection] = useState<WalletConnection | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
@@ -40,19 +40,20 @@ export default function DeployConsole({ previewEnabled, artifact, robinhoodRoute
   const [status, setStatus] = useState("Connect the approved wallet to begin the final review.");
   const [txHash, setTxHash] = useState("");
   const [verification, setVerification] = useState<Verification | null>(null);
+  const deploymentComplete = Boolean(arcRouter);
 
   const correctWallet = connection?.account.toLowerCase() === APPROVED_WALLET.toLowerCase();
   const correctNetwork = connection?.chainId.toLowerCase() === ARC_CHAIN_HEX;
-  const armed = previewEnabled && correctWallet && correctNetwork && acknowledged && confirmation === CONFIRMATION && !busy && !txHash;
+  const armed = previewEnabled && !deploymentComplete && correctWallet && correctNetwork && acknowledged && confirmation === CONFIRMATION && !busy && !txHash;
 
   const checkpoints = useMemo(() => [
     { label: "Preview-only release", ready: previewEnabled, detail: previewEnabled ? "Netlify deploy-preview context" : "Disabled outside an approved deploy preview" },
     { label: "Approved wallet", ready: Boolean(correctWallet), detail: connection ? short(connection.account) : short(APPROVED_WALLET) },
     { label: "Robinhood prerequisite", ready: true, detail: `Verified · ${short(robinhoodRouter)}` },
-    { label: "Arc", ready: Boolean(correctNetwork), detail: connection ? `Active chain ${Number.parseInt(connection.chainId || "0", 16) || "unknown"}` : "Chain 5042 required" },
+    { label: "Arc", ready: deploymentComplete || Boolean(correctNetwork), detail: deploymentComplete && arcRouter ? `Verified · ${short(arcRouter)}` : connection ? `Active chain ${Number.parseInt(connection.chainId || "0", 16) || "unknown"}` : "Chain 5042 required" },
     { label: "Reviewed bytecode", ready: true, detail: short(artifact.creationCodeHash) },
     { label: "Transaction value", ready: true, detail: "0 USDC · contract creation only" },
-  ], [artifact.creationCodeHash, connection, correctNetwork, correctWallet, previewEnabled, robinhoodRouter]);
+  ], [arcRouter, artifact.creationCodeHash, connection, correctNetwork, correctWallet, deploymentComplete, previewEnabled, robinhoodRouter]);
 
   const verify = useCallback(async (hash: string) => {
     const response = await fetch(`/api/mss2-router-deployment?network=arc&txHash=${encodeURIComponent(hash)}`, { cache: "no-store" });
@@ -123,21 +124,21 @@ export default function DeployConsole({ previewEnabled, artifact, robinhoodRoute
       <header className={styles.header}>
         <Link href="/arcade" className={styles.back}>← BACK TO MSS2 ARCADE</Link>
         <span className={styles.preview}>REVIEWED DEPLOYMENT CONSOLE</span>
-        <WalletConnect compact theme="mss" onConnectionChange={setConnection} />
+        {deploymentComplete ? <span className={styles.preview}>BOTH NETWORKS VERIFIED</span> : <WalletConnect compact theme="mss" onConnectionChange={setConnection} />}
       </header>
 
       <section className={styles.hero}>
         <div>
-          <p className={styles.eyebrow}>MSS2 ENTRY ROUTER · RELEASE STEP 2</p>
-          <h1>Deploy on <em>Arc</em></h1>
-          <p>This console prepares one immutable, zero-value contract-creation transaction. The router will later split each verified MSS2 arcade entry directly: 20% to the dead address and 80% to the Community Airdrop Reserve.</p>
+          <p className={styles.eyebrow}>MSS2 ENTRY ROUTER · DEPLOYMENT COMPLETE</p>
+          <h1>{deploymentComplete ? <>Both routers <em>verified</em></> : <>Deploy on <em>Arc</em></>}</h1>
+          <p>{deploymentComplete ? "Robinhood Chain and Arc now have independently verified copies of the same immutable entry router. Production game payments remain locked while the restricted canary is prepared." : "This console prepares one immutable, zero-value contract-creation transaction. The router will later split each verified MSS2 arcade entry directly: 20% to the dead address and 80% to the Community Airdrop Reserve."}</p>
         </div>
         <div className={styles.sequence}>
           <span><b>✓</b> ROBINHOOD VERIFIED</span>
           <i />
-          <span className={styles.active}><b>2</b> ARC</span>
+          <span className={deploymentComplete ? "" : styles.active}><b>{deploymentComplete ? "✓" : "2"}</b> ARC {deploymentComplete ? "VERIFIED" : ""}</span>
           <i />
-          <span className={styles.locked}><b>3</b> VERIFY</span>
+          <span className={deploymentComplete ? styles.active : styles.locked}><b>{deploymentComplete ? "✓" : "3"}</b> VERIFY</span>
         </div>
       </section>
 
@@ -151,8 +152,8 @@ export default function DeployConsole({ previewEnabled, artifact, robinhoodRoute
               <i>{checkpoint.ready ? "✓" : "!"}</i><span><b>{checkpoint.label}</b><small>{checkpoint.detail}</small></span>
             </div>)}
           </div>
-          {connection && !correctWallet && <p className={styles.danger}>Wrong wallet connected. Switch to {short(APPROVED_WALLET)} inside MetaMask or Rabby.</p>}
-          {connection && correctWallet && !correctNetwork && <button className={styles.switchButton} type="button" onClick={switchToArc}>SWITCH TO ARC</button>}
+          {!deploymentComplete && connection && !correctWallet && <p className={styles.danger}>Wrong wallet connected. Switch to {short(APPROVED_WALLET)} inside MetaMask or Rabby.</p>}
+          {!deploymentComplete && connection && correctWallet && !correctNetwork && <button className={styles.switchButton} type="button" onClick={switchToArc}>SWITCH TO ARC</button>}
         </section>
 
         <section className={styles.panel}>
@@ -169,8 +170,12 @@ export default function DeployConsole({ previewEnabled, artifact, robinhoodRoute
         </section>
 
         <section className={`${styles.panel} ${styles.actionPanel}`}>
-          <div className={styles.panelHeading}><span>03</span><div><small>WALLET SIGNATURE</small><h2>Final confirmation</h2></div></div>
-          <label className={styles.acknowledge}>
+          <div className={styles.panelHeading}><span>03</span><div><small>{deploymentComplete ? "RELEASE STATUS" : "WALLET SIGNATURE"}</small><h2>{deploymentComplete ? "Deployment locked" : "Final confirmation"}</h2></div></div>
+          {deploymentComplete ? <div className={styles.success}>
+            <strong>ROBINHOOD + ARC VERIFIED</strong>
+            <p>{arcRouter}</p>
+            <span>No additional deployment is available from this console. The next release step is a separately restricted payment canary.</span>
+          </div> : <><label className={styles.acknowledge}>
             <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} disabled={!previewEnabled || busy || Boolean(txHash)} />
             <span>I understand this deploys an immutable router on Arc and spends USDC only for network gas.</span>
           </label>
@@ -187,7 +192,7 @@ export default function DeployConsole({ previewEnabled, artifact, robinhoodRoute
             <strong>ROUTER VERIFIED</strong>
             <p>{verification.contractAddress}</p>
             <a href={verification.explorerUrl} target="_blank" rel="noreferrer">OPEN VERIFIED BYTECODE ↗</a>
-          </div>}
+          </div>}</>}
         </section>
       </div>
 

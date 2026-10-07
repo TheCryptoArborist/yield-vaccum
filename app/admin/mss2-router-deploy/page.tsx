@@ -15,6 +15,7 @@ export default function Mss2RouterDeployPage() {
   return <DeployConsole
     previewEnabled={previewEnabled}
     robinhoodRouter={deployments.robinhood.router}
+    arcRouter={deployments.arc.router}
     artifact={{
       bytecode: artifact.bytecode,
       compilerVersion: artifact.compilerVersion,
