@@ -44,6 +44,22 @@ function achievement(id: MintFlyerAchievementId) {
   return MINT_FLYER_ACHIEVEMENTS.find((item) => item.id === id);
 }
 
+function AchievementBadges({ ids }: { ids: MintFlyerAchievementId[] }) {
+  return (
+    <ul className={styles.badgeList} aria-label="Featured achievements">
+      {ids.map((id) => {
+        const item = achievement(id);
+        return item ? (
+          <li key={id} className={`${styles.achievementBadge} ${styles[`rarity${item.rarity}`]}`} title={`${item.name}: ${item.description}`}>
+            <span aria-hidden="true">{item.icon}</span>
+            <span>{item.name}</span>
+          </li>
+        ) : null;
+      })}
+    </ul>
+  );
+}
+
 export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFlightResult | null }) {
   const [playerKey, setPlayerKey] = useState("");
   const [nickname, setNickname] = useState("");
@@ -152,7 +168,7 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
                     <strong>{entry.nickname}</strong>
                     <div className={styles.podiumScore}>{entry.bestScore.toLocaleString()}<em>PTS</em></div>
                     <span>GRADE {entry.bestGrade} · {entry.bestDistance.toLocaleString()}m BEST · {entry.moonClears} MOON {entry.moonClears === 1 ? "CLEAR" : "CLEARS"}</span>
-                    <div className={styles.podiumBadges}>{entry.displayedAchievements.map((id) => { const item = achievement(id); return item ? <i key={id} title={`${item.name}: ${item.description}`}>{item.icon}</i> : null; })}</div>
+                    <div className={styles.podiumBadges}><AchievementBadges ids={entry.displayedAchievements} /></div>
                     {entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}
                   </> : <>
                     <small>SEAT AVAILABLE</small>
@@ -173,7 +189,7 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
           {entries.map((entry, index) => (
             <div className={`${styles.row} ${index < 3 ? styles.podium : ""}`} key={`${entry.nickname}-${entry.updatedAt}`}>
               <span className={styles.rank}><i>{index === 0 ? "👑" : index === 1 ? "★" : index === 2 ? "◆" : ""}</i>{index + 1}</span>
-              <span className={styles.identity}><strong>{entry.nickname}</strong><em>{entry.displayedAchievements.map((id) => { const item = achievement(id); return item ? <i key={id} title={`${item.name}: ${item.description}`}>{item.icon}</i> : null; })}</em><small>{entry.unlocked.length} BADGES · {entry.totalMints} MINT CREDITS</small>{entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}</span>
+              <div className={styles.identity}><strong>{entry.nickname}</strong><AchievementBadges ids={entry.displayedAchievements} /><small>{entry.unlocked.length} BADGES · {entry.totalMints} MINT CREDITS</small>{entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}</div>
               <span className={styles.clears}><b>{entry.bestDistance.toLocaleString()}m</b><small>{entry.moonClears > 0 ? `${entry.moonClears} MOON ${entry.moonClears === 1 ? "CLEAR" : "CLEARS"}` : "MOON NOT YET REACHED"}</small></span>
               <span className={styles.score}><b>{entry.bestScore.toLocaleString()}</b><small>GRADE {entry.bestGrade}</small></span>
             </div>

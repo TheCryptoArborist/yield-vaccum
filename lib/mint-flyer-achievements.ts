@@ -5,9 +5,9 @@ export const MINT_FLYER_ACHIEVEMENTS = [
   { id: "last-life-landing", icon: "◆", name: "Last-Life Landing", description: "Reach the Moon with exactly one life remaining.", rarity: "RARE" },
   { id: "combo-pilot", icon: "×10", name: "Combo Pilot", description: "Build a 10-credit combo in one flight.", rarity: "RARE" },
   { id: "combo-commander", icon: "×20", name: "Combo Commander", description: "Build a 20-credit combo in one flight.", rarity: "EPIC" },
-  { id: "mint-magnet", icon: "M", name: "Mint Magnet", description: "Collect 50 Mint Credits across recorded flights.", rarity: "RARE" },
-  { id: "grade-a-pilot", icon: "A", name: "Grade A Pilot", description: "Finish a flight with Grade A or better.", rarity: "EPIC" },
-  { id: "s-class-flyer", icon: "S", name: "S-Class Flyer", description: "Finish a flight with Grade S.", rarity: "LEGENDARY" },
+  { id: "mint-magnet", icon: "🧲", name: "Mint Magnet", description: "Collect 50 Mint Credits across recorded flights.", rarity: "RARE" },
+  { id: "grade-a-pilot", icon: "🌟", name: "Grade A Pilot", description: "Finish a flight with Grade A or better.", rarity: "EPIC" },
+  { id: "s-class-flyer", icon: "🏆", name: "S-Class Flyer", description: "Finish a flight with Grade S.", rarity: "LEGENDARY" },
   { id: "moon-regular", icon: "III", name: "Moon Regular", description: "Reach the Moon three times.", rarity: "EPIC" },
   { id: "lunar-legend", icon: "X", name: "Lunar Legend", description: "Reach the Moon ten times.", rarity: "LEGENDARY" },
 ] as const;
