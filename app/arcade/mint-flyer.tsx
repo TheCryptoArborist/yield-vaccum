@@ -837,9 +837,9 @@ export default function MintFlyer() {
   return (
     <main className={styles.arcadeShell}>
       <header ref={pageTopRef} tabIndex={-1} className={styles.siteHeader}>
-        <Link href="/" className={styles.homeLink} aria-label="Return to Yield Vacuum">
+        <Link href="/" className={styles.homeLink} aria-label="Choose another game at Yield Vacuum">
           <Image src="/topaz-mark.png" alt="" width={40} height={40} />
-          <span><small>RETURN TO</small><strong>YIELD VACUUM</strong></span>
+          <span><small>YIELD VACUUM</small><strong>CHOOSE A GAME</strong></span>
         </Link>
         <div className={styles.arcadeIdentity}>
           <small>MSS2 COMMUNITY ARCADE</small>
