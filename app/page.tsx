@@ -1778,14 +1778,14 @@ export default function YieldVacuumGame() {
           <div className="splashGameMenu" aria-label="Choose a Yield Vacuum game">
             <div className="splashActions">
               <button className="splashGameChoice splashTopazChoice" onClick={() => prepareBriefing()}>
-                <span className="splashChoiceBrand"><i>TOPAZ</i><small>EDUCATIONAL CAMPAIGN</small></span>
+                <span className="splashChoiceBrand"><img src="/topaz-mark.png" alt="Topaz" width="40" height="40" /><small>EDUCATIONAL CAMPAIGN</small></span>
                 <strong>YIELD VACUUM</strong>
                 <span className="splashChoiceDescription">Learn DeFi through play.</span>
                 <b>FREE EDUCATIONAL CAMPAIGN</b>
                 <em>PLAY YIELD VACUUM →</em>
               </button>
               <a className="splashGameChoice splashMss2Choice" href="/arcade">
-                <span className="splashChoiceBrand"><i>MSS2</i><small>ARCADE GAME</small></span>
+                <span className="splashChoiceBrand"><img src="/mss2-flyer-emblem.png" alt="MSS2" width="40" height="40" /><small>ARCADE GAME</small></span>
                 <strong>MINT FLYER</strong>
                 <span className="splashChoiceDescription">Collect. Combo. Reach the Moon.</span>
                 <b>$1 WORTH OF MSS2 PER FLIGHT</b>

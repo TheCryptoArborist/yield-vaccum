@@ -210,13 +210,11 @@
   gap: 8px;
 }
 
-.splashChoiceBrand i {
-  padding: 4px 7px;
-  border-radius: 2px;
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 1000;
-  letter-spacing: 0.14em;
+.splashChoiceBrand img {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  object-fit: contain;
 }
 
 .splashChoiceBrand small {
@@ -258,9 +256,8 @@
   box-shadow: 0 0 28px rgba(255, 72, 12, 0.22);
 }
 
-.splashTopazChoice .splashChoiceBrand i {
-  background: #ff5a19;
-  color: #fff;
+.splashTopazChoice .splashChoiceBrand img {
+  filter: drop-shadow(0 0 7px rgba(255, 90, 25, 0.5));
 }
 
 .splashTopazChoice .splashChoiceBrand small,
@@ -272,9 +269,8 @@
   box-shadow: 0 0 28px rgba(0, 235, 242, 0.16);
 }
 
-.splashMss2Choice .splashChoiceBrand i {
-  background: #00ebf2;
-  color: #061629;
+.splashMss2Choice .splashChoiceBrand img {
+  filter: drop-shadow(0 0 7px rgba(0, 235, 242, 0.4));
 }
 
 .splashMss2Choice .splashChoiceBrand small,
