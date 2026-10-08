@@ -146,6 +146,7 @@ function gradeForScore(score: number) {
 }
 
 export default function MintFlyer() {
+  const [finishPanel, setFinishPanel] = useState<HTMLDivElement | null>(null);
   const [phase, setPhase] = useState<FlightPhase>("ready");
   const [playerY, setPlayerY] = useState(0.5);
   const [entities, setEntities] = useState<FlyerEntity[]>([]);
@@ -1034,6 +1035,7 @@ export default function MintFlyer() {
                 <strong>{score.toLocaleString()}</strong>
                 {newBest && <b>★ PERSONAL BEST ★</b>}
               </div>
+              <div ref={setFinishPanel} className={styles.finishPanel} />
               <div className={styles.finalScore}>
                 <span><small>LOCAL BEST</small><strong>{bestScore.toLocaleString()}</strong></span>
                 <span><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
@@ -1041,7 +1043,7 @@ export default function MintFlyer() {
                 <span><small>BEST COMBO</small><strong>{maxCombo} · {comboMultiplier(maxCombo)}X</strong></span>
                 <span><small>BLOCK HITS</small><strong>{totalHits}</strong></span>
               </div>
-              <a className={styles.leaderboardJump} href="#mint-flyer-leaderboard">SAVE THIS FLIGHT + VIEW LEADERBOARD ↓</a>
+              <a className={styles.leaderboardJump} href="#mint-flyer-leaderboard">VIEW LEADERBOARD ↓</a>
               <div className={`${styles.crashActions} ${continued || demoCredits < DEMO_CONTINUE_COST ? styles.singleCrashAction : ""}`}>
                 {!continued && demoCredits >= DEMO_CONTINUE_COST && (
                   <button className={styles.continueButton} onClick={continueFlight}>
@@ -1079,6 +1081,7 @@ export default function MintFlyer() {
                 <span><small>FINAL SCORE</small><strong>{score.toLocaleString()}</strong>{newBest && <b>NEW LOCAL BEST</b>}</span>
                 <span className={`${styles.gradeBadge} ${gradeClass}`}><small>FLIGHT GRADE</small><strong>{runGrade}</strong></span>
               </div>
+              <div ref={setFinishPanel} className={styles.finishPanel} />
               <div className={styles.arrivalBonus}><small>MOON ARRIVAL BONUS</small><strong>+{moonBonus.toLocaleString()}</strong><span>Completion + surviving lives + best combo</span></div>
               <div className={styles.scoreBreakdown} aria-label="Final score breakdown">
                 <span><small>FLIGHT DISTANCE</small><strong>+{distanceScore.toLocaleString()}</strong></span>
@@ -1105,7 +1108,7 @@ export default function MintFlyer() {
                 <span><small>BLOCK HITS</small><strong>{totalHits}</strong></span>
               </div>
               <p className={styles.replayTarget}>{nextGradeTarget ? <><b>{(nextGradeTarget.score - score).toLocaleString()} MORE POINTS FOR GRADE {nextGradeTarget.grade}</b><span>{replayCoach}</span></> : <><b>GRADE S ACHIEVED</b><span>{replayCoach} Replay to beat your local best of {bestScore.toLocaleString()}.</span></>}</p>
-              <a className={styles.leaderboardJump} href="#mint-flyer-leaderboard">SAVE SCORE + VIEW LEADERBOARD ↓</a>
+              <a className={styles.leaderboardJump} href="#mint-flyer-leaderboard">VIEW LEADERBOARD ↓</a>
               <button className={styles.moonReplayButton} onClick={prepareAnotherRun}>↻ FLY TO THE MOON AGAIN</button>
             </div>
           )}
@@ -1118,7 +1121,7 @@ export default function MintFlyer() {
         </footer>
       </section>
 
-      <MintFlyerLeaderboard result={leaderboardResult} />
+      <MintFlyerLeaderboard result={leaderboardResult} finishPanel={finishPanel} />
 
       <details className={styles.infoDrawer} id="payment-safety">
         <summary><span><small>PAYMENT SAFETY · {selectedNetworkLabel}</small><strong>{liveEntryEnabled ? "ROBINHOOD MSS2 ENTRY IS LIVE" : "$1 QUOTE DEMO · REAL MSS2 LOCKED"}</strong></span><b>VIEW DETAILS +</b></summary>

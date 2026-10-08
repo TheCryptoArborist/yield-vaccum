@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { MINT_FLYER_ACHIEVEMENTS, type MintFlyerAchievementId } from "../../lib/mint-flyer-achievements";
 import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
 import styles from "./mint-flyer-leaderboard.module.css";
@@ -60,9 +61,11 @@ function AchievementBadges({ ids }: { ids: MintFlyerAchievementId[] }) {
   );
 }
 
-export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFlightResult | null }) {
+export default function MintFlyerLeaderboard({ result, finishPanel }: { result: LeaderboardFlightResult | null; finishPanel: HTMLElement | null }) {
   const [playerKey, setPlayerKey] = useState("");
   const [nickname, setNickname] = useState("");
+  const [rememberedNickname, setRememberedNickname] = useState("");
+  const [editingName, setEditingName] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [unlocked, setUnlocked] = useState<MintFlyerAchievementId[]>([]);
   const [newAchievements, setNewAchievements] = useState<MintFlyerAchievementId[]>([]);
@@ -70,6 +73,7 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
   const [saving, setSaving] = useState(false);
   const [savedRunId, setSavedRunId] = useState("");
   const [message, setMessage] = useState("");
+  const [feedbackRunId, setFeedbackRunId] = useState("");
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -79,7 +83,6 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
       if (!response.ok) throw new Error(data.error || "Leaderboard unavailable.");
       setEntries(data.entries ?? []);
       setUnlocked(data.profile?.unlocked ?? []);
-      setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Leaderboard unavailable.");
     } finally {
@@ -93,14 +96,17 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
       const storedNickname = window.localStorage.getItem(NICKNAME_KEY) || "";
       setPlayerKey(key);
       setNickname(storedNickname);
+      setRememberedNickname(storedNickname);
       void load(key);
     });
     return () => window.cancelAnimationFrame(frame);
   }, [load]);
 
   const submit = async () => {
-    if (!result || saving) return;
-    if (nickname.trim().length < 2) {
+    if (!result || saving || !playerKey || savedRunId === result.runId) return;
+    setFeedbackRunId(result.runId);
+    const chosenName = (editingName || !rememberedNickname ? nickname : rememberedNickname).replace(/[^a-zA-Z0-9 _.-]/g, "").trim().slice(0, 22);
+    if (chosenName.length < 2) {
       setMessage("Choose a nickname with at least two letters or numbers.");
       return;
     }
@@ -110,11 +116,14 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
       const response = await fetch("/api/arcade-leaderboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...result, playerKey, nickname }),
+        body: JSON.stringify({ ...result, playerKey, nickname: chosenName }),
       });
       const data = await response.json() as { error?: string; newAchievements?: MintFlyerAchievementId[] };
       if (!response.ok) throw new Error(data.error || "Score could not be saved.");
-      window.localStorage.setItem(NICKNAME_KEY, nickname.trim());
+      window.localStorage.setItem(NICKNAME_KEY, chosenName);
+      setNickname(chosenName);
+      setRememberedNickname(chosenName);
+      setEditingName(false);
       setNewAchievements(data.newAchievements ?? []);
       setSavedRunId(result.runId);
       setMessage(data.newAchievements?.length ? `${data.newAchievements.length} achievement${data.newAchievements.length === 1 ? "" : "s"} unlocked.` : `${result.reachedMoon ? "Moon Run" : "Flight result"} saved to the leaderboard.`);
@@ -128,9 +137,31 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
 
   const achievementProgress = Math.round((unlocked.length / MINT_FLYER_ACHIEVEMENTS.length) * 100);
   const podiumOrder = [1, 0, 2];
+  const scoreSaved = Boolean(result && savedRunId === result.runId);
+  const finishCard = result ? (
+    <form className={styles.finishCard} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+      {rememberedNickname && !editingName ? (
+        <div className={styles.savedName}>
+          <span><small>LEADERBOARD NAME</small><strong>{rememberedNickname}</strong></span>
+          {!scoreSaved && <button type="button" disabled={saving} onClick={() => { setNickname(rememberedNickname); setEditingName(true); }}>Change name</button>}
+        </div>
+      ) : (
+        <label className={styles.nameField}>
+          <span>YOUR LEADERBOARD NAME</span>
+          <input aria-label="Mint Flyer leaderboard nickname" autoFocus maxLength={22} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="Choose a nickname" disabled={saving} />
+          <small>Choose once. We’ll remember it on this browser.</small>
+        </label>
+      )}
+      <button className={styles.saveFlight} type="submit" disabled={saving || scoreSaved || !playerKey}>
+        {scoreSaved ? "SAVED TO LEADERBOARD ✓" : saving ? "SAVING…" : "SAVE FLIGHT"}
+      </button>
+      {message && feedbackRunId === result.runId && <p className={styles.finishMessage} role="status">{message}</p>}
+    </form>
+  ) : null;
 
   return (
     <section id="mint-flyer-leaderboard" className={styles.board} aria-label="Mint Flyer leaderboard and achievements">
+      {finishPanel && finishCard && createPortal(finishCard, finishPanel)}
       <header>
         <span><small>MSS2 ARCADE · FLIGHT RANKINGS</small><strong><i aria-hidden="true">🏆</i> MINT FLYER LEADERBOARD</strong><em>Every flight counts. Fly farther. Chase the Moon.</em></span>
         <b><i aria-hidden="true" /> BEST FLIGHTS</b>
@@ -141,14 +172,6 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
         <span><small>TOP SCORE</small><strong>{entries[0]?.bestScore.toLocaleString() ?? "—"}</strong></span>
         <span><small>YOUR BADGES</small><strong>{unlocked.length}<em> / {MINT_FLYER_ACHIEVEMENTS.length}</em></strong></span>
       </div>
-
-      {result && (
-        <div className={styles.submitCard}>
-          <div><small>{result.reachedMoon ? "MOON RUN READY" : "FLIGHT RESULT READY"}</small><strong>{result.score.toLocaleString()} POINTS · {result.distance.toLocaleString()}m · COMBO {result.maxCombo}</strong><span>{result.reachedMoon ? "Save this Moon clear and check for new achievements." : "Your attempt counts. Save it, rank it, then fly farther next time."}</span></div>
-          <input aria-label="Mint Flyer leaderboard nickname" maxLength={22} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="Choose a nickname" />
-          <button type="button" onClick={submit} disabled={saving || savedRunId === result.runId}>{savedRunId === result.runId ? "SCORE SAVED ✓" : saving ? "SAVING…" : result.reachedMoon ? "SAVE MOON RUN" : "SAVE FLIGHT RESULT"}</button>
-        </div>
-      )}
 
       {message && <p className={styles.message} role="status">{message}</p>}
       {newAchievements.length > 0 && <div className={styles.unlocks}>{newAchievements.map((id) => { const item = achievement(id); return item ? <span key={id}><i>{item.icon}</i><b>{item.name}</b></span> : null; })}</div>}

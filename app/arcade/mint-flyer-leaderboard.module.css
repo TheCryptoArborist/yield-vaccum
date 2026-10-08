@@ -82,3 +82,7 @@
   position: relative;
   z-index: 1;
 }
+.finishCard{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px;border:1px solid rgba(0,235,242,.45);border-radius:12px;background:#0b1c36;text-align:left}
+.nameField{display:flex;flex-direction:column;gap:5px;min-width:0}.nameField>span,.savedName small{color:#00ebf2;font-size:9px;font-weight:900;letter-spacing:.1em}.nameField input{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #7088aa;border-radius:8px;background:#061226;color:#fff;font:inherit;font-size:14px}.nameField input:focus{outline:2px solid #00ebf2;outline-offset:2px}.nameField>small{color:#a9bcd5;font-size:10px}
+.savedName{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.savedName>span{display:flex;flex-direction:column;gap:4px;min-width:0}.savedName strong{overflow-wrap:anywhere;color:#fff;font-size:15px}.savedName>button{flex-shrink:0;padding:6px;border:0;background:transparent;color:#b5fff8;font-size:10px;text-decoration:underline;cursor:pointer}.saveFlight{min-height:44px;padding:10px 13px;border:1px solid #00ebf2;border-radius:8px;background:#00ebf2;color:#061629;font-size:11px;font-weight:900;cursor:pointer}.saveFlight:disabled{border-color:#557197;background:#263f65;color:#c0d1e7;cursor:default}.finishMessage{grid-column:1/-1;margin:0;color:#dbe6f4;font-size:11px;line-height:1.4}
+@media(max-width:520px){.finishCard{grid-template-columns:1fr}.saveFlight{width:100%}}
