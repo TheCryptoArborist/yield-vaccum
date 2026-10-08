@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { MINT_FLYER_ACHIEVEMENTS, type MintFlyerAchievementId } from "../../lib/mint-flyer-achievements";
 import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
+import type { WalletConnection } from "../wallet-connect";
+import type { RewardWalletFields } from "../../lib/mint-flyer-rewards";
 import styles from "./mint-flyer-leaderboard.module.css";
 
-type Entry = {
+type Entry = Partial<RewardWalletFields> & {
   nickname: string;
   bestScore: number;
   bestDistance: number;
@@ -40,6 +42,7 @@ export type LeaderboardFlightResult = {
 };
 
 const NICKNAME_KEY = "yield-vacuum-mint-flyer-nickname";
+const REWARD_DISPLAY_KEY = "yield-vacuum-mint-flyer-show-reward-wallet";
 
 function achievement(id: MintFlyerAchievementId) {
   return MINT_FLYER_ACHIEVEMENTS.find((item) => item.id === id);
@@ -61,7 +64,25 @@ function AchievementBadges({ ids }: { ids: MintFlyerAchievementId[] }) {
   );
 }
 
-export default function MintFlyerLeaderboard({ result, finishPanel }: { result: LeaderboardFlightResult | null; finishPanel: HTMLElement | null }) {
+function RewardWallet({ entry }: { entry: Entry }) {
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
+  if (!entry.displayRewardWallet || !entry.rewardWallet || !entry.rewardWalletVerifiedAt || !entry.rewardNetwork) return null;
+  const address = entry.rewardWallet;
+  const network = entry.rewardNetwork === "arc" ? "Arc" : "Robinhood";
+  const explorer = entry.rewardNetwork === "arc" ? "https://explorer.arc.io" : "https://robinhoodchain.blockscout.com";
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(address); setCopied(true); setCopyError(false); }
+    catch { setCopyError(true); }
+  };
+  return <div className={styles.rewardWallet}>
+    <span><small>✓ VERIFIED REWARD WALLET · {network}</small><button type="button" onClick={() => void copy()} aria-label={`Copy ${entry.nickname}'s ${network} reward wallet`}>{copied ? "COPIED ✓" : "COPY"}</button></span>
+    <a href={`${explorer}/address/${address}`} target="_blank" rel="noreferrer"><code>{address}</code></a>
+    {copyError && <small role="status">Select the address above to copy it.</small>}
+  </div>;
+}
+
+export default function MintFlyerLeaderboard({ result, finishPanel, walletConnection }: { result: LeaderboardFlightResult | null; finishPanel: HTMLElement | null; walletConnection: WalletConnection | null }) {
   const [playerKey, setPlayerKey] = useState("");
   const [nickname, setNickname] = useState("");
   const [rememberedNickname, setRememberedNickname] = useState("");
@@ -74,6 +95,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
   const [savedRunId, setSavedRunId] = useState("");
   const [message, setMessage] = useState("");
   const [feedbackRunId, setFeedbackRunId] = useState("");
+  const [displayRewardWallet, setDisplayRewardWallet] = useState(false);
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -97,6 +119,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
       setPlayerKey(key);
       setNickname(storedNickname);
       setRememberedNickname(storedNickname);
+      setDisplayRewardWallet(window.localStorage.getItem(REWARD_DISPLAY_KEY) === "true");
       void load(key);
     });
     return () => window.cancelAnimationFrame(frame);
@@ -113,14 +136,29 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
     setSaving(true);
     setMessage("");
     try {
+      let rewardWallet = "";
+      let rewardSignature = "";
+      if (displayRewardWallet && !result.paymentId) {
+        if (!walletConnection) throw new Error("Connect a wallet to list a reward address, or uncheck the wallet option to save your flight.");
+        rewardWallet = walletConnection.account;
+        const challengeResponse = await fetch("/api/arcade-leaderboard", {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerKey, walletAddress: rewardWallet, purpose: "rewards" }),
+        });
+        const challenge = await challengeResponse.json() as { message?: string; error?: string };
+        if (!challengeResponse.ok || !challenge.message) throw new Error(challenge.error || "Could not prepare wallet verification.");
+        setMessage("Confirm the free wallet message to publish your reward address.");
+        rewardSignature = await walletConnection.signMessage(challenge.message);
+      }
       const response = await fetch("/api/arcade-leaderboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...result, playerKey, nickname: chosenName }),
+        body: JSON.stringify({ ...result, playerKey, nickname: chosenName, displayRewardWallet, rewardWallet, rewardSignature }),
       });
       const data = await response.json() as { error?: string; newAchievements?: MintFlyerAchievementId[] };
       if (!response.ok) throw new Error(data.error || "Score could not be saved.");
       window.localStorage.setItem(NICKNAME_KEY, chosenName);
+      window.localStorage.setItem(REWARD_DISPLAY_KEY, String(displayRewardWallet));
       setNickname(chosenName);
       setRememberedNickname(chosenName);
       setEditingName(false);
@@ -155,6 +193,10 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
       <button className={styles.saveFlight} type="submit" disabled={saving || scoreSaved || !playerKey}>
         {scoreSaved ? "SAVED TO LEADERBOARD ✓" : saving ? "SAVING…" : "SAVE FLIGHT"}
       </button>
+      {!scoreSaved && <label className={styles.rewardChoice}>
+        <input type="checkbox" checked={displayRewardWallet} disabled={saving} onChange={(event) => setDisplayRewardWallet(event.target.checked)} />
+        <span>Show my verified wallet for direct rewards<small>{result.paymentId ? "Uses your payment wallet. No extra signature." : "Optional free wallet signature. No payment."} Your address will be public. Rewards are discretionary.</small></span>
+      </label>}
       {message && feedbackRunId === result.runId && <p className={styles.finishMessage} role="status">{message}</p>}
     </form>
   ) : null;
@@ -191,6 +233,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
                     <strong>{entry.nickname}</strong>
                     <div className={styles.podiumScore}>{entry.bestScore.toLocaleString()}<em>PTS</em></div>
                     <span>GRADE {entry.bestGrade} · {entry.bestDistance.toLocaleString()}m BEST · {entry.moonClears} MOON {entry.moonClears === 1 ? "CLEAR" : "CLEARS"}</span>
+                    <b className={styles.podiumFlights}>{entry.runs.toLocaleString()} SAVED {entry.runs === 1 ? "FLIGHT" : "FLIGHTS"}</b>
                     <div className={styles.podiumBadges}><AchievementBadges ids={entry.displayedAchievements} /></div>
                     {entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}
                   </> : <>
@@ -208,11 +251,12 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
         {!loading && entries.length === 0 && <div className={styles.firstRunChallenge}><i aria-hidden="true">🚀</i><span><small>THE BOARD IS WIDE OPEN</small><strong>BE THE FIRST RANKED PILOT</strong><em>Finish any flight, save your score, and claim the first seat.</em></span><b>CLAIM #1</b></div>}
 
         {entries.length > 0 && <div className={styles.table}>
-          <div className={styles.tableHead}><span>RANK</span><span>PILOT + BADGES</span><span>BEST DISTANCE</span><span>BEST SCORE</span></div>
+          <div className={styles.tableHead}><span>RANK</span><span>PILOT + BADGES</span><span className={styles.flightColumn}>FLIGHTS</span><span>BEST DISTANCE</span><span>BEST SCORE</span></div>
           {entries.map((entry, index) => (
             <div className={`${styles.row} ${index < 3 ? styles.podium : ""}`} key={`${entry.nickname}-${entry.updatedAt}`}>
               <span className={styles.rank}><i>{index === 0 ? "👑" : index === 1 ? "★" : index === 2 ? "◆" : ""}</i>{index + 1}</span>
-              <div className={styles.identity}><strong>{entry.nickname}</strong><AchievementBadges ids={entry.displayedAchievements} /><small>{entry.unlocked.length} BADGES · {entry.totalMints} MINT CREDITS</small>{entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}</div>
+              <div className={styles.identity}><strong>{entry.nickname}</strong><AchievementBadges ids={entry.displayedAchievements} /><small>{entry.unlocked.length} BADGES · {entry.totalMints} MINT CREDITS<span className={styles.mobileFlights}> · {entry.runs.toLocaleString()} SAVED {entry.runs === 1 ? "FLIGHT" : "FLIGHTS"}</span></small><RewardWallet entry={entry} />{entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}</div>
+              <span className={styles.flightColumn} title="Saved finished flights, including crashes">{entry.runs.toLocaleString()}</span>
               <span className={styles.clears}><b>{entry.bestDistance.toLocaleString()}m</b><small>{entry.moonClears > 0 ? `${entry.moonClears} MOON ${entry.moonClears === 1 ? "CLEAR" : "CLEARS"}` : "MOON NOT YET REACHED"}</small></span>
               <span className={styles.score}><b>{entry.bestScore.toLocaleString()}</b><small>GRADE {entry.bestGrade}</small></span>
             </div>

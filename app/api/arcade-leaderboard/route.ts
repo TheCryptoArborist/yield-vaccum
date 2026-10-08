@@ -2,6 +2,7 @@ import { readMintFlyerLeaderboard, readMintFlyerProfile, saveMintFlyerRun, updat
 import { createWalletChallenge, verifyAndConsumeWalletChallenge } from "../../../db/mss2-wallet-proof";
 import { requirePaymentForScore } from "../../../db/arcade-payments";
 import { MINT_FLYER_ACHIEVEMENTS } from "../../../lib/mint-flyer-achievements";
+import { publicRewardWallet, resolveRewardWallet, type RewardWalletFields } from "../../../lib/mint-flyer-rewards";
 
 function cleanNickname(value: unknown) {
   return String(value ?? "").replace(/[^a-zA-Z0-9 _.-]/g, "").trim().slice(0, 22);
@@ -12,10 +13,10 @@ function boundedInteger(value: unknown, min: number, max: number) {
   return Number.isInteger(number) && number >= min && number <= max ? number : null;
 }
 
-function publicProfile<T extends { mss2Wallet?: string | null }>(profile: T) {
+function publicProfile<T extends Partial<RewardWalletFields> & { mss2Wallet?: string | null }>(profile: T) {
   const { mss2Wallet: _wallet, ...publicFields } = profile;
   void _wallet;
-  return publicFields;
+  return { ...publicFields, ...publicRewardWallet(profile) };
 }
 
 export async function GET(request: Request) {
@@ -57,7 +58,13 @@ export async function POST(request: Request) {
     }
 
     const entry = await requirePaymentForScore({ paymentId, runAuthorizationId, playerKey, runId });
-    const result = await saveMintFlyerRun({ playerKey, runId, nickname, score: score!, distance: distance!, mintsCollected: mintsCollected!, maxCombo: maxCombo!, hits: hits!, lives: lives!, reachedMoon, continued, entryMode: entry.mode, entryNetwork: entry.network });
+    const displayRewardWallet = payload.displayRewardWallet === true;
+    const rewardWallet = String(payload.rewardWallet ?? "").trim();
+    const rewardSignature = String(payload.rewardSignature ?? "").trim();
+    const signedAt = displayRewardWallet && entry.mode === "demo"
+      ? await verifyAndConsumeWalletChallenge(playerKey, rewardWallet, rewardSignature, "rewards") : "";
+    const rewards = resolveRewardWallet(entry, displayRewardWallet, rewardWallet, signedAt);
+    const result = await saveMintFlyerRun({ playerKey, runId, nickname, score: score!, distance: distance!, mintsCollected: mintsCollected!, maxCombo: maxCombo!, hits: hits!, lives: lives!, reachedMoon, continued, entryMode: entry.mode, entryNetwork: entry.network, ...rewards });
     return Response.json({ saved: true, ...result, profile: publicProfile(result.profile) });
   } catch {
     return Response.json({ error: "The flight result could not be saved right now." }, { status: 503 });
@@ -97,7 +104,8 @@ export async function PATCH(request: Request) {
     if (!/^[a-zA-Z0-9-]{16,80}$/.test(playerKey) || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
       return Response.json({ error: "Connect a valid wallet before requesting verification." }, { status: 400 });
     }
-    const challenge = await createWalletChallenge(playerKey, walletAddress, new URL(request.url).host);
+    const purpose = payload.purpose === "rewards" ? "rewards" : "balance";
+    const challenge = await createWalletChallenge(playerKey, walletAddress, new URL(request.url).host, purpose);
     return Response.json(challenge, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return Response.json({ error: "The wallet verification request could not be created." }, { status: 503 });

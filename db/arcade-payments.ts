@@ -192,7 +192,7 @@ export async function requirePaymentForScore(input: { paymentId: string; runAuth
     if (!quote || quote.status !== "verified" || quote.playerKey !== input.playerKey || quote.runId !== input.runId || !quote.txHash) {
       throw new Error("A verified MSS2 entry payment is required before this Moon Run can be saved.");
     }
-    return { mode: "paid" as const, network: quote.network };
+    return { mode: "paid" as const, network: quote.network, walletAddress: quote.walletAddress, verifiedAt: quote.verifiedAt };
   }
 
   const authorization = await paymentStore.get(demoRunKey(input.runAuthorizationId), { type: "json" }) as ArcadeDemoRunAuthorization | null;

@@ -1,8 +1,9 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
 import { MINT_FLYER_ACHIEVEMENTS, mintFlyerGrade, type MintFlyerAchievementId } from "../lib/mint-flyer-achievements";
 import { readRoundedRobinhoodMss2Balance } from "../lib/mss2-balance";
+import { publicRewardWallet, type RewardWalletFields } from "../lib/mint-flyer-rewards";
 
-export type MintFlyerRun = {
+export type MintFlyerRun = Partial<RewardWalletFields> & {
   runId: string;
   playerKey: string;
   nickname: string;
@@ -20,7 +21,7 @@ export type MintFlyerRun = {
   createdAt: string;
 };
 
-export type MintFlyerProfile = {
+export type MintFlyerProfile = Partial<RewardWalletFields> & {
   playerKey: string;
   nickname: string;
   bestScore: number;
@@ -81,6 +82,7 @@ export async function saveMintFlyerRun(input: Omit<MintFlyerRun, "grade" | "crea
   profile.bestCombo = Math.max(profile.bestCombo, input.maxCombo);
   profile.totalMints += input.mintsCollected;
   profile.runs += 1;
+  Object.assign(profile, publicRewardWallet(input));
   if (input.reachedMoon) profile.moonClears += 1;
 
   const earned = new Set(profile.unlocked);
@@ -139,6 +141,7 @@ export async function readMintFlyerLeaderboard() {
       void _wallet;
       return {
         ...publicProfile,
+        ...publicRewardWallet(profile),
         bestDistance: profile.bestDistance ?? 0,
         mss2HeldRounded: profile.displayMss2Balance && profile.mss2WalletVerifiedAt ? profile.mss2HeldRounded ?? null : null,
         displayedAchievements: profile.unlocked.slice(-3).reverse(),

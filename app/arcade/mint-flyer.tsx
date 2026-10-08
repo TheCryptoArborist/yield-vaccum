@@ -1121,7 +1121,7 @@ export default function MintFlyer() {
         </footer>
       </section>
 
-      <MintFlyerLeaderboard result={leaderboardResult} finishPanel={finishPanel} />
+      <MintFlyerLeaderboard result={leaderboardResult} finishPanel={finishPanel} walletConnection={walletConnection} />
 
       <details className={styles.infoDrawer} id="payment-safety">
         <summary><span><small>PAYMENT SAFETY · {selectedNetworkLabel}</small><strong>{liveEntryEnabled ? "ROBINHOOD MSS2 ENTRY IS LIVE" : "$1 QUOTE DEMO · REAL MSS2 LOCKED"}</strong></span><b>VIEW DETAILS +</b></summary>

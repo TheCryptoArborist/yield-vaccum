@@ -6,6 +6,7 @@ type WalletChallenge = {
   walletAddress: string;
   message: string;
   expiresAt: string;
+  purpose?: "balance" | "rewards";
 };
 
 function challengeStore() {
@@ -14,11 +15,11 @@ function challengeStore() {
     : getDeployStore("mint-flyer-wallet-proof");
 }
 
-function challengeKey(playerKey: string) {
-  return `challenges/${playerKey}.json`;
+function challengeKey(playerKey: string, purpose: "balance" | "rewards") {
+  return purpose === "balance" ? `challenges/${playerKey}.json` : `reward-challenges/${playerKey}.json`;
 }
 
-export async function createWalletChallenge(playerKey: string, walletAddress: string, siteHost: string) {
+export async function createWalletChallenge(playerKey: string, walletAddress: string, siteHost: string, purpose: "balance" | "rewards" = "balance") {
   const address = getAddress(walletAddress);
   const expiresAt = new Date(Date.now() + 5 * 60_000).toISOString();
   const message = [
@@ -29,28 +30,31 @@ export async function createWalletChallenge(playerKey: string, walletAddress: st
     `Arcade profile: ${playerKey}`,
     `Nonce: ${crypto.randomUUID()}`,
     `Expires: ${expiresAt}`,
+    purpose === "rewards" ? "Purpose: Publish this wallet beside my leaderboard name for optional direct rewards." : "Purpose: Verify ownership before displaying my MSS2 balance.",
     "",
     "Signing is free and does not authorize a transaction, token approval, payment, or transfer.",
   ].join("\n");
-  const challenge: WalletChallenge = { playerKey, walletAddress: address.toLowerCase(), message, expiresAt };
-  await challengeStore().setJSON(challengeKey(playerKey), challenge);
+  const challenge: WalletChallenge = { playerKey, walletAddress: address.toLowerCase(), message, expiresAt, purpose };
+  await challengeStore().setJSON(challengeKey(playerKey, purpose), challenge);
   return { message, expiresAt };
 }
 
-export async function verifyAndConsumeWalletChallenge(playerKey: string, walletAddress: string, signature: string) {
+export async function verifyAndConsumeWalletChallenge(playerKey: string, walletAddress: string, signature: string, purpose: "balance" | "rewards" = "balance") {
   const store = challengeStore();
-  const challenge = await store.get(challengeKey(playerKey), { type: "json" }) as WalletChallenge | null;
+  const key = challengeKey(playerKey, purpose);
+  const challenge = await store.get(key, { type: "json" }) as WalletChallenge | null;
   if (!challenge || challenge.playerKey !== playerKey || challenge.walletAddress !== walletAddress.toLowerCase()) {
     throw new Error("The wallet verification request was not found. Please try again.");
   }
+  if ((challenge.purpose ?? "balance") !== purpose) throw new Error("This signature was requested for a different purpose.");
   if (Date.parse(challenge.expiresAt) <= Date.now()) {
-    await store.delete(challengeKey(playerKey));
+    await store.delete(key);
     throw new Error("The wallet verification request expired. Please try again.");
   }
   const recoveredAddress = verifyMessage(challenge.message, signature).toLowerCase();
   if (recoveredAddress !== challenge.walletAddress) {
     throw new Error("The signature did not match the connected wallet.");
   }
-  await store.delete(challengeKey(playerKey));
+  await store.delete(key);
   return new Date().toISOString();
 }
