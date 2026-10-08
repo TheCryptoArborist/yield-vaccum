@@ -1777,16 +1777,15 @@ export default function YieldVacuumGame() {
     <main className="shell">
       {phase === "splash" && (
         <section className="splashScreen" aria-label="Yield Vacuum game gateway">
-          <div className="splashAtmosphere" aria-hidden="true">
-            <i /><i /><i />
-          </div>
           <p className="splashPresents">THE CRYPTO ARBORIST PRESENTS</p>
           <div className="splashWorlds" aria-label="Topaz and MintStakeShare 2">
           <div className="splashLogoStage">
+            <div className="splashAtmosphere" aria-hidden="true"><i /><i /><i /></div>
             <div className="splashRing" aria-hidden="true" />
             <img src="/topaz-mark.png" alt="Topaz" />
           </div>
           <div className="splashLogoStage splashMintStage">
+            <div className="splashAtmosphere" aria-hidden="true"><i /><i /><i /></div>
             <div className="splashRing" aria-hidden="true" />
             <img src="/mss2-flyer-emblem.png" alt="MintStakeShare 2" />
           </div>
