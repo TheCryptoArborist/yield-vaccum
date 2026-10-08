@@ -8,6 +8,7 @@ import Mss2Commitments from "./mss2-commitments";
 import MintFlyerLeaderboard, { type LeaderboardFlightResult } from "./mint-flyer-leaderboard";
 import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
 import { MSS2_COMMUNITY_AIRDROP_RESERVE, MSS2_DEAD_ADDRESS } from "../../lib/mss2-payment-shared";
+import type { Mss2EntryBalance } from "../../lib/mss2-entry-balance";
 import styles from "./mint-flyer.module.css";
 
 type FlightPhase = "ready" | "countdown" | "playing" | "paused" | "crashed" | "victory";
@@ -45,6 +46,7 @@ type PaymentReadiness = {
   reason: string | null;
 };
 type LivePaymentQuote = {
+  balanceCheck?: Mss2EntryBalance;
   paymentId: string;
   runId: string;
   network: "robinhood" | "arc";
@@ -183,6 +185,9 @@ export default function MintFlyer() {
   const [paymentTxHash, setPaymentTxHash] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
+  const [entryBalance, setEntryBalance] = useState<{ paymentId: string; check: Mss2EntryBalance } | null>(null);
+  const walletContextRef = useRef<WalletConnection | null>(null);
+  const currentBalanceCheck = entryBalance?.paymentId === livePaymentQuote?.paymentId ? entryBalance?.check : null;
 
   const connectedChainId = walletConnection?.chainId.toLowerCase() ?? "";
   const selectedMss2Network = connectedChainId === ARC_CHAIN_HEX
@@ -196,6 +201,7 @@ export default function MintFlyer() {
   const canaryEntryEnabled = liveEntryEnabled && paymentReadiness?.releaseMode === "canary";
   const selectedNetworkLabel = isArcContext ? "ARC" : isRobinhoodContext ? "ROBINHOOD CHAIN" : "SELECT NETWORK";
   const handleWalletConnectionChange = useCallback((connection: WalletConnection | null) => {
+    walletContextRef.current = connection;
     setWalletConnection(connection);
     setEntryQuote(null);
     setQuoteUnavailable(false);
@@ -203,6 +209,7 @@ export default function MintFlyer() {
     setLivePaymentQuote(null);
     setPaymentTxHash("");
     setPaymentMessage("");
+    setEntryBalance(null);
   }, []);
 
   const playerYRef = useRef(0.5);
@@ -432,6 +439,7 @@ export default function MintFlyer() {
         const data = await response.json() as LivePaymentQuote & { error?: string };
         if (!response.ok) throw new Error(data.error || "A live MSS2 entry quote could not be created.");
         setLivePaymentQuote(data);
+        setEntryBalance(data.balanceCheck ? { paymentId: data.paymentId, check: data.balanceCheck } : null);
         setPaymentTxHash("");
         setQuoteClock(Date.now());
         setReviewingEntry(true);
@@ -480,18 +488,53 @@ export default function MintFlyer() {
     }
   }, [entryQuote, paymentBusy, playerKey, primeAudio, resetFlight, selectedMss2Network, walletConnection]);
 
+  const readLiveEntryBalance = useCallback(async () => {
+    if (!livePaymentQuote || !walletConnection) throw new Error("Connect your wallet and request a new entry quote.");
+    const response = await fetch("/api/arcade-payment", {
+      method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({ action: "balance-check", paymentId: livePaymentQuote.paymentId, playerKey, walletAddress: walletConnection.account }),
+    });
+    const data = await response.json() as { paymentId?: string; balanceCheck?: Mss2EntryBalance; error?: string };
+    if (!response.ok || !data.balanceCheck || data.paymentId !== livePaymentQuote.paymentId || data.balanceCheck.requiredRaw !== livePaymentQuote.amountRaw) {
+      throw new Error(data.error || "Your MSS2 balance could not be checked. Please retry before paying.");
+    }
+    if (walletContextRef.current?.account.toLowerCase() !== livePaymentQuote.walletAddress.toLowerCase()
+      || walletContextRef.current.chainId.toLowerCase() !== `0x${livePaymentQuote.chainId.toString(16)}`) {
+      throw new Error("Your wallet or network changed. Request a new entry quote.");
+    }
+    setEntryBalance({ paymentId: livePaymentQuote.paymentId, check: data.balanceCheck });
+    return data.balanceCheck;
+  }, [livePaymentQuote, playerKey, walletConnection]);
+
+  const refreshLiveBalance = useCallback(async () => {
+    if (paymentBusy) return;
+    setPaymentBusy(true);
+    setPaymentMessage("Checking your MSS2 balance…");
+    try {
+      const balance = await readLiveEntryBalance();
+      setPaymentMessage(balance.sufficient ? "Your MSS2 balance covers this entry. Review the amount, then open your wallet to pay." : "");
+    } catch (error) {
+      setEntryBalance(null);
+      setPaymentMessage(error instanceof Error ? error.message : "Your MSS2 balance could not be checked. Please retry.");
+    } finally { setPaymentBusy(false); }
+  }, [paymentBusy, readLiveEntryBalance]);
+
   const confirmLivePayment = useCallback(async () => {
     if (!liveEntryEnabled || !paymentReadiness || !walletConnection || !livePaymentQuote || paymentBusy) return;
-    if (Date.now() >= Date.parse(livePaymentQuote.expiresAt)) {
+    if (!paymentTxHash && Date.now() >= Date.parse(livePaymentQuote.expiresAt)) {
       setPaymentMessage("This live quote expired. Go back and request a new one.");
       setQuoteClock(Date.now());
       return;
     }
     setPaymentBusy(true);
-    setPaymentMessage(`Check your wallet. First approve the exact MSS2 amount for the verified ${paymentReadiness.network} router.`);
+    setPaymentMessage(paymentTxHash ? "Rechecking your submitted payment…" : "Checking your MSS2 balance before opening the wallet…");
     try {
       if (walletConnection.chainId.toLowerCase() !== paymentReadiness.chainHex) await walletConnection.switchChain(paymentReadiness.chainHex);
       if (!paymentTxHash) {
+        const balance = await readLiveEntryBalance();
+        if (!balance.sufficient) { setPaymentMessage(""); return; }
+        if (Date.now() >= Date.parse(livePaymentQuote.expiresAt)) throw new Error("This entry quote expired during the balance check. Go back and request a new one.");
+        setPaymentMessage(`Check your wallet. First approve the exact MSS2 amount for the verified ${paymentReadiness.network} router.`);
         await walletConnection.sendTransaction(livePaymentQuote.approval);
         setPaymentMessage("Approval submitted. Now review the router entry that sends 20% to the dead address and 80% to the Community Airdrop Reserve.");
       }
@@ -526,7 +569,7 @@ export default function MintFlyer() {
     } finally {
       setPaymentBusy(false);
     }
-  }, [liveEntryEnabled, livePaymentQuote, paymentBusy, paymentReadiness, paymentTxHash, playerKey, primeAudio, resetFlight, walletConnection]);
+  }, [liveEntryEnabled, livePaymentQuote, paymentBusy, paymentReadiness, paymentTxHash, playerKey, primeAudio, readLiveEntryBalance, resetFlight, walletConnection]);
 
   const prepareAnotherRun = useCallback(() => {
     setPhase("ready");
@@ -536,6 +579,7 @@ export default function MintFlyer() {
     setActiveRunAuthorizationId("");
     setPaymentTxHash("");
     setPaymentMessage("");
+    setEntryBalance(null);
     if (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil)) void loadEntryQuote();
   }, [entryQuote, loadEntryQuote]);
 
@@ -1014,12 +1058,17 @@ export default function MintFlyer() {
                   <span className={styles.reviewWide}><small>{liveEntryEnabled ? "SERVER PAYMENT ID" : "DEMO QUOTE REFERENCE"}</small><code>{liveEntryEnabled ? livePaymentQuote?.paymentId : entryQuote?.quoteId ?? "UNAVAILABLE"}</code></span>
                 </div>
                 <p className={styles.entryWarning}><b>{liveEntryEnabled ? "FINAL TRANSFER" : "NO FUNDS MOVE"}</b><span>{liveEntryEnabled ? "After wallet approval, the router sends 20% of the MSS2 entry to the dead address and 80% to the Community Airdrop Reserve. Transfers are intended to be final and do not guarantee an airdrop, income, token value, or uninterrupted service." : `This ${selectedNetworkLabel} quote is simulated for review. Real entry payments stay disabled until that chain's 20/80 router and backend verifier are complete.`}</span></p>
+                {liveEntryEnabled && currentBalanceCheck && !currentBalanceCheck.sufficient && !paymentTxHash && <div className={styles.insufficientMss2} role="alert">
+                  <strong>NOT ENOUGH MSS2 TO PLAY ON {currentBalanceCheck.network.toUpperCase()}</strong>
+                  <div><span><small>ENTRY COST</small><b>≈ {currentBalanceCheck.requiredDisplay} MSS2</b></span><span><small>YOUR BALANCE</small><b>≈ {currentBalanceCheck.balanceDisplay} MSS2</b></span></div>
+                  <p>Add at least <b>{currentBalanceCheck.shortfallDisplay} MSS2</b> to this wallet on <b>{currentBalanceCheck.network}</b>, then refresh your balance.</p>
+                </div>}
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 {paymentTxHash && <a className={styles.paymentTxLink} href={`${livePaymentQuote?.explorerUrl}/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">VIEW SUBMITTED TRANSACTION ↗</a>}
                 <div className={styles.entryActions} aria-label={liveEntryEnabled ? "MSS2 payment controls" : "Demo flight controls"}>
                   <button className={styles.secondaryEntryButton} onClick={() => setReviewingEntry(false)} disabled={paymentBusy}>← BACK</button>
                   {liveEntryEnabled
-                    ? <button onClick={() => void confirmLivePayment()} disabled={paymentBusy || (liveQuoteExpired && !paymentTxHash) || !livePaymentQuote}>{paymentBusy ? "CHECK WALLET · APPROVE, THEN PAY" : paymentTxHash ? "RECHECK PAYMENT + START" : liveQuoteExpired ? "QUOTE EXPIRED · GO BACK" : "OPEN WALLET · APPROVE + PAY MSS2"}</button>
+                    ? <button onClick={() => void (!paymentTxHash && !currentBalanceCheck?.sufficient ? refreshLiveBalance() : confirmLivePayment())} disabled={paymentBusy || (liveQuoteExpired && !paymentTxHash) || !livePaymentQuote}>{paymentBusy ? "PROCESSING…" : paymentTxHash ? "RECHECK PAYMENT + START" : liveQuoteExpired ? "QUOTE EXPIRED · GO BACK" : !currentBalanceCheck ? "CHECK MSS2 BALANCE" : !currentBalanceCheck.sufficient ? "REFRESH MSS2 BALANCE" : "OPEN WALLET · APPROVE + PAY MSS2"}</button>
                     : <button onClick={() => void confirmDemoEntry()} disabled={paymentBusy || quoteExpired || !entryQuote || !playerKey}>{paymentBusy ? "PREPARING FREE FLIGHT…" : quoteExpired ? "QUOTE EXPIRED" : `CONFIRM ${selectedNetworkLabel} DEMO + START`}</button>}
                 </div>
               </>}

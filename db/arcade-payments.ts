@@ -14,6 +14,8 @@ import {
   type Mss2PaymentNetwork,
 } from "../lib/mss2-payment";
 import { validatePaymentEvidence, type PaymentEvidenceReceipt, type PaymentEvidenceTransaction } from "../lib/mss2-payment-verifier";
+import { readRawMss2Balance } from "../lib/mss2-balance";
+import { assessMss2EntryBalance } from "../lib/mss2-entry-balance";
 
 export type ArcadePaymentQuote = {
   paymentId: string;
@@ -108,6 +110,8 @@ export async function createArcadePaymentQuote(input: { playerKey: string; runId
   const suffix = BigInt(`0x${paymentId.replaceAll("-", "").slice(0, 16)}`);
   const market = await readVerifiedMarketQuote(input.network, suffix);
   const split = splitEntryAmount(market.amountRaw);
+  const balance = await readRawMss2Balance(walletAddress, input.network === "arc" ? "0x13b2" : "0x1237");
+  const balanceCheck = assessMss2EntryBalance(balance.raw, market.amountRaw, balance.network);
   const createdAt = new Date();
   const quote: ArcadePaymentQuote = {
     paymentId,
@@ -137,6 +141,7 @@ export async function createArcadePaymentQuote(input: { playerKey: string; runId
   await store().setJSON(quoteKey(paymentId), quote);
   return {
     ...quote,
+    balanceCheck,
     playerKey: undefined,
     walletAddress: getAddress(walletAddress),
     approval: {
@@ -152,6 +157,15 @@ export async function createArcadePaymentQuote(input: { playerKey: string; runId
       value: "0x0",
     },
   };
+}
+
+export async function checkArcadePaymentBalance(input: { paymentId: string; playerKey: string; walletAddress: string }) {
+  const quote = await store().get(quoteKey(input.paymentId), { type: "json" }) as ArcadePaymentQuote | null;
+  if (!quote || quote.playerKey !== input.playerKey || quote.walletAddress !== input.walletAddress.toLowerCase()) {
+    throw new Error("The entry quote does not match this wallet. Request a new quote.");
+  }
+  const balance = await readRawMss2Balance(quote.walletAddress, quote.network === "arc" ? "0x13b2" : "0x1237");
+  return { paymentId: quote.paymentId, balanceCheck: assessMss2EntryBalance(balance.raw, quote.amountRaw, balance.network) };
 }
 
 export async function verifyArcadePayment(input: { paymentId: string; playerKey: string; walletAddress: string; txHash: string }) {

@@ -1,4 +1,4 @@
-import { createArcadePaymentQuote, createDemoRunAuthorization, verifyArcadePayment } from "../../../db/arcade-payments";
+import { checkArcadePaymentBalance, createArcadePaymentQuote, createDemoRunAuthorization, verifyArcadePayment } from "../../../db/arcade-payments";
 import { paymentReadiness, readVerifiedMarketQuote, type Mss2PaymentNetwork } from "../../../lib/mss2-payment";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +47,11 @@ export async function POST(request: Request) {
       const txHash = String(payload.txHash ?? "").trim();
       const result = await verifyArcadePayment({ paymentId, playerKey, walletAddress, txHash });
       return Response.json(result, { status: "pending" in result && result.pending ? 202 : 200, headers: { "Cache-Control": "no-store" } });
+    }
+    if (action === "balance-check") {
+      const paymentId = String(payload.paymentId ?? "").trim();
+      if (!/^[a-zA-Z0-9-]{16,80}$/.test(paymentId)) return Response.json({ error: "Request a valid entry quote first." }, { status: 400 });
+      return Response.json(await checkArcadePaymentBalance({ paymentId, playerKey, walletAddress }), { headers: { "Cache-Control": "no-store" } });
     }
     return Response.json({ error: "Choose a supported payment action." }, { status: 400 });
   } catch (error) {

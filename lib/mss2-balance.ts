@@ -68,7 +68,7 @@ export function isMss2BalanceChainId(chainId: string): chainId is Mss2BalanceCha
   return chainId in MSS2_NETWORKS;
 }
 
-export async function readRoundedMss2Balance(address: string, chainId: Mss2BalanceChainId) {
+export async function readRawMss2Balance(address: string, chainId: Mss2BalanceChainId) {
   if (!isAddress(address)) throw new Error("A valid EVM wallet address is required.");
   const encodedAddress = address.toLowerCase().slice(2).padStart(64, "0");
   const [balanceHex, decimalsHex] = await Promise.all([
@@ -79,9 +79,14 @@ export async function readRoundedMss2Balance(address: string, chainId: Mss2Balan
     throw new Error("The MSS2 token decimals did not match the verified configuration.");
   }
   return {
-    rounded: roundedTokenBalance(BigInt(balanceHex)),
+    raw: BigInt(balanceHex).toString(),
     network: MSS2_NETWORKS[chainId].name,
   };
+}
+
+export async function readRoundedMss2Balance(address: string, chainId: Mss2BalanceChainId) {
+  const balance = await readRawMss2Balance(address, chainId);
+  return { rounded: roundedTokenBalance(BigInt(balance.raw)), network: balance.network };
 }
 
 export async function readRoundedRobinhoodMss2Balance(address: string) {
