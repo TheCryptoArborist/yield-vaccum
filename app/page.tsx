@@ -6,6 +6,7 @@ import { ACHIEVEMENTS, achievementById, missionGrade, nextGradeRequirement, type
 import TopazLivePanel from "./topaz-live";
 import TopazXPanel from "./topaz-x";
 import WalletConnect from "./wallet-connect";
+import { TOPAZ_DOCS_CHECKED_AT, TOPAZ_FEATURE_MISSIONS, featureMission, featureBaseScore } from "../lib/topaz-feature-missions";
 
 type Phase = "splash" | "briefing" | "playing" | "results";
 type DropKind = "route" | "emission" | "fee" | "crystal" | "vote" | "incentive" | "hazard";
@@ -67,13 +68,13 @@ const MISSIONS: Mission[] = [
     title: "SWAP ROUTE",
     feature: "SWAPS & ROUTING",
     action: "VALID ROUTES",
-    mechanic: "Compare live quotes. Capture only routes marked BEST ROUTE; reject HIGH IMPACT paths.",
+    mechanic: "Compare simulated quotes. Capture only routes marked BEST ROUTE; reject HIGH IMPACT paths.",
     time: 50,
     target: 12,
     minPools: 3,
     metric: "routes",
-    lesson: "Topaz compares v2 and Slipstream pools and can use multi-hop routes to seek the cheapest end-to-end path.",
-    fact: "The Topaz frontend uses a mixed-route quoter to compare v2 and Slipstream pools. A swap may route through WBNB, USDT, or USDC, and each hop charges its pool fee.",
+    lesson: "Topaz's pool routes compete with supported 0x and Relay quotes. Review the winning route's costs before signing.",
+    fact: "Topaz compares V2, concentrated, split and mixed routes against supported aggregators. The selected route can use other venues. Review network, spender, fees, slippage and minimum received; cross-chain delivery is separate from source confirmation.",
     factUrl: "https://www.topazdex.com/docs/trading/swaps",
   },
   {
@@ -86,7 +87,7 @@ const MISSIONS: Mission[] = [
     minPools: 3,
     metric: "lpBalance",
     lesson: "Neither lane can replace the other. Reach 9 in-range emissions AND 9 unstaked swap fees.",
-    fact: "Staking trades swap fees for TOPAZ emissions. Unstaked Slipstream positions retain fees, earn no emissions, and can be subject to an extra unstaked-position fee.",
+    fact: "This lab models two separate BNB positions. Gauge-staked LPs earn TOPAZ on BNB or xTOPAZ on spokes instead of ongoing swap fees. Unstaked CL positions keep fees subject to surcharge rules. Do not add full Fee APR and Emissions APR for the same liquidity.",
     factUrl: "https://www.topazdex.com/docs/liquidity/staking",
   },
   {
@@ -111,15 +112,15 @@ const MISSIONS: Mission[] = [
     target: 12,
     minPools: 0,
     metric: "votes",
-    lesson: "veTOPAZ votes direct weekly TOPAZ emissions toward selected liquidity gauges.",
-    fact: "Every active liquidity pool can have a gauge. Its share of weekly TOPAZ emissions is proportional to the veTOPAZ votes it receives.",
+    lesson: "BNB veTOPAZ votes direct BNB gauge emissions. Spokes use local xTOPAZ voting stakes for their own gauges.",
+    fact: "Choose the network before voting: BNB uses a veTOPAZ NFT; Robinhood Chain, Base, Ethereum and Arc use local xTOPAZ stakes. Unchanged allocations carry over. Votes and reward claims follow epoch gates; one chain's vote cannot allocate directly to another chain's pool.",
     factUrl: "https://www.topazdex.com/docs/gauges",
   },
   {
     title: "FEE VACUUM",
     feature: "VOTED-POOL FEES",
     action: "TRADING FEES",
-    mechanic: "Compare live pool activity. Select the highest valid volume and reject high-impact activity.",
+    mechanic: "Compare simulated pool activity. Select the highest valid volume and reject high-impact activity.",
     time: 45,
     target: 8,
     minPools: 0,
@@ -145,13 +146,13 @@ const MISSIONS: Mission[] = [
     title: "EPOCH FLIP",
     feature: "WEEKLY CLAIM CYCLE",
     action: "CLAIM BUNDLE",
-    mechanic: "Place voting, trading, epoch flip, claims, and active-lock rebase in the correct order.",
+    mechanic: "Build a simplified BNB cycle from voting through fee claims and a rebase claim.",
     time: 50,
     target: 5,
     minPools: 0,
     metric: "claims",
-    lesson: "After the epoch flips, fees and incentives become claimable; rebases auto-compound for active locks.",
-    fact: "Topaz uses seven-day epochs. Fees and incentives earned in one epoch become claimable after the next epoch begins, while rebases auto-compound for active locks.",
+    lesson: "Epochs turn Thursday at 00:00 UTC. Claimable BNB rebases add to active locks when claimed; they are not a separate spoke claim.",
+    fact: "Fees and incentives become claimable after the seven-day epoch ends. Voting has a first-hour distribution restriction. BNB rebase claims compound into active locks; xTOPAZ backing growth changes the share rate. The lesson's claim order is an example, not a required transaction sequence.",
     factUrl: "https://www.topazdex.com/docs/gauges",
   },
   {
@@ -189,23 +190,24 @@ const MISSIONS: Mission[] = [
     target: 6,
     minPools: 0,
     metric: "claims",
-    lesson: "An LP position must be compared with simply holding the same tokens. Fees and emissions may offset impermanent loss, but they do not erase risk automatically.",
-    fact: "Topaz defines LP results as fees plus emissions, measured against impermanent loss and gas. A displayed APR is not the same as guaranteed net profit.",
+    lesson: "An LP position must be compared with simply holding the same tokens. Actual fee or emission income may offset impermanent loss, but it does not erase risk automatically.",
+    fact: "Compare the LP's actual fee or emission income against impermanent loss and costs. Do not add both full APR streams for the same liquidity. A displayed APR is not guaranteed net profit.",
     factUrl: "https://www.topazdex.com/docs/concepts/impermanent-loss",
   },
   {
     title: "ONE TOPAZ",
-    feature: "ROBINHOOD CHAIN EXPANSION",
+    feature: "FIVE NETWORKS · ONE BNB HUB",
     action: "CHAIN SIGNALS",
     mechanic: "Protect one economic core while recognizing new-market access, unsafe fragmentation, and network checks.",
     time: 45,
     target: 6,
     minPools: 0,
     metric: "claims",
-    lesson: "Topaz is expanding from BNB Chain toward Robinhood Chain while keeping one connected economic core instead of making holders start over.",
-    fact: "Topaz describes its expansion principle as one economic core reaching new markets without duplicating the token or dividing governance. Always verify the selected network before signing.",
-    factUrl: "https://x.com/TopazDex/status/2097308904497598648",
+    lesson: "Topaz is live on BNB Chain, Robinhood Chain, Base, Ethereum and Arc. BNB remains the token hub; spokes have local markets and votes.",
+    fact: "BNB hosts TOPAZ issuance, veTOPAZ locks and permanent xTOPAZ backing. Spokes have local pools, gauges and xTOPAZ stakes. Local votes are distinct even though the backing economy is shared. Feature availability and bridge delivery must be checked separately.",
+    factUrl: "https://www.topazdex.com/docs/multichain",
   },
+  ...TOPAZ_FEATURE_MISSIONS.map((mission) => ({ ...mission, time: 45, target: mission.scenarios.length, minPools: 0, metric: "claims" as const })),
 ];
 
 function getProgress(metric: Metric, game: GameState) {
@@ -454,11 +456,12 @@ const MISSION_GOALS = [
   "Allocate all 12 votes among three gauges while meeting each pool's displayed liquidity need.",
   "Complete 8 market scans. Select the highest-volume valid pool and reject HIGH IMPACT activity.",
   "Route each project incentive to its matching gauge. Reject expired incentive packages.",
-  "Put the five epoch events in their correct order, from voting through claims and automatic lock rebase.",
+  "Build a simplified five-event BNB cycle. Rebase compounding occurs when claimed; the order of claim types is illustrative.",
   "Match six token-pair scenarios with stable v2, volatile v2, or Slipstream liquidity.",
   "Choose the appropriate range width for six liquidity-management scenarios.",
   "Correctly classify six impermanent-loss, offset, and net-result signals.",
   "Sort six expansion decisions into one core, new access, fragmentation risk, or network verification.",
+  ...TOPAZ_FEATURE_MISSIONS.map((mission) => mission.goal),
 ];
 
 const CONTROL_HINTS = [
@@ -473,6 +476,7 @@ const CONTROL_HINTS = [
   "READ THE VOLATILITY AND MANAGEMENT PLAN · CHOOSE A RANGE",
   "READ THE LP SIGNAL · IDENTIFY RISK, OFFSET, OR NET-RESULT CHECK",
   "READ THE EXPANSION SIGNAL · PROTECT ONE TOPAZ ECONOMIC CORE",
+  ...TOPAZ_FEATURE_MISSIONS.map((mission) => mission.hint),
 ];
 
 const MISSION_ENVIRONMENTS = [
@@ -487,6 +491,7 @@ const MISSION_ENVIRONMENTS = [
   "SLIPSTREAM RANGE",
   "RISK ANALYZER",
   "MULTICHAIN GATEWAY",
+  ...TOPAZ_FEATURE_MISSIONS.map((mission) => mission.title),
 ];
 
 const ACCEPT_RULES = [
@@ -501,6 +506,7 @@ const ACCEPT_RULES = [
   "The range width that matches volatility and management frequency",
   "The correct description of the LP risk or possible offset",
   "Expansion choices that preserve one core and verify the network",
+  ...TOPAZ_FEATURE_MISSIONS.map((mission) => mission.accept),
 ];
 
 const AVOID_RULES = [
@@ -515,6 +521,7 @@ const AVOID_RULES = [
   "Choosing a tight range for volatile assets you cannot actively manage",
   "Treating fees, emissions, or APR as guaranteed net profit",
   "Duplicating the economy, splitting governance, or signing on the wrong network",
+  ...TOPAZ_FEATURE_MISSIONS.map((mission) => mission.avoid),
 ];
 
 function scoreGrade(score: number, mistakes: number, missionIndex: number) {
@@ -528,7 +535,7 @@ function gradeExplanation(grade: string) {
   return "Clear complete · replay to improve accuracy and score";
 }
 
-const MISSION_GRADE_TITLES = ["ROUTE MASTER", "LIQUIDITY SPECIALIST", "LOCK ARCHITECT", "GAUGE STRATEGIST", "FEE HUNTER", "INCENTIVE ROUTER", "EPOCH EXPERT", "POOL ARCHITECT", "RANGE KEEPER", "IL DEFENDER", "CHAIN NAVIGATOR"];
+const MISSION_GRADE_TITLES = ["ROUTE MASTER", "LIQUIDITY SPECIALIST", "LOCK ARCHITECT", "GAUGE STRATEGIST", "FEE HUNTER", "INCENTIVE ROUTER", "EPOCH EXPERT", "POOL ARCHITECT", "RANGE KEEPER", "IL DEFENDER", "CHAIN NAVIGATOR", ...TOPAZ_FEATURE_MISSIONS.map((mission) => mission.gradeTitle)];
 
 function AnimatedScore({ value }: { value: number }) {
   const [displayed, setDisplayed] = useState(0);
@@ -553,16 +560,17 @@ function AnimatedScore({ value }: { value: number }) {
 
 const RESULT_RECAPS = [
   "Topaz compares pool types and multi-hop paths, then surfaces the chosen route, its fees, and price impact before you sign.",
-  "A staked gauge position trades swap fees for TOPAZ emissions and must stay in range. An unstaked Slipstream position keeps swap fees but earns no emissions.",
+  "These are separate BNB positions: staked liquidity earns TOPAZ emissions, while unstaked CL liquidity keeps fees under the pool rules. Spoke LP gauges pay xTOPAZ. Do not count both full APR streams for the same unit.",
   "A veTOPAZ position combines the amount locked with the selected duration. More voting power does not guarantee a particular reward.",
   "Voting power is limited. Allocating it among gauges helps determine how weekly TOPAZ emissions are distributed.",
   "Voted-pool fee opportunities depend on real trading activity. Higher volume may create more fees, but rewards are variable.",
   "Project incentives target particular gauges. They are separate from swap fees and can influence where voters allocate support.",
-  "Topaz actions happen in stages: vote, trading activity, epoch change, claims, and automatic rebase treatment for an active lock.",
+  "After Thursday's epoch flip, review claimable rewards and voting gates. A BNB rebase claim adds to an active lock; xTOPAZ instead reflects backing growth in its share rate.",
   "Stable v2, volatile v2, and Slipstream pools solve different problems. The best fit depends on asset behavior and how actively the LP can manage the position.",
   "Narrow Slipstream ranges can be more capital-efficient while active. Wider or full ranges remain active across more price movement but concentrate capital less.",
-  "Impermanent loss is the gap between an LP position and holding the same tokens. Fees and emissions are possible offsets; net results still depend on IL and gas.",
-  "Topaz is connecting new markets, including its Robinhood Chain expansion, to one economic core rather than duplicating the token or dividing governance.",
+  "Impermanent loss is the gap between an LP position and holding the same tokens. Actual fee or emission income is a possible offset; net results still depend on IL and gas.",
+  "BNB, Robinhood Chain, Base, Ethereum and Arc are live. BNB hosts issuance and locks; spokes have their own pools and xTOPAZ votes. Shared backing does not mean a single cross-chain ballot.",
+  ...TOPAZ_FEATURE_MISSIONS.map((mission) => mission.recap),
 ];
 
 type SpecialBoardProps = {
@@ -611,7 +619,7 @@ function SpecialMissionBoard({ missionIndex, lockLevel, onHud, onComplete }: Spe
     "TRADES CREATE POOL FEES",
     "THE EPOCH FLIPS",
     "CLAIM FEES + INCENTIVES",
-    "ACTIVE-LOCK REBASE COMPOUNDS",
+    "CLAIM REBASE INTO ACTIVE BNB LOCK",
   ];
   const shuffledEpoch = [epochSteps[2], epochSteps[0], epochSteps[4], epochSteps[1], epochSteps[3]];
   const advancedScenarios: Record<number, { prompt: string; detail: string; correct: string }[]> = {
@@ -637,14 +645,14 @@ function SpecialMissionBoard({ missionIndex, lockLevel, onHud, onComplete }: Spe
       { prompt: "A HIGH APR IS DISPLAYED", detail: "The number does not yet account for every cost or future change.", correct: "CHECK NET RESULT" },
       { prompt: "THE POSITION EARNS EMISSIONS", detail: "Gauge rewards add another possible source of LP income.", correct: "POSSIBLE OFFSET" },
       { prompt: "A TIGHT RANGE EXPERIENCES A DEPEG", detail: "Concentration can amplify sensitivity when prices separate.", correct: "IL RISK" },
-      { prompt: "FEES + EMISSIONS − IL − GAS", detail: "This comparison is what determines the position's actual outcome.", correct: "CHECK NET RESULT" },
+      { prompt: "ACTUAL LP INCOME − IL − COSTS", detail: "Count fees or gauge emissions for each unit of liquidity, not both full APR streams. Then compare with holding the tokens.", correct: "CHECK NET RESULT" },
     ],
     10: [
       { prompt: "ONE ECONOMIC CORE", detail: "New markets connect without asking holders to restart the Topaz economy.", correct: "KEEP ONE CORE" },
-      { prompt: "ROBINHOOD CHAIN", detail: "Topaz reaches users and activity on another network.", correct: "EXPAND ACCESS" },
+      { prompt: "FOUR LIVE SPOKES", detail: "Robinhood Chain, Base, Ethereum and Arc have local markets and xTOPAZ voting alongside the BNB hub.", correct: "EXPAND ACCESS" },
       { prompt: "A SECOND UNRELATED TOPAZ TOKEN", detail: "The proposal duplicates the economy for the new chain.", correct: "REJECT SPLIT" },
       { prompt: "WALLET SHOWS THE WRONG NETWORK", detail: "The transaction should pause before anything is signed.", correct: "VERIFY NETWORK" },
-      { prompt: "SHARED GOVERNANCE DIRECTION", detail: "Expansion should not divide voting into competing systems.", correct: "KEEP ONE CORE" },
+      { prompt: "ONE BNB BACKING · LOCAL VOTES", detail: "The token economy stays connected, but each spoke votes on its own gauges. A BNB ballot cannot allocate to an Arc pool.", correct: "KEEP ONE CORE" },
       { prompt: "ASSUME ASSETS MOVED AUTOMATICALLY", detail: "A new network requires checking the actual supported path first.", correct: "VERIFY NETWORK" },
     ],
   };
@@ -790,9 +798,11 @@ function SpecialMissionBoard({ missionIndex, lockLevel, onHud, onComplete }: Spe
   }
 
   if (missionIndex >= 7) {
-    const scenarios = advancedScenarios[missionIndex];
+    const added = featureMission(missionIndex);
+    const scenarios = added?.scenarios ?? advancedScenarios[missionIndex];
     const scenario = scenarios[Math.min(step, scenarios.length - 1)];
-    const heading = advancedHeaders[missionIndex];
+    const heading = added ? { kicker: `MISSION ${missionIndex + 1} · CURRENT TOPAZ`, title: added.title, note: added.lesson, success: "Correct: this matches the documented workflow." } : advancedHeaders[missionIndex];
+    const choices = added?.choices ?? advancedChoices[missionIndex];
     const choose = (choice: string) => {
       if (choice !== scenario.correct) {
         fail(`Not quite. ${scenario.detail} Look for the choice that best matches this situation.`);
@@ -802,7 +812,7 @@ function SpecialMissionBoard({ missionIndex, lockLevel, onHud, onComplete }: Spe
       setMessage(heading.success);
       setStep(next);
       if (next === scenarios.length) {
-        const baseScore = 4600 + (missionIndex - 7) * 450;
+        const baseScore = featureBaseScore(missionIndex);
         onComplete({ score: Math.max(0, baseScore - mistakes * 180), progress: next, fees: 0, emissions: 0, mistakes, health: 100, lockLevel, cleared: true });
       }
     };
@@ -815,11 +825,11 @@ function SpecialMissionBoard({ missionIndex, lockLevel, onHud, onComplete }: Spe
           <strong>{scenario.prompt}</strong>
           <p>{scenario.detail}</p>
         </article>
-        <div className={`decisionChoices ${advancedChoices[missionIndex].length === 4 ? "four" : ""}`}>
-          {advancedChoices[missionIndex].map((choice) => <button key={choice} onClick={() => choose(choice)}>{choice}</button>)}
+        <div className={`decisionChoices ${choices.length === 4 ? "four" : ""}`}>
+          {choices.map((choice) => <button key={choice} onClick={() => choose(choice)}>{choice}</button>)}
         </div>
         {message && <p className={`boardMessage ${message.startsWith("Correct") ? "good" : "bad"}`}>{message}</p>}
-        <p className="boardTip">Read the full scenario before choosing. Wrong choices reduce the mission score.</p>
+        <p className="boardTip">Educational simulation · no funds move. Wrong choices reduce the score.</p>
       </div>
     );
   }
@@ -836,7 +846,7 @@ function SpecialMissionBoard({ missionIndex, lockLevel, onHud, onComplete }: Spe
   };
   return (
     <div className="missionBoard epochBoard">
-      <div className="boardHeader"><span>MISSION 7 · WEEKLY CYCLE</span><strong>BUILD THE EPOCH TIMELINE</strong><small>Choose the next event in the correct order.</small></div>
+      <div className="boardHeader"><span>MISSION 7 · BNB WEEKLY CYCLE</span><strong>BUILD THE EPOCH TIMELINE</strong><small>Simplified example: fee and rebase claims need not occur in this order.</small></div>
       <div className="timeline">{epochSteps.map((label, index) => <span key={label} className={index < step ? "done" : index === step ? "current" : ""}><b>{index + 1}</b>{index < step ? label : index === step ? "SELECT NEXT EVENT" : "LOCKED"}</span>)}</div>
       <div className="epochChoices">{shuffledEpoch.filter((label) => !epochSteps.slice(0, step).includes(label)).map((label) => <button key={label} onClick={() => selectEpoch(label)}>{label}</button>)}</div>
       {message && <p className={`boardMessage ${message.startsWith(String(step)) ? "good" : "bad"}`}>{message}</p>}
@@ -1108,6 +1118,7 @@ export default function YieldVacuumGame() {
   const keys = useRef({ left: false, right: false });
   const [phase, setPhase] = useState<Phase>("splash");
   const [missionIndex, setMissionIndex] = useState(0);
+  const [clearedLessons, setClearedLessons] = useState<number[]>([]);
   const [lockLevel, setLockLevel] = useState(0);
   const [hud, setHud] = useState({ score: 0, combo: 1, progress: 0, time: MISSIONS[0].time, shield: 0, mistakes: 0, pools: Array(POOLS.length).fill(100) });
   const [result, setResult] = useState<MissionResult>({ score: 0, progress: 0, fees: 0, emissions: 0, mistakes: 0, health: 100, lockLevel: 0, cleared: false });
@@ -1123,9 +1134,15 @@ export default function YieldVacuumGame() {
   const [previousBest, setPreviousBest] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
   const mission = MISSIONS[missionIndex];
-  const completedMissions = Math.min(MISSIONS.length, missionIndex + (phase === "results" && result.cleared ? 1 : 0));
+  const completedMissions = clearedLessons.length;
   const currentGrade = scoreGrade(result.score, result.mistakes, missionIndex);
   const gradeGoal = nextGradeRequirement(result.score, result.mistakes, missionIndex);
+
+  useEffect(() => {
+    if (phase === "results" && result.cleared) {
+      setClearedLessons((previous) => previous.includes(missionIndex) ? previous : [...previous, missionIndex]);
+    }
+  }, [phase, result.cleared, missionIndex]);
 
   useEffect(() => {
     const storedKey = window.localStorage.getItem("yield-vacuum-player") || crypto.randomUUID();
@@ -1179,6 +1196,7 @@ export default function YieldVacuumGame() {
   }, []);
 
   const prepareBriefing = (index = missionIndex, briefingLockLevel = lockLevel) => {
+    setMissionIndex(index);
     const nextMission = MISSIONS[index];
     gameRef.current = freshGame(briefingLockLevel);
     setHud({ score: 0, combo: 1, progress: 0, time: nextMission.time, shield: briefingLockLevel, mistakes: 0, pools: Array(POOLS.length).fill(100) });
@@ -1803,9 +1821,9 @@ export default function YieldVacuumGame() {
           <small>HOME</small>
         </button>
         <div className="campaignHeader" aria-label={`${completedMissions} of ${MISSIONS.length} missions completed. Current mission ${missionIndex + 1}: ${mission.title}`}>
-          <div className="campaignHeaderTitle"><small>MISSION {missionIndex + 1} OF {MISSIONS.length}</small><strong>{mission.title}</strong><span>{missionIndex === 10 ? "BNB + ROBINHOOD CHAIN" : "BNB CHAIN"} · LOCK LV.{lockLevel}</span></div>
+          <div className="campaignHeaderTitle"><small>MISSION {missionIndex + 1} OF {MISSIONS.length}</small><strong>{mission.title}</strong><span>{missionIndex >= 10 ? "MULTICHAIN" : "BNB EXAMPLE"} · LOCK LV.{lockLevel}</span></div>
           <div className="campaignHeaderTrack" aria-hidden="true">
-            {MISSIONS.map((item, index) => <i key={item.title} className={index < completedMissions ? "complete" : index === missionIndex ? "current" : ""}><b>{index < completedMissions ? "✓" : index + 1}</b></i>)}
+            {MISSIONS.map((item, index) => <i key={item.title} className={clearedLessons.includes(index) ? "complete" : index === missionIndex ? "current" : ""}><b>{clearedLessons.includes(index) ? "✓" : index + 1}</b></i>)}
           </div>
           <p><b>{completedMissions} CLEARED</b><span>{MISSIONS.length - completedMissions} TO GO</span></p>
         </div>
@@ -1824,6 +1842,13 @@ export default function YieldVacuumGame() {
         </div>
       </header>
 
+      {(phase === "briefing" || phase === "results") && <div className="lessonPicker">
+        <label htmlFor="topaz-lesson">CHOOSE A LESSON</label>
+        <select id="topaz-lesson" value={missionIndex} onChange={(event) => prepareBriefing(Number(event.target.value))}>
+          {MISSIONS.map((lesson, index) => <option key={lesson.title} value={index}>{index + 1}. {lesson.title}{index >= 11 ? " · NEW" : ""}</option>)}
+        </select>
+        <small>Docs checked {TOPAZ_DOCS_CHECKED_AT} · simulation, not live quotes</small>
+      </div>}
       <section className={`gameFrame missionTheme missionTheme${missionIndex + 1}`}>
         <div className="hud">
           <div><small>MISSION GOAL</small><strong>{Math.min(hud.progress, mission.target)}/{mission.target}</strong></div>
@@ -1898,6 +1923,8 @@ export default function YieldVacuumGame() {
                 <details className="learnWhy">
                   <summary>LEARN WHY THIS MATTERS ON TOPAZ</summary>
                   <p><b>{mission.feature}</b> · {mission.mechanic}</p>
+                  <p>{mission.fact}</p>
+                  <a href={mission.factUrl} target="_blank" rel="noreferrer">Read the official documentation ↗</a>
                 </details>
               </div>
               <div className="briefingAction">
@@ -1934,17 +1961,17 @@ export default function YieldVacuumGame() {
                   <p><b>{gradeGoal.next ? `NEXT TARGET · GRADE ${gradeGoal.next}` : "TOP GRADE EARNED"}</b>{gradeGoal.message}</p>
                 </div>
               )}
-              <div className="campaignProgress" aria-label={`${missionIndex + 1} of ${MISSIONS.length} missions reached`}>
+              <div className="campaignProgress" aria-label={`${completedMissions} of ${MISSIONS.length} missions cleared this session`}>
                 <div className="campaignProgressLabel">
                   <b>CAMPAIGN PROGRESS</b>
-                  <span>{missionIndex + 1}/{MISSIONS.length} {result.cleared ? "COMPLETE" : "REACHED"}</span>
+                  <span>{completedMissions}/{MISSIONS.length} CLEARED THIS SESSION</span>
                 </div>
                 <div className="campaignProgressTrack">
                   {MISSIONS.map((item, index) => (
-                    <i key={item.title} className={index < missionIndex || (index === missionIndex && result.cleared) ? "complete" : index === missionIndex ? "current" : ""}><em>{index + 1}</em></i>
+                    <i key={item.title} className={clearedLessons.includes(index) ? "complete" : index === missionIndex ? "current" : ""}><em>{index + 1}</em></i>
                   ))}
                 </div>
-                <small>{result.cleared && missionIndex < MISSIONS.length - 1 ? `UP NEXT · MISSION ${missionIndex + 2}: ${MISSIONS[missionIndex + 1].title}` : result.cleared ? "CAMPAIGN COMPLETE · REPLAY TO IMPROVE YOUR RANK" : `RETRY · MISSION ${missionIndex + 1}: ${mission.title}`}</small>
+                <small>{result.cleared && missionIndex < MISSIONS.length - 1 ? `UP NEXT · MISSION ${missionIndex + 2}: ${MISSIONS[missionIndex + 1].title}` : result.cleared ? completedMissions === MISSIONS.length ? "CAMPAIGN COMPLETE · REPLAY TO IMPROVE YOUR RANK" : "LESSON COMPLETE · CHOOSE ANOTHER LESSON" : `RETRY · MISSION ${missionIndex + 1}: ${mission.title}`}</small>
               </div>
               <div className="resultGrid">
                 {missionIndex === 0 ? (
@@ -2016,9 +2043,9 @@ export default function YieldVacuumGame() {
                 ) : (
                   <>
                     <span><b>{result.progress}/{mission.target}</b>{mission.action}</span>
-                    <span><b>{result.fees}</b>{mission.metric === "fees" ? "FEES CAPTURED" : "BONUS FEES"}</span>
+                    <span><b>{result.mistakes}</b>DECISION ERRORS</span>
                     <span className={result.health < 35 ? "dangerStat" : undefined}>
-                      <b>{result.health}%</b>{mission.minPools === 0 ? "POOL HEALTH · BONUS" : "POOL HEALTH"}
+                      <b>SIM</b>NO FUNDS MOVED
                     </span>
                   </>
                 )}

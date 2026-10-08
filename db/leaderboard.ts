@@ -1,4 +1,5 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
+import { deploymentContext } from "../lib/deployment-context";
 import { ACHIEVEMENTS, MISSION_ACHIEVEMENTS, missionGrade, type AchievementId } from "../lib/achievements";
 
 export type LeaderboardView = "epoch" | "mission" | "all";
@@ -40,7 +41,7 @@ export type PlayerProfile = {
 };
 
 function leaderboardStore() {
-  return process.env.CONTEXT === "production"
+  return deploymentContext() === "production"
     ? getStore("topaz-leaderboard", { consistency: "strong" })
     : getDeployStore("topaz-leaderboard");
 }
@@ -204,6 +205,8 @@ export async function saveScore(input: {
   if ([0, 1, 2, 3, 4, 5, 6].every((mission) => profile.sGradeMissions.includes(mission))) earned.add("yield-champion");
   if ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].every((mission) => profile.clearedMissions.includes(mission))) earned.add("advanced-scholar");
   if ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].every((mission) => profile.sGradeMissions.includes(mission))) earned.add("vacuum-master");
+  if (MISSION_ACHIEVEMENTS.every((_, mission) => profile.clearedMissions.includes(mission))) earned.add("current-scholar");
+  if (MISSION_ACHIEVEMENTS.every((_, mission) => profile.sGradeMissions.includes(mission))) earned.add("modern-master");
   if (profile.completedEpochs.length >= 3) earned.add("epoch-veteran");
   const unlocked = ACHIEVEMENTS.map((achievement) => achievement.id).filter((id) => earned.has(id));
   const newBadges = unlocked.filter((id) => !profile.unlocked.includes(id));

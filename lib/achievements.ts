@@ -1,3 +1,5 @@
+import { TOPAZ_FEATURE_MISSIONS, featureBaseScore } from "./topaz-feature-missions";
+
 export const ACHIEVEMENTS = [
   { id: "route-master", icon: "🧭", name: "Route Master", description: "Clear Swap Route with zero mistakes.", rarity: "RARE" },
   { id: "perfect-balance", icon: "⚖", name: "Perfect Balance", description: "Clear LP Lab with zero mistakes.", rarity: "RARE" },
@@ -11,10 +13,17 @@ export const ACHIEVEMENTS = [
   { id: "il-defender", icon: "◇", name: "IL Defender", description: "Clear IL Defense with zero mistakes.", rarity: "RARE" },
   { id: "chain-navigator", icon: "∞", name: "Chain Navigator", description: "Clear One Topaz with zero mistakes.", rarity: "RARE" },
   { id: "topaz-scholar", icon: "✦", name: "Topaz Scholar", description: "Clear all seven educational missions.", rarity: "EPIC" },
-  { id: "advanced-scholar", icon: "XI", name: "Advanced Scholar", description: "Clear all eleven educational missions.", rarity: "EPIC" },
+  { id: "advanced-scholar", icon: "XI", name: "Advanced Scholar", description: "Clear the original eleven educational missions.", rarity: "EPIC" },
   { id: "yield-champion", icon: "★", name: "Yield Champion", description: "Earn an S grade on all seven missions.", rarity: "LEGENDARY" },
-  { id: "vacuum-master", icon: "V", name: "Vacuum Master", description: "Earn an S grade on all eleven missions.", rarity: "LEGENDARY" },
+  { id: "vacuum-master", icon: "V", name: "Vacuum Master", description: "Earn an S grade on the original eleven missions.", rarity: "LEGENDARY" },
   { id: "epoch-veteran", icon: "III", name: "Epoch Veteran", description: "Complete the campaign in three weekly epochs.", rarity: "LEGENDARY" },
+  { id: "share-engineer", icon: "x", name: "Share Engineer", description: "Clear Share Engine with zero mistakes.", rarity: "RARE" },
+  { id: "auto-pilot", icon: "↻", name: "Auto Pilot", description: "Clear Auto Pilot with zero mistakes.", rarity: "RARE" },
+  { id: "zap-specialist", icon: "ϟ", name: "Zap Specialist", description: "Clear Zap Lab with zero mistakes.", rarity: "RARE" },
+  { id: "route-controller", icon: "⇄", name: "Route Controller", description: "Clear Route Control with zero mistakes.", rarity: "RARE" },
+  { id: "fee-analyst", icon: "%", name: "Fee Analyst", description: "Clear Fee Signals with zero mistakes.", rarity: "RARE" },
+  { id: "current-scholar", icon: "XVI", name: "Current Topaz Scholar", description: "Clear all sixteen educational missions.", rarity: "EPIC" },
+  { id: "modern-master", icon: "✶", name: "Multichain Master", description: "Earn an S grade on all sixteen missions.", rarity: "LEGENDARY" },
 ] as const;
 
 export type AchievementId = (typeof ACHIEVEMENTS)[number]["id"];
@@ -31,7 +40,10 @@ export const MISSION_ACHIEVEMENTS: AchievementId[] = [
   "range-keeper",
   "il-defender",
   "chain-navigator",
+  ...TOPAZ_FEATURE_MISSIONS.map((mission) => mission.badge),
 ];
+
+export const TOPAZ_MISSION_COUNT = MISSION_ACHIEVEMENTS.length;
 
 export function achievementById(id: string) {
   return ACHIEVEMENTS.find((achievement) => achievement.id === id);
@@ -49,6 +61,7 @@ export const MISSION_GRADE_TARGETS = [
   { s: 5_050, a: 4_750 },
   { s: 5_500, a: 5_200 },
   { s: 5_950, a: 5_650 },
+  ...TOPAZ_FEATURE_MISSIONS.map((_, offset) => ({ s: featureBaseScore(offset + 11), a: featureBaseScore(offset + 11) - 300 })),
 ] as const;
 
 export type MissionGrade = "S" | "A" | "B" | "C";
