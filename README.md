@@ -1,6 +1,14 @@
 # Topaz: Yield Vacuum
 
-An independent eleven-mission educational arcade game about Topaz DEX, its BNB Chain economic core, and expansion toward Robinhood Chain, presented by The Crypto Arborist.
+An independent sixteen-mission educational arcade game about Topaz DEX, its BNB hub, and local markets on Robinhood Chain, Base, Ethereum and Arc, presented by The Crypto Arborist.
+
+## Topaz documentation refresh · 2026-10-08
+
+The original eleven missions retain their IDs and earned achievements. New lessons cover xTOPAZ share backing and local stakes, Topaz Auto managed ranges (not reward compounding), single-token CL/Auto zaps, aggregator/cross-chain execution and delivery, and dynamic/unstaked fees. All figures and scenarios in the campaign are educational simulations, not live trade quotes or investment guidance.
+
+Primary sources: [overview](https://www.topazdex.com/docs/overview), [multichain](https://www.topazdex.com/docs/multichain), [xTOPAZ](https://www.topazdex.com/docs/xtopaz), [spoke staking](https://www.topazdex.com/docs/xtopaz/staking), [Topaz Auto](https://www.topazdex.com/docs/auto), [Auto risks](https://www.topazdex.com/docs/auto/risks), [zaps](https://www.topazdex.com/docs/liquidity/zaps), [swaps](https://www.topazdex.com/docs/trading/swaps), [fees](https://www.topazdex.com/docs/liquidity/fees), [voting](https://www.topazdex.com/docs/gauges) and [security scope](https://www.topazdex.com/docs/security).
+
+Some cached documentation and live feature-specific pages disagree on Auto network rollout. The lessons therefore require checking the actual selected network's live vault/route instead of claiming uniform availability. Private swaps are distinguished from ordinary cross-chain swaps and the xTOPAZ bridge; this campaign does not simulate the private service's full execution/recovery lifecycle. Later xTOPAZ/bridge/zap components are not represented as covered by the earlier BNB Shieldify review.
 
 The optional `/arcade` area includes Mint Flyer and a demo-only MSS2 Commitments flow. The commitments preview stores only clearly labeled browser-local demo records. It does not request token approvals, transfers, payouts, or membership payments.
 
