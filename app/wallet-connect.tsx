@@ -10,8 +10,8 @@ type WalletRequest = {
 
 type WalletProvider = {
   request: (request: WalletRequest) => Promise<unknown>;
-  on?: (event: string, listener: (...args: unknown[]) => void) => void;
-  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+  on?: (event: "accountsChanged" | "chainChanged" | "disconnect", listener: (...args: unknown[]) => void) => void;
+  removeListener?: (event: "accountsChanged" | "chainChanged" | "disconnect", listener: (...args: unknown[]) => void) => void;
   providers?: WalletProvider[];
   isMetaMask?: boolean;
   isRabby?: boolean;
@@ -26,6 +26,9 @@ type WalletInfo = {
 type WalletOption = {
   info: WalletInfo;
   provider: WalletProvider;
+  connect?: () => Promise<{ account: string; chainId: string }>;
+  disconnect?: () => Promise<void>;
+  label?: (account: string) => Promise<string>;
 };
 
 type WalletNetwork = {
@@ -131,6 +134,9 @@ export default function WalletConnect({
   onConnectionChange?: (connection: WalletConnection | null) => void;
 }) {
   const [wallets, setWallets] = useState<WalletOption[]>([]);
+  const [topazId, setTopazId] = useState<WalletOption | null>(null);
+  const [topazIdError, setTopazIdError] = useState("");
+  const [identity, setIdentity] = useState<{ account: string; label: string } | null>(null);
   const [selectedWallet, setSelectedWallet] = useState<WalletOption | null>(null);
   const [account, setAccount] = useState("");
   const [chainId, setChainId] = useState("");
@@ -145,6 +151,26 @@ export default function WalletConnect({
     state: "loading" | "ready" | "error";
   }>({ key: "", balance: null, state: "loading" });
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (theme !== "topaz") return;
+    let cancelled = false;
+    import("../lib/topaz-id-wallet").then(({ createTopazIdWallet }) => {
+      if (!cancelled) setTopazId(createTopazIdWallet());
+    }).catch(() => {
+      if (!cancelled) setTopazIdError("Topaz ID could not load. Reload to retry, or connect a browser wallet.");
+    });
+    return () => { cancelled = true; };
+  }, [theme]);
+
+  useEffect(() => {
+    if (!account || !selectedWallet?.label) return;
+    let cancelled = false;
+    selectedWallet.label(account).then((label) => {
+      if (!cancelled) setIdentity({ account, label });
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [account, selectedWallet]);
 
   useEffect(() => {
     const discovered = new Map<string, WalletOption>();
@@ -182,9 +208,9 @@ export default function WalletConnect({
   }, []);
 
   useEffect(() => {
-    if (!wallets.length || selectedWallet) return;
+    if (selectedWallet) return;
     const remembered = window.sessionStorage.getItem(SELECTED_WALLET_KEY);
-    const wallet = wallets.find((option) => option.info.rdns === remembered);
+    const wallet = topazId?.info.rdns === remembered ? topazId : wallets.find((option) => option.info.rdns === remembered);
     if (!wallet) return;
 
     let cancelled = false;
@@ -199,7 +225,7 @@ export default function WalletConnect({
       setChainId(typeof chainValue === "string" ? chainValue : "");
     }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [wallets, selectedWallet]);
+  }, [wallets, selectedWallet, topazId]);
 
   useEffect(() => {
     if (!selectedWallet?.provider.on) return;
@@ -210,15 +236,18 @@ export default function WalletConnect({
         window.sessionStorage.removeItem(SELECTED_WALLET_KEY);
         setSelectedWallet(null);
         setChainId("");
-        setMessage("Wallet disconnected in the extension.");
+        setMessage("Wallet disconnected.");
       }
     };
     const handleChain = (...args: unknown[]) => setChainId(typeof args[0] === "string" ? args[0] : "");
+    const handleDisconnect = () => handleAccounts([]);
     selectedWallet.provider.on("accountsChanged", handleAccounts);
     selectedWallet.provider.on("chainChanged", handleChain);
+    selectedWallet.provider.on("disconnect", handleDisconnect);
     return () => {
       selectedWallet.provider.removeListener?.("accountsChanged", handleAccounts);
       selectedWallet.provider.removeListener?.("chainChanged", handleChain);
+      selectedWallet.provider.removeListener?.("disconnect", handleDisconnect);
     };
   }, [selectedWallet]);
 
@@ -260,6 +289,9 @@ export default function WalletConnect({
         setChainId(normalized);
       },
       sendTransaction: async (transaction) => {
+        // Paid MSS2 verification currently accepts EOA receipts, not ERC-4337
+        // UserOperations. Never route a smart wallet through that legacy path.
+        if (selectedWallet.connect) throw new Error("Topaz ID is available for sign-in only. Use MetaMask or Rabby for payments.");
         const request: Record<string, string> = {
           from: account,
           data: transaction.data,
@@ -328,6 +360,16 @@ export default function WalletConnect({
     setBusy(true);
     setMessage("");
     try {
+      if (wallet.connect) {
+        const result = await wallet.connect();
+        if (!/^0x[0-9a-fA-F]{40}$/.test(result.account)) throw new Error("Topaz ID did not return a valid account.");
+        setSelectedWallet(wallet);
+        setAccount(result.account);
+        setChainId(result.chainId);
+        window.sessionStorage.setItem(SELECTED_WALLET_KEY, wallet.info.rdns);
+        setOpen(false);
+        return;
+      }
       try {
         await wallet.provider.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
       } catch (error) {
@@ -346,7 +388,8 @@ export default function WalletConnect({
       window.sessionStorage.setItem(SELECTED_WALLET_KEY, wallet.info.rdns);
       setOpen(false);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Wallet connection was cancelled.");
+      const detail = error instanceof Error && error.message ? error.message : "Sign-in or wallet connection was cancelled.";
+      setMessage(wallet.connect ? `${detail} If the sign-in window was blocked, open this site in your regular browser or use MetaMask or Rabby.` : detail);
     } finally {
       setBusy(false);
     }
@@ -417,12 +460,23 @@ export default function WalletConnect({
     }
   }, [selectedWallet]);
 
-  const forget = () => {
+  const forget = async () => {
+    if (selectedWallet?.disconnect) {
+      setBusy(true);
+      try {
+        await selectedWallet.disconnect();
+      } catch {
+        setMessage("Topaz ID could not disconnect. Please retry.");
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
     window.sessionStorage.removeItem(SELECTED_WALLET_KEY);
     setSelectedWallet(null);
     setAccount("");
     setChainId("");
-    setMessage("Yield Vaccum cleared its local connection. Use Switch Account when reconnecting, or revoke the site under Connected sites inside your wallet.");
+    setMessage(selectedWallet?.disconnect ? "Topaz ID disconnected from Yield Vaccum." : "Yield Vaccum cleared its local connection. Use Switch Account when reconnecting, or revoke the site under Connected sites inside your wallet.");
     setOpen(false);
     setNetworkOpen(false);
   };
@@ -459,7 +513,7 @@ export default function WalletConnect({
         >
           <i aria-hidden="true" />
           <span>
-            <small>{account ? `CONNECTED · ${selectedWallet?.info.name || "WALLET"}` : "METAMASK · RABBY"}</small>
+            <small>{account ? `CONNECTED · ${selectedWallet?.info.name || "WALLET"}` : theme === "topaz" ? "TOPAZ ID · METAMASK · RABBY" : "METAMASK · RABBY"}</small>
             <strong>{account && theme === "mss"
               ? mss2BalanceState === "ready"
                 ? `~${mss2Balance} MSS2`
@@ -468,7 +522,7 @@ export default function WalletConnect({
                   : mss2BalanceState === "error"
                     ? "BALANCE UNAVAILABLE"
                     : "CHECKING MSS2…"
-              : account ? shortAddress(account) : "CONNECT WALLET"}</strong>
+              : account ? identity?.account === account && selectedWallet?.label ? identity.label : shortAddress(account) : theme === "topaz" ? "SIGN IN / CONNECT" : "CONNECT WALLET"}</strong>
             {account && theme === "mss" && <em>{shortAddress(account)}</em>}
           </span>
         </button>
@@ -514,7 +568,7 @@ export default function WalletConnect({
               const paymentNote = theme === "mss" ? "MSS2 FLIGHT NETWORK" : network.chainId === "0x1237"
                 ? "MSS2 PAYMENT TARGET"
                 : network.chainId === "0x13b2"
-                  ? "MSS2 PAYMENT LOCKED"
+                  ? "MSS2 FLIGHT NETWORK"
                   : "WALLET + TOPAZ SUPPORT";
               return (
                 <button
@@ -532,7 +586,7 @@ export default function WalletConnect({
               );
             })}
             <p>{theme === "mss"
-              ? "MSS2 is available on Robinhood and Arc. Switching networks never moves tokens. Arc entry payments stay locked until pricing and backend verification are reviewed."
+              ? "MSS2 is available on Robinhood and Arc. Switching networks never moves tokens."
               : "Switching networks never moves tokens. Select the network required for the feature you are using."}</p>
           </div>
           {message && <p className={styles.message} role="status">{message}</p>}
@@ -542,7 +596,7 @@ export default function WalletConnect({
       {open && (
         <section className={styles.popover} role="dialog" aria-label="Wallet connection">
           <header>
-            <span><small>{theme === "mss" ? "MSS2 WALLET" : "OPTIONAL WALLET"}</small><strong>{account ? "CONNECTION STATUS" : "CHOOSE A WALLET"}</strong></span>
+            <span><small>{theme === "mss" ? "MSS2 WALLET" : "OPTIONAL SIGN-IN"}</small><strong>{account ? "CONNECTION STATUS" : theme === "topaz" ? "SIGN IN OR CONNECT" : "CHOOSE A WALLET"}</strong></span>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close wallet panel">×</button>
           </header>
 
@@ -552,15 +606,24 @@ export default function WalletConnect({
             <>
               <div className={styles.accountCard}>
                 <small>{selectedWallet?.info.name || "CONNECTED WALLET"}</small>
-                <strong>{shortAddress(account)}</strong>
+                <strong>{identity?.account === account && selectedWallet?.label ? identity.label : shortAddress(account)}</strong>
+                {selectedWallet?.label && <span>{shortAddress(account)}</span>}
                 <span>{chainLabel(chainId)}{theme === "mss" && mss2BalanceState === "ready" ? ` · ~${mss2Balance} MSS2` : ""}</span>
                 <div className={styles.accountActions}>
-                  <button type="button" onClick={() => void switchAccount()} disabled={busy}>{busy ? "CHECK WALLET…" : "SWITCH ACCOUNT"}</button>
-                  <button type="button" onClick={forget} disabled={busy}>DISCONNECT FROM SITE</button>
+                  {!selectedWallet?.connect && <button type="button" onClick={() => void switchAccount()} disabled={busy}>{busy ? "CHECK WALLET…" : "SWITCH ACCOUNT"}</button>}
+                  <button type="button" onClick={() => void forget()} disabled={busy}>DISCONNECT FROM SITE</button>
                 </div>
               </div>
             </>
-          ) : wallets.length ? (
+          ) : (
+            <>
+            {theme === "topaz" && <div className={`${styles.walletList} ${styles.topazIdOption}`}>
+              <button type="button" onClick={() => topazId && void connect(topazId)} disabled={busy || !topazId}>
+                <img src="/topaz-mark.png" alt="" aria-hidden="true" />
+                <span>Topaz ID</span><small>Email, Google, or wallet</small><b>{busy ? "WAIT" : topazId ? "SIGN IN" : topazIdError ? "UNAVAILABLE" : "LOADING…"}</b>
+              </button>
+            </div>}
+            {wallets.length ? (
             <div className={styles.walletList}>
               {wallets.map((wallet) => (
                 <button key={wallet.info.uuid || wallet.info.rdns} type="button" onClick={() => connect(wallet)} disabled={busy}>
@@ -573,11 +636,14 @@ export default function WalletConnect({
               <p>No compatible browser wallet was detected.</p>
               <div><a href="https://metamask.io/download/" target="_blank" rel="noreferrer">GET METAMASK ↗</a><a href="https://rabby.io/" target="_blank" rel="noreferrer">GET RABBY ↗</a></div>
             </div>
+            )}
+            </>
           )}
 
           <p className={styles.disclosure}>{theme === "mss"
             ? "Connecting reads your public address, network, and MSS2 balance. Pay & Fly asks you to approve the exact entry amount, then confirm payment. Switch Account opens your wallet's account selector."
-            : "Connecting shares the selected public address and current network. Network buttons may ask the wallet to add or switch chains, but never request a signature, token approval, or transfer."}</p>
+            : "Topaz ID opens its secure sign-in window; your credentials stay with Topaz. Sign-in shares your smart-wallet address and public profile, not your existing MetaMask balance. No payment or token approval is requested. Free campaign progress stays on this device. Use MetaMask or Rabby for paid Mint Flyer flights."}</p>
+          {theme === "topaz" && topazIdError && <p className={styles.message} role="status">{topazIdError}</p>}
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>
       )}

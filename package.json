@@ -18,11 +18,14 @@
     "deploy:verify": "node scripts/verify-mss2-router-deployment.mjs"
   },
   "dependencies": {
+    "@privy-io/cross-app-connect": "0.7.0",
+    "@topazdex/id-connect": "0.5.1",
     "@netlify/blobs": "^10.0.11",
     "ethers": "6.15.0",
     "next": "16.2.6",
     "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react-dom": "19.2.6",
+    "viem": "2.56.0"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.13",
