@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import WalletConnect, { type WalletConnection } from "../wallet-connect";
+import { TopazIdPaymentFailedError } from "../../lib/topaz-id-payment-error";
 import Mss2Commitments from "./mss2-commitments";
 import MintFlyerLeaderboard, { type LeaderboardFlightResult } from "./mint-flyer-leaderboard";
 import Mss2EntryTotals from "./mss2-entry-totals";
@@ -507,6 +508,7 @@ export default function MintFlyer() {
     paymentInFlightRef.current = true;
     setPaymentBusy(true);
     setPaymentMessage(paymentTxHash ? "Rechecking your submitted payment…" : "Checking your MSS2 balance before opening the wallet…");
+    const contextKey = `${livePaymentQuote.walletAddress.toLowerCase()}:${livePaymentQuote.chainId}`;
     try {
       const assertContext = () => {
         const current = walletContextRef.current;
@@ -517,7 +519,6 @@ export default function MintFlyer() {
       };
       assertContext();
       const smartWallet = walletConnection.kind === "topaz-id";
-      const contextKey = `${livePaymentQuote.walletAddress.toLowerCase()}:${livePaymentQuote.chainId}`;
       let txHash = paymentTxHash;
       if (!txHash && smartWallet) {
         // The quote already checked the token and native balance. Start consent
@@ -584,6 +585,16 @@ export default function MintFlyer() {
       primeAudio();
       resetFlight(livePaymentQuote.runId);
     } catch (error) {
+      if (error instanceof TopazIdPaymentFailedError) {
+        pendingPaymentsRef.current.delete(contextKey);
+        const current = walletContextRef.current;
+        if (current?.account.toLowerCase() === livePaymentQuote.walletAddress.toLowerCase()
+          && Number(current.chainId) === livePaymentQuote.chainId) {
+          setPaymentTxHash("");
+          setPaymentIsOperation(false);
+          setEntryBalance(null);
+        }
+      }
       setPaymentMessage(error instanceof Error ? error.message : "The MSS2 payment could not be completed.");
     } finally {
       paymentInFlightRef.current = false;

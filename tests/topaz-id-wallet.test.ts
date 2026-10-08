@@ -5,6 +5,7 @@ import type { TopazIdProvider } from "@topazdex/id-connect/provider";
 import { displayNameForWallet } from "@topazdex/id-connect";
 import { createTopazIdWallet } from "../lib/topaz-id-wallet";
 import { createTopazIdClient } from "@topazdex/id-connect/actions";
+import { TopazIdPaymentFailedError } from "../lib/topaz-id-payment-error";
 
 const account = "0x1111111111111111111111111111111111111111" as const;
 
@@ -101,7 +102,7 @@ test("unsupported atomic batching never falls back to extra consent or separate 
 test("a successful outer bundle with a failed UserOperation does not authorize flight", async () => {
   const { wallet } = fixture(true, false, true);
   await wallet.connect();
-  await assert.rejects(wallet.resolveTransaction(account, "0x1237", operationHash), /operation failed/);
+  await assert.rejects(wallet.resolveTransaction(account, "0x1237", operationHash), (error: unknown) => error instanceof TopazIdPaymentFailedError);
 });
 
 test("wrong account, unsupported chain and native-currency transfers cannot be sent", async () => {
@@ -132,4 +133,5 @@ test("Mint Flyer invokes smart consent before HTTP balance checks and retains pe
   assert.match(source, /paymentInFlightRef.current = true/);
   assert.match(source, /if \(!resolved\) throw new Error\("Your Topaz ID operation is still pending/);
   assert.match(source, /pendingPaymentsRef.current.get/);
+  assert.match(source, /if \(error instanceof TopazIdPaymentFailedError\) \{[\s\S]*pendingPaymentsRef.current.delete\(contextKey\)/);
 });
