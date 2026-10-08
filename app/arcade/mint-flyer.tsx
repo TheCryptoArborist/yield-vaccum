@@ -338,7 +338,7 @@ export default function MintFlyer() {
   }, [selectedMss2Network]);
 
   useEffect(() => {
-    if (liveEntryEnabled || selectedMss2Network === "unsupported") return;
+    if (selectedMss2Network === "unsupported") return;
     const initial = window.setTimeout(loadEntryQuote, 0);
     const refresh = window.setInterval(loadEntryQuote, 30_000);
     return () => {
@@ -346,7 +346,7 @@ export default function MintFlyer() {
       window.clearInterval(refresh);
       quoteRequestRef.current?.abort();
     };
-  }, [liveEntryEnabled, loadEntryQuote, selectedMss2Network]);
+  }, [loadEntryQuote, selectedMss2Network]);
 
   useEffect(() => {
     const clock = window.setInterval(() => setQuoteClock(Date.now()), 1_000);
@@ -815,7 +815,7 @@ export default function MintFlyer() {
       : quoteUnavailable
         ? "MARKET QUOTE UNAVAILABLE"
         : quoteExpired
-          ? liveEntryEnabled ? "ENTRY QUOTE EXPIRED" : "REFRESHING MARKET QUOTE"
+          ? "REFRESHING MARKET QUOTE"
           : quoteBusy ? "FETCHING VERIFIED QUOTE" : "LOADING QUOTE";
   const headerQuoteMeta = headerQuoteAmount
     ? `${livePaymentQuote && !liveQuoteExpired ? "ENTRY QUOTE" : "MARKET REFERENCE"} · ${livePaymentQuote && !liveQuoteExpired ? liveQuoteSecondsRemaining : quoteSecondsRemaining}s`
