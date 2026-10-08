@@ -108,6 +108,10 @@ const BEST_SCORE_KEY = "yield-vacuum-mss2-mint-flyer-best";
 const COMMUNITY_AIRDROP_WALLET = MSS2_COMMUNITY_AIRDROP_RESERVE;
 const DEAD_ADDRESS = MSS2_DEAD_ADDRESS;
 const ENTRY_PRICE_USD = 1;
+const MSS2_BUY_URLS = {
+  robinhood: "https://www.mintstakeshare.com/robinhood?ref=0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789",
+  arc: "https://www.mintstakeshare.com/arc?ref=0xF2Ab1eEBbEcb4E315FE95D8b532D1aB00F1A8789",
+};
 const ROBINHOOD_CHAIN_HEX = "0x1237";
 const ARC_CHAIN_HEX = "0x13b2";
 const SOUND_PREFERENCE_KEY = "yield-vacuum-mss2-mint-flyer-sound";
@@ -1039,6 +1043,7 @@ export default function MintFlyer() {
                     : <><b>FREE PREVIEW:</b> Play without sending funds. The proposed entry split sends 20% to the dead address and 80% to the designated Community Airdrop Reserve—a 4:1 community allocation. Real transfers remain disabled.</>}</p>
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 <button onClick={() => void reviewEntry()} disabled={paymentBusy || quoteBusy || selectedMss2Network === "unsupported" || (liveEntryEnabled && (!walletConnection || !playerKey))}>{paymentBusy ? "PREPARING…" : selectedMss2Network === "unsupported" ? "SELECT ROBINHOOD OR ARC ABOVE" : liveEntryEnabled ? walletConnection ? canaryEntryEnabled ? "REVIEW CANARY ENTRY" : "REVIEW MSS2 ENTRY" : "CONNECT WALLET ABOVE" : quoteBusy ? "FETCHING VERIFIED MARKET…" : !entryQuote ? quoteUnavailable ? "RETRY $1 QUOTE" : "LOAD $1 QUOTE" : quoteExpired ? "REFRESH $1 QUOTE" : `REVIEW ${selectedNetworkLabel} $1 QUOTE`}</button>
+                {selectedMss2Network !== "unsupported" && <div className={styles.buyMss2Prompt}><a className={styles.buyMss2Link} href={MSS2_BUY_URLS[isArcContext ? "arc" : "robinhood"]} target="_blank" rel="noopener noreferrer">BUY MSS2 ↗</a><small>Buy MSS2 on {selectedNetworkLabel} for this flight.</small></div>}
               </> : <>
                 <small>{liveEntryEnabled ? `${canaryEntryEnabled ? "RESTRICTED CANARY" : "LIVE MSS2 ENTRY"} · ${selectedNetworkLabel}` : `${selectedNetworkLabel} $1 QUOTE · NO TRANSACTION`}</small>
                 <h2>{liveEntryEnabled ? canaryEntryEnabled ? "REVIEW CANARY + PAY" : "REVIEW + PAY" : "REVIEW THE RUN"}</h2>
@@ -1062,6 +1067,7 @@ export default function MintFlyer() {
                   <strong>NOT ENOUGH MSS2 TO PLAY ON {currentBalanceCheck.network.toUpperCase()}</strong>
                   <div><span><small>ENTRY COST</small><b>≈ {currentBalanceCheck.requiredDisplay} MSS2</b></span><span><small>YOUR BALANCE</small><b>≈ {currentBalanceCheck.balanceDisplay} MSS2</b></span></div>
                   <p>Add at least <b>{currentBalanceCheck.shortfallDisplay} MSS2</b> to this wallet on <b>{currentBalanceCheck.network}</b>, then refresh your balance.</p>
+                  <div className={styles.buyMss2Prompt}><a className={styles.buyMss2Link} href={MSS2_BUY_URLS[currentBalanceCheck.network === "arc" ? "arc" : "robinhood"]} target="_blank" rel="noopener noreferrer">BUY MSS2 ↗</a><small>Use the same wallet on {currentBalanceCheck.network === "arc" ? "Arc" : "Robinhood Chain"}, then return here to refresh your balance.</small></div>
                 </div>}
                 {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                 {paymentTxHash && <a className={styles.paymentTxLink} href={`${livePaymentQuote?.explorerUrl}/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">VIEW SUBMITTED TRANSACTION ↗</a>}
