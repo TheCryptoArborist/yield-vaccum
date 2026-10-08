@@ -14,7 +14,7 @@ import {
   splitEntryAmount,
   type Mss2PaymentNetwork,
 } from "../lib/mss2-payment";
-import { validatePaymentEvidence, type PaymentEvidenceReceipt, type PaymentEvidenceTransaction } from "../lib/mss2-payment-verifier";
+import { paymentReceiptKey, validatePaymentEvidence, type PaymentEvidenceReceipt, type PaymentEvidenceTransaction } from "../lib/mss2-payment-verifier";
 import { readRawMss2Balance } from "../lib/mss2-balance";
 import { assessMss2EntryBalance } from "../lib/mss2-entry-balance";
 
@@ -57,10 +57,6 @@ function quoteKey(paymentId: string) {
   return `quotes/${paymentId}.json`;
 }
 
-function transactionKey(txHash: string) {
-  return `transactions/${txHash.toLowerCase()}.json`;
-}
-
 function validKey(value: string) {
   return /^[a-zA-Z0-9-]{16,80}$/.test(value);
 }
@@ -76,7 +72,10 @@ export async function createArcadePaymentQuote(input: { playerKey: string; runId
   const suffix = BigInt(`0x${paymentId.replaceAll("-", "").slice(0, 16)}`);
   const market = await readVerifiedMarketQuote(input.network, suffix);
   const split = splitEntryAmount(market.amountRaw);
-  const balance = await readRawMss2Balance(walletAddress, input.network === "arc" ? "0x13b2" : "0x1237");
+  const [balance, nativeGasBalanceRaw] = await Promise.all([
+    readRawMss2Balance(walletAddress, input.network === "arc" ? "0x13b2" : "0x1237"),
+    rpcCall<string>(input.network, "eth_getBalance", [walletAddress, "latest"]),
+  ]);
   const balanceCheck = assessMss2EntryBalance(balance.raw, market.amountRaw, balance.network);
   const createdAt = new Date();
   const quote: ArcadePaymentQuote = {
@@ -108,6 +107,7 @@ export async function createArcadePaymentQuote(input: { playerKey: string; runId
   return {
     ...quote,
     balanceCheck,
+    nativeGasBalanceRaw,
     playerKey: undefined,
     walletAddress: getAddress(walletAddress),
     approval: {
@@ -130,8 +130,11 @@ export async function checkArcadePaymentBalance(input: { paymentId: string; play
   if (!quote || quote.playerKey !== input.playerKey || quote.walletAddress !== input.walletAddress.toLowerCase()) {
     throw new Error("The entry quote does not match this wallet. Request a new quote.");
   }
-  const balance = await readRawMss2Balance(quote.walletAddress, quote.network === "arc" ? "0x13b2" : "0x1237");
-  return { paymentId: quote.paymentId, balanceCheck: assessMss2EntryBalance(balance.raw, quote.amountRaw, balance.network) };
+  const [balance, nativeGasBalanceRaw] = await Promise.all([
+    readRawMss2Balance(quote.walletAddress, quote.network === "arc" ? "0x13b2" : "0x1237"),
+    rpcCall<string>(quote.network, "eth_getBalance", [quote.walletAddress, "latest"]),
+  ]);
+  return { paymentId: quote.paymentId, balanceCheck: assessMss2EntryBalance(balance.raw, quote.amountRaw, balance.network), nativeGasBalanceRaw };
 }
 
 export async function verifyArcadePayment(input: { paymentId: string; playerKey: string; walletAddress: string; txHash: string }) {
@@ -147,7 +150,8 @@ export async function verifyArcadePayment(input: { paymentId: string; playerKey:
   }
   if (Date.now() > Date.parse(quote.expiresAt) + PAYMENT_CONFIRMATION_GRACE_MS) throw new Error("The payment verification window expired. Request a new quote.");
 
-  const used = await paymentStore.get(transactionKey(input.txHash), { type: "json" }) as { paymentId?: string } | null;
+  const receiptKey = paymentReceiptKey(quote.network, input.txHash, quote.paymentId);
+  const used = await paymentStore.get(receiptKey, { type: "json" }) as { paymentId?: string } | null;
   if (used && used.paymentId !== input.paymentId) throw new Error("That transaction was already credited to another run.");
 
   const [transaction, receipt, latestBlockHex] = await Promise.all([
@@ -156,11 +160,18 @@ export async function verifyArcadePayment(input: { paymentId: string; playerKey:
     rpcCall<string>(quote.network, "eth_blockNumber", []),
   ]);
   if (!transaction || !receipt) return { ...quote, pending: true as const, confirmations: 0 };
-  const evidence = validatePaymentEvidence(quote, transaction, receipt, latestBlockHex);
+  if (receipt.transactionHash?.toLowerCase() !== input.txHash.toLowerCase() || transaction.hash?.toLowerCase() !== input.txHash.toLowerCase()) {
+    throw new Error("The RPC transaction and receipt did not match the submitted hash.");
+  }
+  const direct = transaction.from?.toLowerCase() === quote.walletAddress.toLowerCase()
+    && transaction.to?.toLowerCase() === quote.routerAddress.toLowerCase();
+  if (!receipt.blockNumber || !/^0x[0-9a-fA-F]+$/.test(receipt.blockNumber)) throw new Error("The payment receipt has no valid mined block.");
+  const payerCode = direct ? undefined : await rpcCall<string>(quote.network, "eth_getCode", [quote.walletAddress, receipt.blockNumber]);
+  const evidence = validatePaymentEvidence(quote, transaction, receipt, latestBlockHex, payerCode ? { payerCode } : undefined);
   if (!evidence.confirmed) return { ...quote, pending: true as const, confirmations: evidence.confirmations };
 
   const verified: ArcadePaymentQuote = { ...quote, status: "verified", txHash: input.txHash.toLowerCase(), blockNumber: evidence.blockNumber, verifiedAt: new Date().toISOString() };
-  await paymentStore.setJSON(transactionKey(input.txHash), { paymentId: quote.paymentId, playerKey: quote.playerKey, runId: quote.runId, verifiedAt: verified.verifiedAt });
+  await paymentStore.setJSON(receiptKey, { paymentId: quote.paymentId, playerKey: quote.playerKey, runId: quote.runId, verifiedAt: verified.verifiedAt });
   await paymentStore.setJSON(quoteKey(input.paymentId), verified);
   return { ...verified, pending: false as const, confirmations: evidence.confirmations, explorerUrl: `${paymentNetworkConfig(quote.network).explorerUrl}/tx/${input.txHash}` };
 }

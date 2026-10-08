@@ -29,6 +29,9 @@ type WalletOption = {
   connect?: () => Promise<{ account: string; chainId: string }>;
   disconnect?: () => Promise<void>;
   label?: (account: string) => Promise<string>;
+  prepare?: (account: string) => Promise<void>;
+  sendCalls?: (account: string, chainId: string, calls: { to?: string; data: string; value?: string; gas?: string }[]) => Promise<string>;
+  resolveTransaction?: (account: string, chainId: string, hash: string) => Promise<string | null>;
 };
 
 type WalletNetwork = {
@@ -46,11 +49,14 @@ type WalletProviderError = Error & { code?: number };
 type ProviderAnnouncement = CustomEvent<{ info: WalletInfo; provider: WalletProvider }>;
 
 export type WalletConnection = {
+  kind?: "browser" | "topaz-id";
   account: string;
   chainId: string;
   signMessage: (message: string) => Promise<string>;
   switchChain: (chainId: `0x${string}`) => Promise<void>;
   sendTransaction: (transaction: { to?: string; data: string; value?: string; gas?: string }) => Promise<string>;
+  sendCalls?: (calls: { to?: string; data: string; value?: string; gas?: string }[]) => Promise<string>;
+  resolveTransaction?: (hash: string) => Promise<string | null>;
 };
 
 declare global {
@@ -153,10 +159,9 @@ export default function WalletConnect({
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (theme !== "topaz") return;
     let cancelled = false;
     import("../lib/topaz-id-wallet").then(({ createTopazIdWallet }) => {
-      if (!cancelled) setTopazId(createTopazIdWallet());
+      if (!cancelled) setTopazId(createTopazIdWallet(undefined, theme === "mss"));
     }).catch(() => {
       if (!cancelled) setTopazIdError("Topaz ID could not load. Reload to retry, or connect a browser wallet.");
     });
@@ -217,9 +222,11 @@ export default function WalletConnect({
     Promise.all([
       wallet.provider.request({ method: "eth_accounts" }),
       wallet.provider.request({ method: "eth_chainId" }),
-    ]).then(([accountsValue, chainValue]) => {
+    ]).then(async ([accountsValue, chainValue]) => {
       const accounts = normalizedAccounts(accountsValue);
       if (cancelled || !accounts[0]) return;
+      await wallet.prepare?.(accounts[0]);
+      if (cancelled) return;
       setSelectedWallet(wallet);
       setAccount(accounts[0]);
       setChainId(typeof chainValue === "string" ? chainValue : "");
@@ -232,6 +239,7 @@ export default function WalletConnect({
     const handleAccounts = (...args: unknown[]) => {
       const accounts = normalizedAccounts(args[0]);
       setAccount(accounts[0] || "");
+      if (accounts[0]) void selectedWallet.prepare?.(accounts[0]).catch(() => setMessage("Topaz ID could not prepare this account. Disconnect and reconnect to retry."));
       if (!accounts[0]) {
         window.sessionStorage.removeItem(SELECTED_WALLET_KEY);
         setSelectedWallet(null);
@@ -257,8 +265,11 @@ export default function WalletConnect({
       return;
     }
     onConnectionChange?.({
+      kind: selectedWallet.connect ? "topaz-id" : "browser",
       account,
       chainId,
+      sendCalls: selectedWallet.sendCalls ? (calls) => selectedWallet.sendCalls!(account, chainId, calls) : undefined,
+      resolveTransaction: selectedWallet.resolveTransaction ? (hash) => selectedWallet.resolveTransaction!(account, chainId, hash) : undefined,
       signMessage: async (message: string) => {
         const signature = await selectedWallet.provider.request({ method: "personal_sign", params: [message, account] });
         if (typeof signature !== "string") throw new Error("The wallet did not return a valid signature.");
@@ -289,9 +300,7 @@ export default function WalletConnect({
         setChainId(normalized);
       },
       sendTransaction: async (transaction) => {
-        // Paid MSS2 verification currently accepts EOA receipts, not ERC-4337
-        // UserOperations. Never route a smart wallet through that legacy path.
-        if (selectedWallet.connect) throw new Error("Topaz ID is available for sign-in only. Use MetaMask or Rabby for payments.");
+        if (selectedWallet.connect) throw new Error("Use the atomic Topaz ID approval and entry bundle for MSS2 payments.");
         const request: Record<string, string> = {
           from: account,
           data: transaction.data,
@@ -513,7 +522,7 @@ export default function WalletConnect({
         >
           <i aria-hidden="true" />
           <span>
-            <small>{account ? `CONNECTED · ${selectedWallet?.info.name || "WALLET"}` : theme === "topaz" ? "TOPAZ ID · METAMASK · RABBY" : "METAMASK · RABBY"}</small>
+            <small>{account ? `CONNECTED · ${selectedWallet?.info.name || "WALLET"}` : "TOPAZ ID · METAMASK · RABBY"}</small>
             <strong>{account && theme === "mss"
               ? mss2BalanceState === "ready"
                 ? `~${mss2Balance} MSS2`
@@ -617,12 +626,12 @@ export default function WalletConnect({
             </>
           ) : (
             <>
-            {theme === "topaz" && <div className={`${styles.walletList} ${styles.topazIdOption}`}>
+            <div className={`${styles.walletList} ${styles.topazIdOption}`}>
               <button type="button" onClick={() => topazId && void connect(topazId)} disabled={busy || !topazId}>
                 <img src="/topaz-mark.png" alt="" aria-hidden="true" />
                 <span>Topaz ID</span><small>Email, Google, or wallet</small><b>{busy ? "WAIT" : topazId ? "SIGN IN" : topazIdError ? "UNAVAILABLE" : "LOADING…"}</b>
               </button>
-            </div>}
+            </div>
             {wallets.length ? (
             <div className={styles.walletList}>
               {wallets.map((wallet) => (
@@ -641,9 +650,9 @@ export default function WalletConnect({
           )}
 
           <p className={styles.disclosure}>{theme === "mss"
-            ? "Connecting reads your public address, network, and MSS2 balance. Pay & Fly asks you to approve the exact entry amount, then confirm payment. Switch Account opens your wallet's account selector."
-            : "Topaz ID opens its secure sign-in window; your credentials stay with Topaz. Sign-in shares your smart-wallet address and public profile, not your existing MetaMask balance. No payment or token approval is requested. Free campaign progress stays on this device. Use MetaMask or Rabby for paid Mint Flyer flights."}</p>
-          {theme === "topaz" && topazIdError && <p className={styles.message} role="status">{topazIdError}</p>}
+            ? "Topaz ID supports email, Google, or wallet sign-in. Connecting reads your address, network, and MSS2 balance. Pay & Fly bundles the exact MSS2 approval and 20/80 entry into one Topaz ID consent window. Fund this smart-wallet address with MSS2 and gas on the selected chain: ETH on Robinhood, USDC on Arc. MetaMask and Rabby still use separate approval and payment requests."
+            : "Topaz ID opens its secure sign-in window; your credentials stay with Topaz. Sign-in shares your smart-wallet address and public profile, not your existing MetaMask balance. No payment or token approval is requested. Free campaign progress stays on this device."}</p>
+          {topazIdError && <p className={styles.message} role="status">{topazIdError}</p>}
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>
       )}

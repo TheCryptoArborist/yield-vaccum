@@ -22,7 +22,7 @@ import {
   paymentReadiness,
   splitEntryAmount,
 } from "../lib/mss2-payment";
-import { validatePaymentEvidence, type PaymentEvidenceReceipt } from "../lib/mss2-payment-verifier";
+import { paymentReceiptKey, validatePaymentEvidence, type PaymentEvidenceReceipt } from "../lib/mss2-payment-verifier";
 import {
   MSS2_COMMUNITY_AIRDROP_RESERVE,
   MSS2_DEAD_ADDRESS,
@@ -219,4 +219,63 @@ test("verifier rejects replay evidence for a different payment ID", () => {
     validReceipt(),
     "0x64",
   ), /payment ID or MSS2 amount/);
+});
+
+test("both networks accept smart-wallet receipt evidence, not the bundler as payer", () => {
+  process.env.MSS2_ENTRY_ROUTER_ARC = router;
+  for (const network of ["robinhood", "arc"] as const) {
+    const quote = { ...evidenceQuote(), network, chainId: network === "arc" ? 5042 : 4663 };
+    const bundle = { hash: validReceipt().transactionHash, from: "0x3333333333333333333333333333333333333333", to: "0x0000000071727De22E5E9d8BAf0edAc6f37da032", input: "0x1234" };
+    const evidence = validatePaymentEvidence(quote, bundle, validReceipt(), "0x64", { payerCode: "0x60016000" });
+    assert.equal(evidence.confirmed, true);
+    assert.throws(() => validatePaymentEvidence(quote, bundle, validReceipt(), "0x64"), /no on-chain smart-wallet code/);
+    assert.throws(() => validatePaymentEvidence(quote, bundle, validReceipt(), "0x64", { payerCode: "0x" }), /no on-chain smart-wallet code/);
+  }
+});
+
+test("smart-wallet acceptance still requires the exact payer, payment ID, token, amount and split", () => {
+  const bundle = { from: router, to: router, input: "0x1234" };
+  const code = { payerCode: "0x6001" };
+  for (const change of [
+    { walletAddress: "0x3333333333333333333333333333333333333333" },
+    { paymentId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee" },
+    { amountRaw: "999" },
+    { tokenAddress: wallet },
+    { deadAddress: wallet },
+    { communityAirdropReserve: wallet },
+    { chainId: 5042 },
+  ]) assert.throws(() => validatePaymentEvidence({ ...evidenceQuote(), ...change }, bundle, validReceipt(), "0x64", code));
+  for (let index = 0; index < 3; index += 1) {
+    const receipt = validReceipt();
+    receipt.logs = receipt.logs?.filter((_, i) => i !== index);
+    assert.throws(() => validatePaymentEvidence(evidenceQuote(), bundle, receipt, "0x64", code));
+  }
+  assert.throws(() => validatePaymentEvidence(evidenceQuote(), bundle, { ...validReceipt(), status: "0x0" }, "0x64", code), /failed/);
+  assert.equal(validatePaymentEvidence(evidenceQuote(), bundle, validReceipt(), "0x63", code).confirmed, false);
+});
+
+test("a direct EOA payment cannot bypass calldata verification by posting smart-wallet code", () => {
+  assert.throws(() => validatePaymentEvidence(evidenceQuote(), { from: wallet, to: router, input: "0x1234" }, validReceipt(), "0x64", { payerCode: "0x6001" }), /payment ID or MSS2 amount/);
+});
+
+test("bundled entries use independent payment and network keys without permitting replay", () => {
+  const hash = validReceipt().transactionHash!;
+  const secondId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  assert.notEqual(paymentReceiptKey("robinhood", hash, paymentId), paymentReceiptKey("robinhood", hash, secondId));
+  assert.notEqual(paymentReceiptKey("robinhood", hash, paymentId), paymentReceiptKey("arc", hash, paymentId));
+  assert.equal(paymentReceiptKey("robinhood", hash, paymentId), paymentReceiptKey("robinhood", hash.toUpperCase(), paymentId));
+  const receipt = validReceipt();
+  const firstEvent = receipt.logs![2];
+  receipt.logs!.push({ ...firstEvent, topics: [ENTRY_PAID_TOPIC, paymentIdBytes32(secondId), addressTopic(wallet), addressTopic(MSS2_TOKEN)] });
+  const bundle = { from: router, to: router, input: "0x" };
+  for (const id of [paymentId, secondId]) assert.equal(validatePaymentEvidence(evidenceQuote(id), bundle, receipt, "0x64", { payerCode: "0x6001" }).confirmed, true);
+  assert.throws(() => validatePaymentEvidence(evidenceQuote("cccccccc-bbbb-4ccc-8ddd-eeeeeeeeeeee"), bundle, receipt, "0x64", { payerCode: "0x6001" }), /matching entry-router event/);
+});
+
+test("smart-wallet code is read server-side at the mined block, never accepted from the client", () => {
+  const source = readFileSync(new URL("../db/arcade-payments.ts", import.meta.url), "utf8");
+  assert.match(source, /rpcCall<string>\(quote.network, "eth_getCode", \[quote.walletAddress, receipt.blockNumber\]\)/);
+  assert.match(source, /receipt.transactionHash\?\.toLowerCase\(\) !== input.txHash.toLowerCase\(\)/);
+  const route = readFileSync(new URL("../app/api/arcade-payment/route.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(route, /payload\.(payerCode|smartWallet|userOperationSuccess)/);
 });
