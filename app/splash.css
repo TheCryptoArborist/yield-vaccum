@@ -11,8 +11,10 @@
   padding: 28px;
   text-align: center;
   background:
-    radial-gradient(circle at 50% 43%, rgba(255, 80, 14, 0.22), transparent 24%),
-    radial-gradient(circle at 50% 50%, #270a03 0, #080201 42%, #000 76%);
+    radial-gradient(ellipse at 27% 40%, rgba(255, 80, 14, 0.24), transparent 44%),
+    radial-gradient(ellipse at 74% 40%, rgba(0, 235, 242, 0.15), transparent 40%),
+    radial-gradient(ellipse at 88% 68%, rgba(126, 49, 226, 0.2), transparent 45%),
+    #030305;
   isolation: isolate;
 }
 
@@ -78,6 +80,22 @@
   display: grid;
   place-items: center;
   margin-bottom: 22px;
+}
+
+.splashWorlds {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(30px, 7vw, 90px);
+}
+
+.splashMintStage .splashRing {
+  border-color: rgba(0, 235, 242, 0.5);
+  box-shadow: 0 0 45px rgba(0, 235, 242, 0.3), inset 0 0 35px rgba(129, 64, 229, 0.25);
+}
+
+.splashMintStage img {
+  animation-name: mintReveal;
 }
 
 .splashLogoStage img {
@@ -147,7 +165,7 @@
 }
 
 .splashGameMenu {
-  width: min(690px, 100%);
+  width: min(820px, 100%);
   opacity: 0;
   transform: translateY(16px);
   animation: splashTextIn 0.65s 2.25s ease-out both;
@@ -169,12 +187,12 @@
 
 .splashGameChoice {
   min-width: 0;
-  min-height: 96px;
+  min-height: 170px;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   align-content: center;
-  gap: 5px 14px;
-  padding: 12px 15px;
+  gap: 8px;
+  padding: 20px;
   color: #fff;
   font-family: inherit;
   text-align: left;
@@ -202,13 +220,13 @@
 }
 
 .splashChoiceBrand small {
-  font-size: 7px;
+  font-size: 10px;
   font-weight: 1000;
   letter-spacing: 0.17em;
 }
 
 .splashGameChoice > strong {
-  font-size: 15px;
+  font-size: 23px;
   line-height: 1;
   letter-spacing: 0.04em;
 }
@@ -216,21 +234,23 @@
 .splashGameChoice > b {
   grid-column: 1;
   color: #d8d8dc;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.35;
   letter-spacing: 0.03em;
 }
 
 .splashGameChoice > em {
-  grid-column: 2;
-  grid-row: 2 / 4;
+  grid-column: 1;
   align-self: center;
-  font-size: 8px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 1000;
   letter-spacing: 0.08em;
   white-space: nowrap;
 }
+
+.splashChoiceDescription { color: #e4e4eb; font-size: 14px; line-height: 1.4; }
+.splashChoiceNetworks { color: #a6e9f2; font-size: 11px; line-height: 1.4; }
 
 .splashTopazChoice {
   border: 2px solid #ff7438;
@@ -279,6 +299,11 @@
   58% { opacity: 1; transform: scale(1.08) rotateX(0); filter: brightness(1.65) drop-shadow(0 0 55px #ff4b0b); }
   100% { opacity: 1; transform: scale(1) rotateX(0); filter: brightness(1.05) drop-shadow(0 0 28px rgba(255, 75, 10, 0.78)); }
 }
+@keyframes mintReveal {
+  0% { opacity: 0; transform: scale(0.2) rotateX(72deg); filter: brightness(3.2) drop-shadow(0 0 8px #fff); }
+  58% { opacity: 1; transform: scale(1.08) rotateX(0); filter: brightness(1.65) drop-shadow(0 0 55px #00ebf2); }
+  100% { opacity: 1; transform: scale(1) rotateX(0); filter: brightness(1.05) drop-shadow(0 0 28px rgba(0, 235, 242, 0.65)); }
+}
 @keyframes ringIgnite {
   0% { opacity: 0; transform: scale(0.25); }
   55% { opacity: 0.95; }
@@ -294,34 +319,40 @@
 @media (max-width: 620px) {
   .splashScreen { padding: 18px; }
   .splashLogoStage {
-    width: min(54vw, 210px);
-    height: min(54vw, 210px);
-    margin-bottom: 22px;
+    width: min(29vw, 130px);
+    height: min(29vw, 130px);
+    margin-bottom: 18px;
   }
   .splashPresents { margin-bottom: 12px; }
   .splashTitle strong { margin-top: 9px; }
   .splashNetwork { margin: 18px 0 12px; }
   .splashGameMenu { width: min(390px, 100%); }
   .splashActions { grid-template-columns: 1fr; gap: 7px; }
-  .splashGameChoice { min-height: 82px; padding: 10px 13px; }
+  .splashGameChoice { min-height: 120px; padding: 12px 15px; gap: 5px; }
+  .splashGameChoice > strong { font-size: 19px; }
+  .splashChoiceDescription { font-size: 13px; }
 }
 
 @media (max-height: 720px) {
   .splashScreen { padding-block: 16px; }
   .splashPresents { margin-bottom: 10px; }
   .splashLogoStage {
-    width: min(29vh, 190px);
-    height: min(29vh, 190px);
+    width: min(18vh, 135px);
+    height: min(18vh, 135px);
     margin-bottom: 18px;
   }
   .splashTitle span { font-size: clamp(48px, 9vh, 76px); }
   .splashTitle strong { font-size: clamp(29px, 5.3vh, 46px); }
   .splashNetwork { margin: 13px 0 9px; }
   .splashActions { gap: 6px; }
-  .splashGameChoice { min-height: 76px; padding-block: 8px; }
-  .splashGameChoice > strong { font-size: 13px; }
-  .splashGameChoice > b { font-size: 7px; }
-  .splashGameChoice > em { font-size: 7px; }
+  .splashGameChoice { min-height: 112px; padding-block: 10px; gap: 4px; }
+  .splashGameChoice > strong { font-size: 18px; }
+  .splashGameChoice > b { font-size: 10px; }
+  .splashGameChoice > em { font-size: 11px; }
+}
+
+@media (max-height: 600px) {
+  .splashScreen { justify-content: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {

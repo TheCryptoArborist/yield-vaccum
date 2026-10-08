@@ -1758,31 +1758,39 @@ export default function YieldVacuumGame() {
   return (
     <main className="shell">
       {phase === "splash" && (
-        <section className="splashScreen" aria-label="Topaz Yield Vacuum title screen">
+        <section className="splashScreen" aria-label="Yield Vacuum game gateway">
           <div className="splashAtmosphere" aria-hidden="true">
             <i /><i /><i />
           </div>
           <p className="splashPresents">THE CRYPTO ARBORIST PRESENTS</p>
+          <div className="splashWorlds" aria-label="Topaz and MintStakeShare 2">
           <div className="splashLogoStage">
             <div className="splashRing" aria-hidden="true" />
             <img src="/topaz-mark.png" alt="Topaz" />
           </div>
+          <div className="splashLogoStage splashMintStage">
+            <div className="splashRing" aria-hidden="true" />
+            <img src="/mss2-flyer-emblem.png" alt="MintStakeShare 2" />
+          </div>
+          </div>
           <h1 className="splashTitle"><span>YIELD</span><strong>VACUUM</strong></h1>
-          <p className="splashNetwork">TWO GAME EXPERIENCES · CHOOSE YOUR PATH</p>
+          <p className="splashNetwork">TWO WORLDS. CHOOSE YOUR GAME.</p>
           <div className="splashGameMenu" aria-label="Choose a Yield Vacuum game">
-            <p>CHOOSE YOUR GAME</p>
             <div className="splashActions">
               <button className="splashGameChoice splashTopazChoice" onClick={() => prepareBriefing()}>
                 <span className="splashChoiceBrand"><i>TOPAZ</i><small>EDUCATIONAL CAMPAIGN</small></span>
-                <strong>YIELD VACUUM MISSIONS</strong>
-                <b>11 lessons · achievements · leaderboard</b>
-                <em>PLAY TOPAZ CAMPAIGN →</em>
+                <strong>YIELD VACUUM</strong>
+                <span className="splashChoiceDescription">Learn DeFi through play.</span>
+                <b>FREE EDUCATIONAL CAMPAIGN</b>
+                <em>PLAY YIELD VACUUM →</em>
               </button>
               <a className="splashGameChoice splashMss2Choice" href="/arcade">
                 <span className="splashChoiceBrand"><i>MSS2</i><small>ARCADE GAME</small></span>
                 <strong>MINT FLYER</strong>
-                <b>Robinhood MSS2 entry · wallet verification</b>
-                <em>OPEN MSS2 ARCADE →</em>
+                <span className="splashChoiceDescription">Collect. Combo. Reach the Moon.</span>
+                <b>$1 WORTH OF MSS2 PER FLIGHT</b>
+                <span className="splashChoiceNetworks">Robinhood Chain + Arc</span>
+                <em>PLAY MINT FLYER →</em>
               </a>
             </div>
           </div>
