@@ -3,7 +3,7 @@ import MintFlyer from "./mint-flyer";
 
 export const metadata: Metadata = {
   title: "MSS2 Arcade: Mint Flyer | Yield Vacuum",
-  description: "Play Mint Flyer with a verified Robinhood MSS2 entry when live payments are enabled. The optional MSS2 Commitments section remains a demonstration.",
+  description: "Fly to the Moon, build combos, and compete on the Mint Flyer leaderboard. Each flight requires a verified $1 MSS2 entry on Robinhood Chain or Arc when paid entry is available.",
 };
 
 export default function ArcadePage() {

@@ -511,7 +511,7 @@ export default function WalletConnect({
             {availableNetworks.map((network) => {
               const active = chainId.toLowerCase() === network.chainId;
               const switching = switchingChain === network.chainId;
-              const paymentNote = network.chainId === "0x1237"
+              const paymentNote = theme === "mss" ? "MSS2 FLIGHT NETWORK" : network.chainId === "0x1237"
                 ? "MSS2 PAYMENT TARGET"
                 : network.chainId === "0x13b2"
                   ? "MSS2 PAYMENT LOCKED"
@@ -542,7 +542,7 @@ export default function WalletConnect({
       {open && (
         <section className={styles.popover} role="dialog" aria-label="Wallet connection">
           <header>
-            <span><small>OPTIONAL WALLET</small><strong>{account ? "CONNECTION STATUS" : "CHOOSE A WALLET"}</strong></span>
+            <span><small>{theme === "mss" ? "MSS2 WALLET" : "OPTIONAL WALLET"}</small><strong>{account ? "CONNECTION STATUS" : "CHOOSE A WALLET"}</strong></span>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close wallet panel">×</button>
           </header>
 
@@ -576,7 +576,7 @@ export default function WalletConnect({
           )}
 
           <p className={styles.disclosure}>{theme === "mss"
-            ? "Connecting activates wallet features across this arcade page and reads the rounded MSS2 balance for the selected Robinhood or Arc network without a signature. Switch Account opens your wallet's account selector. Paid arcade entry uses an exact MSS2 allowance only after a separate on-site review; it never requests an unlimited token approval."
+            ? "Connecting reads your public address, network, and MSS2 balance. Pay & Fly asks you to approve the exact entry amount, then confirm payment. Switch Account opens your wallet's account selector."
             : "Connecting shares the selected public address and current network. Network buttons may ask the wallet to add or switch chains, but never request a signature, token approval, or transfer."}</p>
           {message && <p className={styles.message} role="status">{message}</p>}
         </section>

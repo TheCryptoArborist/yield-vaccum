@@ -609,6 +609,7 @@ export default function MintFlyer() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isTextEntryTarget(event.target) || (event.target instanceof Element && event.target.closest("button, a, summary"))) return;
+      if (phase !== "playing" && phase !== "countdown" && phase !== "paused") return;
       if (["ArrowUp", "ArrowDown", "KeyW", "KeyS", "Space", "KeyP", "Escape"].includes(event.code)) event.preventDefault();
       heldKeysRef.current.add(event.code);
       if ((event.code === "KeyP" || event.code === "Escape") && (phase === "playing" || phase === "countdown")) pauseFlight();
@@ -806,7 +807,7 @@ export default function MintFlyer() {
           ? liveEntryEnabled ? "ENTRY QUOTE EXPIRED" : "REFRESHING MARKET QUOTE"
           : quoteBusy ? "FETCHING VERIFIED QUOTE" : "LOADING QUOTE";
   const headerQuoteMeta = headerQuoteAmount
-    ? `${livePaymentQuote && !liveQuoteExpired ? "ENTRY QUOTE" : "DEMO QUOTE"} · ${livePaymentQuote && !liveQuoteExpired ? liveQuoteSecondsRemaining : quoteSecondsRemaining}s`
+    ? `${livePaymentQuote && !liveQuoteExpired ? "ENTRY QUOTE" : "MARKET REFERENCE"} · ${livePaymentQuote && !liveQuoteExpired ? liveQuoteSecondsRemaining : quoteSecondsRemaining}s`
     : liveEntryEnabled ? "PAID FLIGHT" : paymentReadiness ? "PAID ENTRY UNAVAILABLE" : "CHECKING ENTRY";
   const leaderboardResult: LeaderboardFlightResult | null = (phase === "crashed" || phase === "victory") && runId ? {
     runId,
@@ -826,11 +827,11 @@ export default function MintFlyer() {
     <main className={styles.arcadeShell}>
       <header className={styles.siteHeader}>
         <Link href="/" className={styles.homeLink} aria-label="Return to Yield Vacuum">
-          <img src="/topaz-mark.png" alt="" />
+          <Image src="/topaz-mark.png" alt="" width={40} height={40} />
           <span><small>RETURN TO</small><strong>YIELD VACUUM</strong></span>
         </Link>
         <div className={styles.arcadeIdentity}>
-          <small>OPTIONAL GAME MODE · MSS2 ARCADE</small>
+          <small>MSS2 COMMUNITY ARCADE</small>
           <span className={styles.brandPlate}>
             <Image
               src="/mss2-logo-wide-colour-light.png"
@@ -852,22 +853,22 @@ export default function MintFlyer() {
 
       <section className={styles.hero}>
         <div>
-          <p>ARCADE TEST FLIGHT 01</p>
+          <p>COLLECT. COMBO. CLIMB THE BOARD.</p>
           <h1>MINT <span>FLYER</span></h1>
-          <strong>Thread the mint stream. Collect clean credits. Avoid corrupted blocks.</strong>
+          <strong>Collect glowing coins, dodge pink blocks, and fly to the Moon.</strong>
         </div>
         <aside>
-          <small>GAME STATUS</small>
-          <b>{!paymentReadiness ? "CHECKING ENTRY" : liveEntryEnabled ? "$1 MSS2 ENTRY" : "PAID ENTRY UNAVAILABLE"}</b>
-          <span>{!paymentReadiness ? "Checking flight availability on the selected network." : liveEntryEnabled ? `One verified ${selectedNetworkLabel} MSS2 payment unlocks one scored run.` : "Every flight requires $1 worth of MSS2. Connect your wallet to check entry availability."}</span>
+          <small>$1 WORTH OF MSS2 PER FLIGHT</small>
+          <b>{!walletConnection ? "CONNECT TO PLAY" : selectedMss2Network === "unsupported" ? "CHOOSE A NETWORK" : !paymentReadiness ? readinessFailed ? "ENTRY CHECK UNAVAILABLE" : "CHECKING ENTRY" : liveEntryEnabled ? canaryEntryEnabled ? "PAID TEST ENTRY" : "PAID ENTRY READY" : "PAID ENTRY UNAVAILABLE"}</b>
+          <span>{!walletConnection ? "Connect MetaMask or Rabby. Choose Robinhood Chain or Arc." : liveEntryEnabled ? "One entry payment. Three stages. Your next personal best." : paymentReadiness?.releaseMode === "canary" ? "Paid testing is open to the approved test wallet. Public entry is not open yet." : "Check the entry panel below for availability."}</span>
         </aside>
       </section>
 
       <nav className={styles.arcadeNav} aria-label="Arcade sections">
-        <a className={styles.activeNav} href="#mint-flyer"><small>PLAY NOW</small><strong>MINT FLYER</strong></a>
-        <a href="#mint-flyer-leaderboard"><small>RANKS + BADGES</small><strong>LEADERBOARD</strong></a>
-        <a href="#mss2-commitments"><small>OPTIONAL DEMO</small><strong>MSS2 COMMITMENTS</strong></a>
-        <a href="#about-creator"><small>INDEPENDENT PROJECT</small><strong>ABOUT THE CREATOR</strong></a>
+        <a className={styles.activeNav} href="#mint-flyer"><small>THE GAME</small><strong>Play Mint Flyer</strong></a>
+        <a href="#mint-flyer-leaderboard"><small>FLIGHTS + REWARDS</small><strong>Leaderboard</strong></a>
+        <a href="#mss2-commitments"><small>OPTIONAL DEMO</small><strong>MSS2 Commitments</strong></a>
+        <a href="#about-creator"><small>COMMUNITY PROJECT</small><strong>About the creator</strong></a>
       </nav>
 
       <section id="mint-flyer" className={styles.gameCard} aria-label="Mint Flyer game">
@@ -889,7 +890,7 @@ export default function MintFlyer() {
         </div>
 
         <div
-          className={`${styles.playfield} ${phase === "ready" ? styles.launchPlayfield : ""} ${stageClass} ${hasHitEffect ? styles.impactShake : ""} ${hasCollectEffect ? styles.collectGlow : ""}`}
+          className={`${styles.playfield} ${phase === "ready" ? styles.launchPlayfield : phase === "crashed" || phase === "victory" ? styles.resultsPlayfield : ""} ${stageClass} ${hasHitEffect ? styles.impactShake : ""} ${hasCollectEffect ? styles.collectGlow : ""}`}
           data-stream-label={`MINT STREAM // ${selectedNetworkLabel} // MSS2 ARCADE`}
           onPointerDown={(event) => {
             if (phase !== "playing") return;
@@ -1018,7 +1019,7 @@ export default function MintFlyer() {
           {phase === "crashed" && (
             <div className={`${styles.overlay} ${styles.crashOverlay}`}>
               <small>FLIGHT ENDED</small>
-              <h2>{newBest ? "NEW LOCAL BEST" : "MINT STREAM CLOSED"}</h2>
+              <h2>{newBest ? "NEW LOCAL BEST" : "FLIGHT COMPLETE"}</h2>
               <div className={styles.scoreCeremony}>
                 <small>FINAL SCORE</small>
                 <strong>{score.toLocaleString()}</strong>
@@ -1039,7 +1040,8 @@ export default function MintFlyer() {
                   <small>NEW ENTRY PAYMENT REQUIRED</small>
                 </button>
               </div>
-              <section className={styles.runEntrySummary} aria-label="MSS2 entry allocation">
+              <details className={styles.runEntrySummary}>
+                <summary>Where your entry went</summary>
                 <header>
                   <span><small>$1 MSS2 GAME ENTRY</small><strong>{selectedNetworkLabel}</strong></span>
                   <b>{liveEntryEnabled ? "LIVE ENTRY" : "PAID ENTRY REQUIRED"}</b>
@@ -1049,7 +1051,7 @@ export default function MintFlyer() {
                   <span className={styles.communityAllocation}><b>80%</b><small>COMMUNITY AIRDROP RESERVE</small></span>
                 </div>
                 <p><b>0% RETAINED BY YIELD VACUUM</b><span>{liveEntryEnabled ? "The verified router performs both transfers in one wallet-approved transaction." : "Every new flight requires a verified payment using this 20/80 allocation."}</span></p>
-              </section>
+              </details>
             </div>
           )}
 
@@ -1058,7 +1060,7 @@ export default function MintFlyer() {
               <div className={styles.moonArrival} aria-hidden="true"><i /><span>✓</span></div>
               <small>ALL THREE STAGES CLEARED</small>
               <h2>MOON REACHED</h2>
-              <p>You crossed the Mint Stream, survived the Block Surge, and completed the Moon Run.</p>
+              <p>All three stages cleared. Your score is ready for the leaderboard.</p>
               <div className={styles.victoryScore}>
                 <span><small>FINAL SCORE</small><strong>{score.toLocaleString()}</strong>{newBest && <b>NEW LOCAL BEST</b>}</span>
                 <span className={`${styles.gradeBadge} ${gradeClass}`}><small>YOUR FLIGHT GRADE</small><strong>{runGrade}</strong><b>{GRADE_NAMES[runGrade]}</b></span>
@@ -1109,7 +1111,7 @@ export default function MintFlyer() {
         </footer>
       </section>
 
-      <MintFlyerLeaderboard result={leaderboardResult} finishPanel={finishPanel} walletConnection={walletConnection} />
+      <MintFlyerLeaderboard result={leaderboardResult} finishPanel={finishPanel} />
 
       <details className={styles.infoDrawer} id="payment-safety">
         <summary><span><small>PAYMENT SAFETY · {selectedNetworkLabel}</small><strong>{liveEntryEnabled ? `${selectedNetworkLabel} MSS2 ENTRY` : "$1 MSS2 REQUIRED PER FLIGHT"}</strong></span><b>VIEW DETAILS +</b></summary>
@@ -1144,6 +1146,10 @@ export default function MintFlyer() {
           <a href="https://x.com/thickquidity" target="_blank" rel="noreferrer">FOLLOW THE CRYPTO ARBORIST ON X ↗</a>
         </div>
       </details>
+      <footer className={styles.arcadeFooter}>
+        <span><strong>Mint Flyer</strong><small>An independent community arcade by The Crypto Arborist.</small></span>
+        <div><Link href="/">Yield Vacuum</Link><a href={MSS2_BUY_URLS[isArcContext ? "arc" : "robinhood"]} target="_blank" rel="noopener noreferrer">Buy MSS2 ↗</a></div>
+      </footer>
     </main>
   );
 }
