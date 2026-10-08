@@ -1790,7 +1790,7 @@ export default function YieldVacuumGame() {
             <img src="/mss2-flyer-emblem.png" alt="MintStakeShare 2" />
           </div>
           </div>
-          <h1 className="splashTitle"><span>YIELD</span><strong>VACUUM</strong></h1>
+          <h1 className="splashTitle"><span>YIELD</span><strong>VACCUM</strong></h1>
           <p className="splashNetwork">TWO WORLDS. CHOOSE YOUR GAME.</p>
           <div className="splashGameMenu" aria-label="Choose a Yield Vacuum game">
             <div className="splashActions">
