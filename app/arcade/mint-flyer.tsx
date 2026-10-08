@@ -144,6 +144,7 @@ function gradeForScore(score: number) {
 }
 
 export default function MintFlyer() {
+  const pageTopRef = useRef<HTMLElement>(null);
   const [finishPanel, setFinishPanel] = useState<HTMLDivElement | null>(null);
   const [phase, setPhase] = useState<FlightPhase>("ready");
   const [playerY, setPlayerY] = useState(0.5);
@@ -826,7 +827,7 @@ export default function MintFlyer() {
 
   return (
     <main className={styles.arcadeShell}>
-      <header className={styles.siteHeader}>
+      <header ref={pageTopRef} tabIndex={-1} className={styles.siteHeader}>
         <Link href="/" className={styles.homeLink} aria-label="Return to Yield Vacuum">
           <Image src="/topaz-mark.png" alt="" width={40} height={40} />
           <span><small>RETURN TO</small><strong>YIELD VACUUM</strong></span>
@@ -1164,7 +1165,23 @@ export default function MintFlyer() {
       </details>
       <footer className={styles.arcadeFooter}>
         <span><strong>Mint Flyer</strong><small>An independent community arcade by The Crypto Arborist.</small></span>
-        <div><Link href="/">Yield Vacuum</Link><a href={MSS2_BUY_URLS[isArcContext ? "arc" : "robinhood"]} target="_blank" rel="noopener noreferrer">Buy MSS2 ↗</a></div>
+        <div>
+          <Link href="/">Yield Vacuum</Link>
+          <a href={MSS2_BUY_URLS[isArcContext ? "arc" : "robinhood"]} target="_blank" rel="noopener noreferrer">Buy MSS2 ↗</a>
+          <button
+            type="button"
+            className={styles.backToTop}
+            onClick={() => {
+              pageTopRef.current?.focus({ preventScroll: true });
+              window.scrollTo({
+                top: 0,
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+              });
+            }}
+          >
+            <span aria-hidden="true">↑</span> Back to Top
+          </button>
+        </div>
       </footer>
     </main>
   );
