@@ -237,7 +237,7 @@ export default function WalletConnect({
       },
       switchChain: async (targetChainId: `0x${string}`) => {
         const network = SUPPORTED_NETWORKS.find((item) => item.chainId === targetChainId.toLowerCase());
-        if (!network) throw new Error("That network is not supported by Yield Vacuum.");
+        if (!network) throw new Error("That network is not supported by Yield Vaccum.");
         try {
           await selectedWallet.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: network.chainId }] });
         } catch (error) {
@@ -422,7 +422,7 @@ export default function WalletConnect({
     setSelectedWallet(null);
     setAccount("");
     setChainId("");
-    setMessage("Yield Vacuum cleared its local connection. Use Switch Account when reconnecting, or revoke the site under Connected sites inside your wallet.");
+    setMessage("Yield Vaccum cleared its local connection. Use Switch Account when reconnecting, or revoke the site under Connected sites inside your wallet.");
     setOpen(false);
     setNetworkOpen(false);
   };

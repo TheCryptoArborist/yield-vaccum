@@ -196,7 +196,7 @@ export default function DeployConsole({ previewEnabled, artifact, robinhoodRoute
         </section>
       </div>
 
-      <footer className={styles.footer}>Yield Vacuum · Preview deployment tool · Production game payments remain disabled until both routers and the backend canaries are separately approved.</footer>
+      <footer className={styles.footer}>Yield Vaccum · Preview deployment tool · Production game payments remain disabled until both routers and the backend canaries are separately approved.</footer>
     </main>
   );
 }

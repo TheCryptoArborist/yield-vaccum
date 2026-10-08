@@ -210,7 +210,7 @@ export default function Mss2Commitments() {
               </dl>
               <div className={styles.warning}>
                 <b>A real transfer would be intended to be permanent.</b>
-                <p>Yield Vacuum could not recover MSS2 sent to the dead address. A contribution would not guarantee income, token-price appreciation, benefits, or continued operation of the service.</p>
+                <p>Yield Vaccum could not recover MSS2 sent to the dead address. A contribution would not guarantee income, token-price appreciation, benefits, or continued operation of the service.</p>
               </div>
               <label className={styles.acknowledge}>
                 <input type="checkbox" checked={acceptedWarning} onChange={(event) => setAcceptedWarning(event.target.checked)} />

@@ -1091,7 +1091,7 @@ function SupportModal({ open, onClose }: { open: boolean; onClose: () => void })
     <div className="supportBackdrop" role="dialog" aria-modal="true" aria-label="Optional creator support">
       <section className="supportPanel">
         <header><div><small>OPTIONAL CREATOR SUPPORT</small><h2>SUPPORT THE CRYPTO ARBORIST</h2></div><button onClick={onClose} aria-label="Close support panel">✕</button></header>
-        <p>Yield Vacuum is free to play. If you enjoyed it, an optional tip can help fund hosting, artwork, and future educational missions.</p>
+        <p>Yield Vaccum is free to play. If you enjoyed it, an optional tip can help fund hosting, artwork, and future educational missions.</p>
         <div className="supportNetwork"><b>NETWORK</b><strong>BNB SMART CHAIN · CHAIN ID 56</strong></div>
         <div className="supportTokens">{SUPPORT_TOKENS.map((token) => <button key={token.symbol} className={selectedSymbol === token.symbol ? "active" : ""} onClick={() => { setSelectedSymbol(token.symbol); setAmount(""); setTransactionHash(""); setTransactionStatus(""); }} title={token.contract ?? "Native BNB"}><b>{token.symbol}</b><small>{token.symbol === "BNB" ? "NATIVE TOKEN" : "VERIFIED BEP-20"}</small></button>)}</div>
         <div className="supportTransaction">
@@ -1776,7 +1776,7 @@ export default function YieldVacuumGame() {
   return (
     <main className="shell">
       {phase === "splash" && (
-        <section className="splashScreen" aria-label="Yield Vacuum game gateway">
+        <section className="splashScreen" aria-label="Yield Vaccum game gateway">
           <p className="splashPresents">THE CRYPTO ARBORIST PRESENTS</p>
           <div className="splashWorlds" aria-label="Topaz and MintStakeShare 2">
           <div className="splashLogoStage">
@@ -1792,14 +1792,14 @@ export default function YieldVacuumGame() {
           </div>
           <h1 className="splashTitle"><span>YIELD</span><strong>VACCUM</strong></h1>
           <p className="splashNetwork">TWO WORLDS. CHOOSE YOUR GAME.</p>
-          <div className="splashGameMenu" aria-label="Choose a Yield Vacuum game">
+          <div className="splashGameMenu" aria-label="Choose a Yield Vaccum game">
             <div className="splashActions">
               <button className="splashGameChoice splashTopazChoice" onClick={() => prepareBriefing()}>
                 <span className="splashChoiceBrand"><img src="/topaz-mark.png" alt="Topaz" width="40" height="40" /><small>EDUCATIONAL CAMPAIGN</small></span>
-                <strong>YIELD VACUUM</strong>
+                <strong>YIELD VACCUM</strong>
                 <span className="splashChoiceDescription">Learn DeFi through play.</span>
                 <b>FREE EDUCATIONAL CAMPAIGN</b>
-                <em>PLAY YIELD VACUUM →</em>
+                <em>PLAY YIELD VACCUM →</em>
               </button>
               <a className="splashGameChoice splashMss2Choice" href="/arcade">
                 <span className="splashChoiceBrand"><img src="/mss2-flyer-emblem.png" alt="MSS2" width="40" height="40" /><small>ARCADE GAME</small></span>
@@ -1815,9 +1815,9 @@ export default function YieldVacuumGame() {
         </section>
       )}
       <header className="topbar">
-        <button className="brand homeBrand" onClick={returnHome} aria-label="Return to the Yield Vacuum home screen" title="Return to home screen">
+        <button className="brand homeBrand" onClick={returnHome} aria-label="Return to the Yield Vaccum home screen" title="Return to home screen">
           <img src="/topaz-mark.png" alt="Topaz" />
-          <span>YIELD VACUUM <b>TOPAZ DEX</b></span>
+          <span>YIELD VACCUM <b>TOPAZ DEX</b></span>
           <small>HOME</small>
         </button>
         <div className="campaignHeader" aria-label={`${completedMissions} of ${MISSIONS.length} missions completed. Current mission ${missionIndex + 1}: ${mission.title}`}>
@@ -1882,7 +1882,7 @@ export default function YieldVacuumGame() {
             ref={canvasRef}
             onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); movePlayer(event); }}
             onPointerMove={(event) => { if (event.buttons || event.pointerType === "touch") movePlayer(event); }}
-            aria-label="Yield Vacuum arcade playfield"
+            aria-label="Yield Vaccum arcade playfield"
           />
 
           {phase === "playing" && missionIndex >= 2 && (
@@ -2113,7 +2113,7 @@ export default function YieldVacuumGame() {
 
       <button className="supportLauncher" onClick={() => setSupportOpen(true)} aria-label="Open the optional creator support panel">
         <span className="supportLauncherIcon" aria-hidden="true">♥</span>
-        <span className="supportLauncherCopy"><small>YIELD VACUUM IS FREE TO PLAY</small><strong>SUPPORT THE CRYPTO ARBORIST</strong><em>Optional creator support · no gameplay or leaderboard advantage</em></span>
+        <span className="supportLauncherCopy"><small>YIELD VACCUM IS FREE TO PLAY</small><strong>SUPPORT THE CRYPTO ARBORIST</strong><em>Optional creator support · no gameplay or leaderboard advantage</em></span>
         <span className="supportLauncherAction">SUPPORT PROJECT <i aria-hidden="true">→</i></span>
       </button>
 
@@ -2124,7 +2124,7 @@ export default function YieldVacuumGame() {
         <p>Presented by The Crypto Arborist · Independent educational game, not an official Topaz DEX product.</p>
       </footer>
       <div className="visitorCounter" aria-label={visitorCount === null ? "Visitor counter loading" : `${visitorCount} unique visitors`}>
-        <span>YIELD VACUUM VISITORS</span>
+        <span>YIELD VACCUM VISITORS</span>
         <strong>{visitorCount === null ? "— — — — — —" : visitorCount.toLocaleString().padStart(6, "0")}</strong>
         <small>APPROXIMATE UNIQUE BROWSERS</small>
       </div>

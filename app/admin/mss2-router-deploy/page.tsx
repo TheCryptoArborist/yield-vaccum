@@ -4,7 +4,7 @@ import deployments from "../../../deployment/mss2-entry-router/deployments.json"
 import DeployConsole from "./deploy-console";
 
 export const metadata: Metadata = {
-  title: "MSS2 Router Deployment Review | Yield Vacuum",
+  title: "MSS2 Router Deployment Review | Yield Vaccum",
   robots: { index: false, follow: false },
 };
 
