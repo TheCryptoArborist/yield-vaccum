@@ -1034,7 +1034,7 @@ export default function MintFlyer() {
                         <p>MSS2 sent to the Community Airdrop Reserve.</p>
                       </div>
                     </div>
-                    <p className={styles.entryBreakdownNote}><b>0% kept by Yield Vacuum.</b> Network fees are extra. Future community rewards are not guaranteed.</p>
+                    <p className={styles.entryBreakdownNote}><b>0% kept by Yield Vacuum.</b> Network fees are extra. Community reward distribution details will be announced.</p>
                   </div>
                   {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                   {entryAction === "connect-wallet" ? <a className={styles.launchButton} href="#mss2-wallet">{launchLabel}</a> : <button type="button" className={styles.launchButton} onClick={launchFlight} disabled={paymentBusy || entryAction === "wait" || entryAction === "select-network" || entryAction === "unavailable"}>{launchLabel}</button>}
@@ -1160,7 +1160,7 @@ export default function MintFlyer() {
         <div className={styles.drawerBody}>
           <p>Each flight requires $1.00 worth of MSS2 on the selected network. Starting a new flight requires a new payment. Free flights and free continues are disabled.</p>
           <p>The entry quote uses the {isArcContext ? "Arc MSS2/USDC" : "Robinhood MSS2/WETH"} market. The verified router sends <b>20%</b> to <code>{DEAD_ADDRESS}</code> and <b>80%</b> to the Community Airdrop Reserve at <code>{COMMUNITY_AIRDROP_WALLET}</code>.</p>
-          <p>The reserve is designated for a possible future community airdrop. No distribution, eligibility rule, timing, income, token appreciation, or preferential leaderboard treatment is promised.</p>
+          <p>The Community Airdrop Reserve funds community rewards. Eligibility, timing, and distribution details will be announced.</p>
         </div>
       </details>
 
