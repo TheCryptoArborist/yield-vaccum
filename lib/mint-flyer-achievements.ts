@@ -1,5 +1,5 @@
 export const MINT_FLYER_ACHIEVEMENTS = [
-  { id: "first-flight", icon: "🚀", name: "First Flight", description: "Record your first completed Moon Run.", rarity: "COMMON" },
+  { id: "first-flight", icon: "🚀", name: "First Flight", description: "Save your first finished flight.", rarity: "COMMON" },
   { id: "moon-reached", icon: "🌕", name: "Moon Reached", description: "Complete all three stages and reach the Moon.", rarity: "RARE" },
   { id: "clean-orbit", icon: "◇", name: "Clean Orbit", description: "Reach the Moon without hitting a corrupted block.", rarity: "EPIC" },
   { id: "last-life-landing", icon: "◆", name: "Last-Life Landing", description: "Reach the Moon with exactly one life remaining.", rarity: "RARE" },

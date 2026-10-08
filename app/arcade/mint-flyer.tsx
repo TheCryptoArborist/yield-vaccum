@@ -788,7 +788,7 @@ export default function MintFlyer() {
   const headerQuoteMeta = headerQuoteAmount
     ? `${livePaymentQuote && !liveQuoteExpired ? "ENTRY QUOTE" : "DEMO QUOTE"} · ${livePaymentQuote && !liveQuoteExpired ? liveQuoteSecondsRemaining : quoteSecondsRemaining}s`
     : liveEntryEnabled ? "LIVE PAYMENT MODE" : "REAL PAYMENTS LOCKED";
-  const leaderboardResult: LeaderboardFlightResult | null = phase === "victory" && runId ? {
+  const leaderboardResult: LeaderboardFlightResult | null = (phase === "crashed" || phase === "victory") && runId ? {
     runId,
     score,
     distance,
@@ -796,7 +796,7 @@ export default function MintFlyer() {
     maxCombo,
     hits: totalHits,
     lives,
-    reachedMoon: true,
+    reachedMoon: phase === "victory",
     continued,
     paymentId: activePaymentId || undefined,
     runAuthorizationId: activeRunAuthorizationId || undefined,
@@ -1031,6 +1031,7 @@ export default function MintFlyer() {
                 <span><small>BEST COMBO</small><strong>{maxCombo} · {comboMultiplier(maxCombo)}X</strong></span>
                 <span><small>BLOCK HITS</small><strong>{totalHits}</strong></span>
               </div>
+              <a className={styles.leaderboardJump} href="#mint-flyer-leaderboard">SAVE THIS FLIGHT + VIEW LEADERBOARD ↓</a>
               <div className={`${styles.crashActions} ${continued || demoCredits < DEMO_CONTINUE_COST ? styles.singleCrashAction : ""}`}>
                 {!continued && demoCredits >= DEMO_CONTINUE_COST && (
                   <button className={styles.continueButton} onClick={continueFlight}>

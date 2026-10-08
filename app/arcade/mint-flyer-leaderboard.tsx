@@ -8,6 +8,7 @@ import styles from "./mint-flyer-leaderboard.module.css";
 type Entry = {
   nickname: string;
   bestScore: number;
+  bestDistance: number;
   bestGrade: "S" | "A" | "B" | "C";
   bestCombo: number;
   totalMints: number;
@@ -82,7 +83,7 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
   }, [load]);
 
   const submit = async () => {
-    if (!result || !result.reachedMoon || saving) return;
+    if (!result || saving) return;
     if (nickname.trim().length < 2) {
       setMessage("Choose a nickname with at least two letters or numbers.");
       return;
@@ -100,7 +101,7 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
       window.localStorage.setItem(NICKNAME_KEY, nickname.trim());
       setNewAchievements(data.newAchievements ?? []);
       setSavedRunId(result.runId);
-      setMessage(data.newAchievements?.length ? `${data.newAchievements.length} achievement${data.newAchievements.length === 1 ? "" : "s"} unlocked.` : "Moon Run saved to the leaderboard.");
+      setMessage(data.newAchievements?.length ? `${data.newAchievements.length} achievement${data.newAchievements.length === 1 ? "" : "s"} unlocked.` : `${result.reachedMoon ? "Moon Run" : "Flight result"} saved to the leaderboard.`);
       await load(playerKey);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Score could not be saved.");
@@ -115,8 +116,8 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
   return (
     <section id="mint-flyer-leaderboard" className={styles.board} aria-label="Mint Flyer leaderboard and achievements">
       <header>
-        <span><small>MSS2 ARCADE · MOON RANKINGS</small><strong><i aria-hidden="true">🏆</i> MINT FLYER LEADERBOARD</strong><em>Fly farther. Stack combos. Own the Moon.</em></span>
-        <b><i aria-hidden="true" /> BEST MOON RUNS</b>
+        <span><small>MSS2 ARCADE · FLIGHT RANKINGS</small><strong><i aria-hidden="true">🏆</i> MINT FLYER LEADERBOARD</strong><em>Every flight counts. Fly farther. Chase the Moon.</em></span>
+        <b><i aria-hidden="true" /> BEST FLIGHTS</b>
       </header>
 
       <div className={styles.boardStats} aria-label="Leaderboard summary">
@@ -125,11 +126,11 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
         <span><small>YOUR BADGES</small><strong>{unlocked.length}<em> / {MINT_FLYER_ACHIEVEMENTS.length}</em></strong></span>
       </div>
 
-      {result?.reachedMoon && (
+      {result && (
         <div className={styles.submitCard}>
-          <div><small>MOON RUN READY</small><strong>{result.score.toLocaleString()} POINTS · COMBO {result.maxCombo}</strong><span>Save this completed flight and check for new achievements.</span></div>
+          <div><small>{result.reachedMoon ? "MOON RUN READY" : "FLIGHT RESULT READY"}</small><strong>{result.score.toLocaleString()} POINTS · {result.distance.toLocaleString()}m · COMBO {result.maxCombo}</strong><span>{result.reachedMoon ? "Save this Moon clear and check for new achievements." : "Your attempt counts. Save it, rank it, then fly farther next time."}</span></div>
           <input aria-label="Mint Flyer leaderboard nickname" maxLength={22} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="Choose a nickname" />
-          <button type="button" onClick={submit} disabled={saving || savedRunId === result.runId}>{savedRunId === result.runId ? "SCORE SAVED ✓" : saving ? "SAVING…" : "SAVE MOON RUN"}</button>
+          <button type="button" onClick={submit} disabled={saving || savedRunId === result.runId}>{savedRunId === result.runId ? "SCORE SAVED ✓" : saving ? "SAVING…" : result.reachedMoon ? "SAVE MOON RUN" : "SAVE FLIGHT RESULT"}</button>
         </div>
       )}
 
@@ -137,7 +138,7 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
       {newAchievements.length > 0 && <div className={styles.unlocks}>{newAchievements.map((id) => { const item = achievement(id); return item ? <span key={id}><i>{item.icon}</i><b>{item.name}</b></span> : null; })}</div>}
 
       <section className={styles.rankingArena} aria-label="Mint Flyer rankings">
-        <div className={styles.arenaHeading}><span><small>TOP PILOTS</small><strong>MOON PODIUM</strong></span><b>WEEKLY GLORY · PERSONAL BESTS</b></div>
+        <div className={styles.arenaHeading}><span><small>TOP PILOTS</small><strong>FLIGHT PODIUM</strong></span><b>ALL FINISHED FLIGHTS · PERSONAL BESTS</b></div>
         {loading ? <div className={styles.loadingCard}>SCANNING THE FLIGHT LOG…</div> : (
           <div className={styles.podiumGrid}>
             {podiumOrder.map((entryIndex) => {
@@ -147,17 +148,17 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
                 <article key={entry ? `${entry.nickname}-${entry.updatedAt}` : `open-${place}`} className={`${styles.podiumCard} ${styles[`place${place}`]}`}>
                   <div className={styles.medal} aria-label={`Rank ${place}`}>{place === 1 ? "👑" : place === 2 ? "★" : "◆"}<b>#{place}</b></div>
                   {entry ? <>
-                    <small>{place === 1 ? "MOON CHAMPION" : "TOP PILOT"}</small>
+                    <small>{place === 1 ? entry.moonClears > 0 ? "MOON CHAMPION" : "FLIGHT CHAMPION" : "TOP PILOT"}</small>
                     <strong>{entry.nickname}</strong>
                     <div className={styles.podiumScore}>{entry.bestScore.toLocaleString()}<em>PTS</em></div>
-                    <span>GRADE {entry.bestGrade} · {entry.moonClears} MOON {entry.moonClears === 1 ? "CLEAR" : "CLEARS"}</span>
+                    <span>GRADE {entry.bestGrade} · {entry.bestDistance.toLocaleString()}m BEST · {entry.moonClears} MOON {entry.moonClears === 1 ? "CLEAR" : "CLEARS"}</span>
                     <div className={styles.podiumBadges}>{entry.displayedAchievements.map((id) => { const item = achievement(id); return item ? <i key={id} title={`${item.name}: ${item.description}`}>{item.icon}</i> : null; })}</div>
                     {entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}
                   </> : <>
                     <small>SEAT AVAILABLE</small>
                     <strong>UNCLAIMED</strong>
                     <div className={styles.openScore}>—</div>
-                    <span>REACH THE MOON TO TAKE THIS SPOT</span>
+                    <span>FINISH A FLIGHT TO TAKE THIS SPOT</span>
                   </>}
                 </article>
               );
@@ -165,15 +166,15 @@ export default function MintFlyerLeaderboard({ result }: { result: LeaderboardFl
           </div>
         )}
 
-        {!loading && entries.length === 0 && <div className={styles.firstRunChallenge}><i aria-hidden="true">🚀</i><span><small>THE BOARD IS WIDE OPEN</small><strong>BE THE FIRST PILOT ON THE MOON</strong><em>Complete a Moon Run, save your score, and claim the crown.</em></span><b>CLAIM #1</b></div>}
+        {!loading && entries.length === 0 && <div className={styles.firstRunChallenge}><i aria-hidden="true">🚀</i><span><small>THE BOARD IS WIDE OPEN</small><strong>BE THE FIRST RANKED PILOT</strong><em>Finish any flight, save your score, and claim the first seat.</em></span><b>CLAIM #1</b></div>}
 
         {entries.length > 0 && <div className={styles.table}>
-          <div className={styles.tableHead}><span>RANK</span><span>PILOT + BADGES</span><span>MOON CLEARS</span><span>BEST SCORE</span></div>
+          <div className={styles.tableHead}><span>RANK</span><span>PILOT + BADGES</span><span>BEST DISTANCE</span><span>BEST SCORE</span></div>
           {entries.map((entry, index) => (
             <div className={`${styles.row} ${index < 3 ? styles.podium : ""}`} key={`${entry.nickname}-${entry.updatedAt}`}>
               <span className={styles.rank}><i>{index === 0 ? "👑" : index === 1 ? "★" : index === 2 ? "◆" : ""}</i>{index + 1}</span>
               <span className={styles.identity}><strong>{entry.nickname}</strong><em>{entry.displayedAchievements.map((id) => { const item = achievement(id); return item ? <i key={id} title={`${item.name}: ${item.description}`}>{item.icon}</i> : null; })}</em><small>{entry.unlocked.length} BADGES · {entry.totalMints} MINT CREDITS</small>{entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}</span>
-              <span className={styles.clears}><b>{entry.moonClears}</b><small>MOON RUNS</small></span>
+              <span className={styles.clears}><b>{entry.bestDistance.toLocaleString()}m</b><small>{entry.moonClears > 0 ? `${entry.moonClears} MOON ${entry.moonClears === 1 ? "CLEAR" : "CLEARS"}` : "MOON NOT YET REACHED"}</small></span>
               <span className={styles.score}><b>{entry.bestScore.toLocaleString()}</b><small>GRADE {entry.bestGrade}</small></span>
             </div>
           ))}

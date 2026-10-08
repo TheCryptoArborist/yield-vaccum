@@ -51,7 +51,8 @@ export async function POST(request: Request) {
     if ([score, distance, mintsCollected, maxCombo, hits, lives].some((value) => value === null)) {
       return Response.json({ error: "That flight result could not be validated." }, { status: 400 });
     }
-    if (!reachedMoon || distance !== 3_000 || score! < distance! * 10) {
+    const distanceMatchesOutcome = reachedMoon ? distance === 3_000 : distance! < 3_000;
+    if (!distanceMatchesOutcome || score! < distance! * 10) {
       return Response.json({ error: "That flight result is inconsistent." }, { status: 400 });
     }
 
