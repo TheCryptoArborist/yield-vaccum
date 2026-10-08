@@ -183,6 +183,41 @@
 @media(max-width:720px){.launchInstructions>.launchScene{height:190px}.launchScene>strong{font-size:18px}.launchInstructions>div:not(.launchScene){padding:9px 12px}.sceneMoon{width:95px;height:95px}}
 .backToTop{position:fixed;right:max(20px,env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));z-index:30;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border:1px solid #3b557b;border-radius:12px;background:#0b1930;color:#b5fff8;box-shadow:0 6px 24px #0008;font:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
 .backToTop:hover{border-color:#00ebf2;background:#132a43}
+.mobileInstructions{display:none}
+/* Keep the mobile landing view focused on the next flight, not repeated briefs. */
+@media(max-width:720px){
+  .siteHeader{padding:12px;gap:10px;margin-bottom:12px}
+  .brandPlate{width:min(190px,100%)}
+  .walletZone{gap:8px}
+  .walletZone .paymentStatus{padding:8px 12px}
+  .hero{grid-template-columns:1fr;padding:16px;gap:0;margin-bottom:12px}
+  .hero p,.hero aside{display:none}
+  .hero h1{margin:0;font-size:42px}
+  .hero>div>strong{margin-top:8px;font-size:14px;line-height:1.4}
+  .arcadeNav{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:thin}
+  .arcadeNav a{flex:0 0 auto;display:flex;align-items:center;min-height:44px;padding:10px 12px;white-space:nowrap}
+  .arcadeNav small{display:none}
+  .arcadeNav strong{font-size:13px}
+  .readyGame .hud,.readyGame .flightProgress,.readyGame .gameFooter{display:none}
+  .launchOverlay{padding:14px 12px}
+  .launchHeader{margin-bottom:12px}
+  .launchHeader>small{font-size:11px}
+  .launchHeader h2{margin:6px 0 0;font-size:25px}
+  .launchHeader p,.launchGrid>.launchInstructions{display:none}
+  .launchGrid{gap:10px}
+  .launchEntry{padding:14px}
+  .launchMode{margin-bottom:8px;font-size:12px}
+  .launchAmounts{grid-template-columns:1fr 1fr;gap:10px}
+  .launchAmounts small{font-size:12px}
+  .launchAmounts strong,.launchAmounts b{font-size:18px}
+  .launchExpiry,.launchConsent,.launchStatus{margin:8px 0;font-size:13px}
+  .launchConsent{padding-top:8px}
+  .launchButton{margin-top:12px;font-size:16px}
+  .launchEntry .buyMss2Prompt{margin-top:10px}
+  .mobileInstructions{display:block;padding:0 12px;border:1px solid #536d94;border-radius:10px;background:#10203a;color:#e0eaf8;font-size:14px;line-height:1.5}
+  .mobileInstructions summary{min-height:44px;box-sizing:border-box;padding:11px 0;color:#b5fff8;font-weight:700;cursor:pointer}
+  .mobileInstructions p{margin:0 0 10px}
+}
 .entryBreakdown{margin:18px 0 0;padding-top:16px;border-top:1px solid #536d94}
 .entryBreakdown h3{margin:0 0 12px;color:#fff;font-size:18px;line-height:1.4;letter-spacing:0}
 .entryBreakdownCards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -196,4 +231,15 @@
 .entryBreakdown .entryBreakdownNote{margin:12px 0 0;color:#e0eaf8;font-size:13px;line-height:1.5}
 .entryBreakdownNote b{color:#b5fff8}
 @media(max-width:420px){.entryBreakdownCards{grid-template-columns:1fr}}
+@media(max-width:720px){
+  .entryBreakdown{margin-top:12px;padding-top:12px}
+  .entryBreakdown h3{margin-bottom:8px;font-size:16px}
+  .entryBreakdownCards{grid-template-columns:1fr 1fr;gap:8px}
+  .entryBreakdownCards>div{padding:10px}
+  .entryBreakdownCards strong{margin-bottom:7px;font-size:22px}
+  .entryBreakdownCards strong span{font-size:12px}
+  .entryBreakdownCards b{font-size:14px}
+  .entryBreakdownCards p{font-size:12px;line-height:1.4}
+  .entryBreakdown .entryBreakdownNote{margin-top:8px;font-size:12px}
+}
 @media(prefers-reduced-motion:reduce){.arcadeShell *,.arcadeShell *:before,.arcadeShell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

@@ -96,6 +96,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
   const [message, setMessage] = useState("");
   const [feedbackRunId, setFeedbackRunId] = useState("");
   const [displayRewardWallet, setDisplayRewardWallet] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -256,11 +257,14 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
 
       <div className={styles.achievementSection}>
         <div className={styles.achievementHeading}><span><small>YOUR TROPHY BAY</small><strong>Your achievements</strong><em>Complete daring flights to light up every badge.</em></span><b>{unlocked.length}/{MINT_FLYER_ACHIEVEMENTS.length} UNLOCKED</b></div>
+        <button type="button" className={styles.achievementToggle} aria-expanded={showAchievements} aria-controls="mint-flyer-achievement-list" onClick={() => setShowAchievements((open) => !open)}>{showAchievements ? "Hide badges −" : "Explore badges +"}</button>
+        <div id="mint-flyer-achievement-list" className={`${styles.achievementBody} ${showAchievements ? styles.achievementBodyOpen : ""}`}>
         <div className={styles.achievementProgress}><i style={{ width: `${achievementProgress}%` }} /><span>{achievementProgress}% COMPLETE</span></div>
         <div className={styles.achievementGrid}>{MINT_FLYER_ACHIEVEMENTS.map((item) => {
           const earned = unlocked.includes(item.id);
           return <article key={item.id} className={`${earned ? styles.earned : styles.locked} ${styles[`rarity${item.rarity}`]}`}><i>{earned ? item.icon : "?"}</i><span><strong>{item.name}</strong><small>{item.description}</small><em>{earned ? `UNLOCKED · ${item.rarity}` : `LOCKED · ${item.rarity}`}</em></span></article>;
         })}</div>
+        </div>
       </div>
 
     </section>
