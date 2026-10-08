@@ -86,13 +86,29 @@ function validReceipt(): PaymentEvidenceReceipt {
   };
 }
 
-test("live payments remain source-code locked on both networks", () => {
+test("production permits public entries only through the verified routers", () => {
   process.env.CONTEXT = "production";
   process.env.MSS2_CANARY_WALLET = wallet;
-  assert.equal(paymentReadiness("robinhood").enabled, false);
-  assert.equal(paymentReadiness("arc").enabled, false);
+  for (const network of ["robinhood", "arc"] as const) {
+    const readiness = paymentReadiness(network, wallet);
+    assert.equal(readiness.enabled, true);
+    assert.equal(readiness.releaseMode, "production");
+    assert.equal(readiness.routerAddress, deploymentRecords[network].router);
+    assert.equal(paymentReadiness(network, MSS2_COMMUNITY_AIRDROP_RESERVE).enabled, false);
+  }
   delete process.env.CONTEXT;
   delete process.env.MSS2_CANARY_WALLET;
+});
+
+test("compiled production context enables public entry when runtime CONTEXT is absent", () => {
+  delete process.env.CONTEXT;
+  process.env.NEXT_PUBLIC_NETLIFY_CONTEXT = "production";
+  assert.equal(paymentReadiness("arc", wallet).enabled, true);
+  assert.equal(paymentReadiness("robinhood", wallet).enabled, true);
+  process.env.CONTEXT = "local";
+  assert.equal(paymentReadiness("arc", wallet).enabled, false);
+  delete process.env.CONTEXT;
+  delete process.env.NEXT_PUBLIC_NETLIFY_CONTEXT;
 });
 
 test("deploy-preview canary requires the explicitly allowlisted non-reserve wallet", () => {

@@ -1,5 +1,6 @@
 import { Interface, getAddress, id, parseUnits, zeroPadValue } from "ethers";
 import deployments from "../deployment/mss2-entry-router/deployments.json";
+import { deploymentContext } from "./deployment-context";
 import {
   MSS2_COMMUNITY_AIRDROP_RESERVE,
   MSS2_DEAD_ADDRESS,
@@ -37,10 +38,9 @@ export const ARC_MSS2_POOL_URL = `https://api.topazdex.com/v1/pools/${ARC_CHAIN_
 export const ARC_MSS2_PRICE_API = `https://api.topazdex.com/v1/tokens/${ARC_CHAIN_ID}/${MSS2_TOKEN}`;
 export const MAX_ARC_OBSERVATION_AGE_MS = 30 * 60_000;
 
-// Environment configuration alone cannot activate money movement. This
-// source-code gate stays false until both router deployments and the complete
-// payment flow have passed review.
-const LIVE_PAYMENT_RELEASED = false;
+// Public entry was approved after both router deployments and paid canaries
+// were verified. Preview entry remains restricted to its approved tester.
+const LIVE_PAYMENT_RELEASED = true;
 const DEPLOY_PREVIEW_CANARY_RELEASED = true;
 const DEPLOY_PREVIEW_CANARY_WALLET = "0x90f9c1c0c675A0ce9D539c540DB7F4A1f7e583AE";
 
@@ -132,11 +132,11 @@ type ArcPricePayload = {
   meta?: { staleChainIds?: number[]; failedChainIds?: number[] };
 };
 
-function deploymentContext() {
-  return process.env.CONTEXT || process.env.NEXT_PUBLIC_NETLIFY_CONTEXT || "local";
-}
-
 function configuredRouter(network: Mss2PaymentNetwork) {
+  if (LIVE_PAYMENT_RELEASED && deploymentContext() === "production") {
+    const recorded = deployments[network];
+    return recorded.status === "verified" ? getAddress(recorded.router) : null;
+  }
   let value = network === "arc" ? process.env.MSS2_ENTRY_ROUTER_ARC : process.env.MSS2_ENTRY_ROUTER_ROBINHOOD;
   if (!value && deploymentContext() === "deploy-preview") {
     const recorded = deployments[network];
@@ -163,7 +163,7 @@ function configuredCanaryWallet() {
 }
 
 function paymentReleaseMode(): PaymentReleaseMode {
-  if (LIVE_PAYMENT_RELEASED) return "production";
+  if (LIVE_PAYMENT_RELEASED && deploymentContext() === "production") return "production";
   return configuredCanaryWallet() ? "canary" : "disabled";
 }
 
@@ -195,6 +195,7 @@ export function paymentReadiness(network: Mss2PaymentNetwork = "robinhood", wall
   const config = paymentNetworkConfig(network);
   const releaseMode = paymentReleaseMode();
   const canaryWalletAddress = configuredCanaryWallet();
+  const reservePayer = walletAddress.toLowerCase() === MSS2_COMMUNITY_AIRDROP_RESERVE.toLowerCase();
   let walletEligible = releaseMode === "production";
   if (releaseMode === "canary" && canaryWalletAddress && walletAddress) {
     try {
@@ -203,9 +204,11 @@ export function paymentReadiness(network: Mss2PaymentNetwork = "robinhood", wall
       walletEligible = false;
     }
   }
-  const enabled = Boolean(config.routerAddress) && walletEligible;
+  const enabled = Boolean(config.routerAddress) && walletEligible && !reservePayer;
   const reason = enabled
     ? null
+    : reservePayer
+      ? "Use a different wallet for entry. The Community Airdrop Reserve cannot pay itself."
     : releaseMode === "canary"
       ? `The payment canary on ${config.name} is restricted to its approved non-reserve tester wallet.`
       : `Real MSS2 entries on ${config.name} remain locked while the payment canary is prepared.`;

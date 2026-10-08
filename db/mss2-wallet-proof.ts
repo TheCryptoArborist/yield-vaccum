@@ -1,4 +1,5 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
+import { deploymentContext } from "../lib/deployment-context";
 import { getAddress, verifyMessage } from "ethers";
 
 type WalletChallenge = {
@@ -10,7 +11,7 @@ type WalletChallenge = {
 };
 
 function challengeStore() {
-  return process.env.CONTEXT === "production"
+  return deploymentContext() === "production"
     ? getStore("mint-flyer-wallet-proof", { consistency: "strong" })
     : getDeployStore("mint-flyer-wallet-proof");
 }

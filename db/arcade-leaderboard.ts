@@ -1,4 +1,5 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
+import { deploymentContext } from "../lib/deployment-context";
 import { MINT_FLYER_ACHIEVEMENTS, mintFlyerGrade, type MintFlyerAchievementId } from "../lib/mint-flyer-achievements";
 import { readRoundedRobinhoodMss2Balance } from "../lib/mss2-balance";
 import { publicRewardWallet, type RewardWalletFields } from "../lib/mint-flyer-rewards";
@@ -45,7 +46,7 @@ export type MintFlyerLeaderboardEntry = Omit<MintFlyerProfile, "playerKey" | "ms
 };
 
 function arcadeStore() {
-  return process.env.CONTEXT === "production"
+  return deploymentContext() === "production"
     ? getStore("mint-flyer-leaderboard", { consistency: "strong" })
     : getDeployStore("mint-flyer-leaderboard");
 }

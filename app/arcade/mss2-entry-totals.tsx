@@ -8,10 +8,14 @@ import styles from "./mss2-entry-totals.module.css";
 
 export default function Mss2EntryTotals({ network, paymentId }: { network: "robinhood" | "arc"; paymentId: string }) {
   const [selected, setSelected] = useState(network);
+  const [previousNetwork, setPreviousNetwork] = useState(network);
+  if (previousNetwork !== network) {
+    setPreviousNetwork(network);
+    setSelected(network);
+  }
   const [data, setData] = useState<Partial<Record<"robinhood" | "arc", EntryTotals>>>({});
   const [retry, setRetry] = useState(0);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setSelected(network); }, [network]);
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
