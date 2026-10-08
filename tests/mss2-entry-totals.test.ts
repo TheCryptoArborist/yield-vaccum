@@ -4,7 +4,7 @@ import { AbiCoder, parseUnits } from "ethers";
 import artifact from "../deployment/mss2-entry-router/Mss2EntryRouter.artifact.json";
 import deployments from "../deployment/mss2-entry-router/deployments.json";
 import { ENTRY_PAID_TOPIC, MSS2_TOKEN, addressTopic, splitEntryAmount } from "../lib/mss2-payment";
-import { findRouterStartBlock, publicEntryTotals, scanEntryTotals, sumEntryLogs, type EntryLog, type TotalsRpc } from "../lib/mss2-entry-totals";
+import { readRouterStartBlock, publicEntryTotals, scanEntryTotals, sumEntryLogs, type EntryLog, type TotalsRpc } from "../lib/mss2-entry-totals";
 import { formatEntryTotal } from "../lib/mss2-entry-totals-display";
 
 const router = deployments.robinhood.router;
@@ -16,7 +16,7 @@ function entry(block: number, amount = "100000000000000000003", transaction = "a
     data: AbiCoder.defaultAbiCoder().encode(["uint256", "uint256", "uint256"], [BigInt(split.totalAmount), BigInt(split.deadAddressAmount), BigInt(split.communityReserveAmount)]),
   };
 }
-function fixture(head: number, logs: EntryLog[], changedAnchor = false, rangeLimit = 10_000): TotalsRpc {
+function fixture(head: number, logs: EntryLog[], changedAnchor = false, rangeLimit = Infinity): TotalsRpc {
   return async <T>(method: string, params: unknown[]) => {
     let value: unknown;
     if (method === "eth_chainId") value = "0x1237";
@@ -68,11 +68,11 @@ test("a recent reorganization replaces old contributions; a changed anchor rebui
 });
 
 test("bounded history scans resume across requests and never label partial history as lifetime totals", async () => {
-  const logs = [entry(100), entry(100000, "5", "cd")];
-  const first = await scanEntryTotals("robinhood", fixture(120000, logs), null, 90);
+  const logs = [entry(100), entry(10000000, "5", "cd")];
+  const first = await scanEntryTotals("robinhood", fixture(12000000, logs), null, 90);
   assert.equal(first.complete, false); assert.equal(publicEntryTotals("robinhood", first).status, "syncing");
   assert.equal(publicEntryTotals("robinhood", first).deadAmountRaw, null);
-  const next = await scanEntryTotals("robinhood", fixture(120000, logs), first, 90);
+  const next = await scanEntryTotals("robinhood", fixture(12000000, logs), first, 90);
   assert.equal(next.complete, true); assert.equal(next.entries, 2);
 });
 
@@ -89,9 +89,17 @@ test("unavailable history and wrong-chain evidence cannot be displayed as zero",
   await assert.rejects(scanEntryTotals("robinhood", failing, null, 90));
 });
 
-test("creation-block discovery includes the first entry and display rounding stays exact for large totals", async () => {
-  const rpc: TotalsRpc = async <T>(_method: string, params: unknown[]) => (Number(BigInt(String(params[1]))) < 123 ? "0x" : artifact.deployedBytecode) as T;
-  assert.equal(await findRouterStartBlock(rpc, router, 500), 123);
+test("only the fixed router's successful creation receipt establishes the start block", async () => {
+  const receipt = { status: "0x1", contractAddress: router, transactionHash: deployments.robinhood.deploymentTransactionHash, blockNumber: "0x7b" };
+  const rpc: TotalsRpc = async <T>() => receipt as T;
+  assert.equal(await readRouterStartBlock("robinhood", rpc), 123);
+  const wrongReceipt: TotalsRpc = async <T>() => ({ ...receipt, contractAddress: MSS2_TOKEN }) as T;
+  await assert.rejects(readRouterStartBlock("robinhood", wrongReceipt));
+  const failedReceipt: TotalsRpc = async <T>() => ({ ...receipt, status: "0x0" }) as T;
+  await assert.rejects(readRouterStartBlock("robinhood", failedReceipt));
+});
+
+test("display rounding stays exact for large totals", () => {
   assert.equal(formatEntryTotal(parseUnits("123456789012345678.9999996", 18).toString()), "123,456,789,012,345,679");
   assert.equal(formatEntryTotal(parseUnits("12.000001", 18).toString()), "12.000001");
   assert.equal(formatEntryTotal("0"), "0");

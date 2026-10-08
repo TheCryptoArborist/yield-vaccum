@@ -61,19 +61,14 @@ export function sumEntryLogs(logs: EntryLog[], router: string, fromBlock: number
   return [...blocks.values()].sort((a, b) => a.block - b.block);
 }
 
-export async function findRouterStartBlock(rpc: TotalsRpc, router: string, head: number) {
-  // Discover the contract's creation block from historical bytecode. This does
-  // not depend on an explorer index or the preview's payment-record lifetime.
-  let low = -1;
-  let high = head;
-  while (high - low > 1) {
-    const middle = Math.floor((high + low) / 2);
-    const code = await rpc<string>("eth_getCode", [router, hex(middle)]);
-    if (code === "0x") low = middle;
-    else if (/^0x[0-9a-f]+$/i.test(code)) high = middle;
-    else throw new Error("Historical router code was unavailable.");
-  }
-  return high;
+export async function readRouterStartBlock(network: Mss2PaymentNetwork, rpc: TotalsRpc) {
+  const record = deployments[network];
+  const receipt = await rpc<{ status?: string; contractAddress?: string; transactionHash?: string; blockNumber?: string } | null>("eth_getTransactionReceipt", [record.deploymentTransactionHash]);
+  if (receipt?.status !== "0x1" || receipt.contractAddress?.toLowerCase() !== record.router.toLowerCase()
+    || receipt.transactionHash?.toLowerCase() !== record.deploymentTransactionHash.toLowerCase() || !receipt.blockNumber) throw new Error("The router creation receipt could not be verified.");
+  const block = Number(BigInt(receipt.blockNumber));
+  if (!Number.isSafeInteger(block) || block < 0) throw new Error("Invalid router creation block.");
+  return block;
 }
 
 export async function scanEntryTotals(network: Mss2PaymentNetwork, rpc: TotalsRpc, previous: TotalsSnapshot | null, startBlock: number): Promise<TotalsSnapshot> {
@@ -99,7 +94,7 @@ export async function scanEntryTotals(network: Mss2PaymentNetwork, rpc: TotalsRp
   }
   let throughBlock = fromBlock - 1;
   const recent: BlockTotal[] = [];
-  let pageSize = PAGE_BLOCKS;
+  let pageSize = network === "robinhood" ? 1_000_000 : PAGE_BLOCKS;
   for (let page = 0; page < MAX_PAGES && throughBlock < head; page += 1) {
     const next = throughBlock + 1;
     let end = Math.min(head, next + pageSize - 1);

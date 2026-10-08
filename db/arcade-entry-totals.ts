@@ -1,7 +1,7 @@
 import { getStore } from "@netlify/blobs";
 import deployments from "../deployment/mss2-entry-router/deployments.json";
 import { rpcCall, type Mss2PaymentNetwork } from "../lib/mss2-payment";
-import { findRouterStartBlock, publicEntryTotals, scanEntryTotals, type TotalsRpc, type TotalsSnapshot } from "../lib/mss2-entry-totals";
+import { readRouterStartBlock, publicEntryTotals, scanEntryTotals, type TotalsRpc, type TotalsSnapshot } from "../lib/mss2-entry-totals";
 
 const memory = new Map<string, TotalsSnapshot>();
 const inFlight = new Map<string, Promise<ReturnType<typeof publicEntryTotals>>>();
@@ -28,10 +28,7 @@ export function readArcadeEntryTotals(network: Mss2PaymentNetwork) {
       try { startBlock = (await cache.get(`${blobKey}.origin`, { type: "json" }) as { block?: number } | null)?.block; } catch { /* Discover from the RPC below. */ }
     }
     if (startBlock === undefined) {
-      const head = Number(BigInt(await rpc<string>("eth_blockNumber", [])));
-      // Confirm that code exists before discovering the first historical block.
-      if (await rpc<string>("eth_getCode", [deployments[network].router, "latest"]) === "0x") throw new Error("Entry router is unavailable.");
-      startBlock = await findRouterStartBlock(rpc, deployments[network].router, head);
+      startBlock = await readRouterStartBlock(network, rpc);
       if (cache) { try { await cache.setJSON(`${blobKey}.origin`, { block: startBlock }); } catch { /* Cache persistence is optional. */ } }
     }
     const next = await scanEntryTotals(network, rpc, snapshot, startBlock);

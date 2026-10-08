@@ -145,12 +145,14 @@ test("Robinhood deployment evidence is recorded before Arc release", () => {
     status: "verified",
     chainId: ROBINHOOD_CHAIN_ID,
     router: "0x3eF32427eB1eA6cE7572358e22C800CeC740292A",
+    deploymentTransactionHash: "0x7c314bb85387590ebb68749c22d95ee8b8548b8cc6c5dcff1a74a324cd6cd78e",
     runtimeCodeHash: "0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a",
   });
   assert.deepEqual(deploymentRecords.arc, {
     status: "verified",
     chainId: ARC_CHAIN_ID,
     router: "0x3eF32427eB1eA6cE7572358e22C800CeC740292A",
+    deploymentTransactionHash: "0x7129b63c697f27e4998b39266a99f0feedb08425aec39220082c74bb7d4613c3",
     runtimeCodeHash: "0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a",
   });
 });
