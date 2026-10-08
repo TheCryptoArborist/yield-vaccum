@@ -2,6 +2,7 @@ import { createTopazIdProvider, connectTopazId, disconnectTopazId } from "@topaz
 import { bsc, robinhood, arc } from "@topazdex/id-connect/chains";
 import { displayNameForWallet, fetchTopazIdProfile } from "@topazdex/id-connect";
 import { createTopazIdClient, type TopazIdClient, type TopazIdCall } from "@topazdex/id-connect/actions";
+import { TopazIdPaymentFailedError } from "./topaz-id-payment-error";
 
 // Loaded only in the browser, before the user clicks: opening the consent
 // popup must remain inside the original user gesture (especially on mobile).
@@ -55,9 +56,9 @@ export function createTopazIdWallet(api = sdk, arcade = false) {
       if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new Error("Invalid Topaz ID payment operation hash.");
       const receipt = await clientFor(account, chainId).waitForReceipt(hash as `0x${string}`);
       if (!receipt) return null; // retain the submitted operation for retry, never pay again
-      if (receipt.status !== "0x1" || (receipt.userOperation && (!receipt.userOperation.success || receipt.userOperation.sender.toLowerCase() !== account.toLowerCase()))) {
-        throw new Error("The Topaz ID payment operation failed. No flight was authorized.");
-      }
+      if (receipt.userOperation && receipt.userOperation.sender.toLowerCase() !== account.toLowerCase()) throw new Error("The Topaz ID receipt did not match the paying smart wallet. Payment retained for recheck.");
+      if (receipt.status === "0x0" || receipt.userOperation?.success === false) throw new TopazIdPaymentFailedError();
+      if (receipt.status !== "0x1") throw new Error("The Topaz ID receipt outcome is unknown. Payment retained for recheck.");
       if (!/^0x[0-9a-fA-F]{64}$/.test(receipt.transactionHash)) throw new Error("Topaz ID did not resolve a valid transaction hash.");
       return receipt.transactionHash;
     },
