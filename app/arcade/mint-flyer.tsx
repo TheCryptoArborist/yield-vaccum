@@ -107,8 +107,8 @@ const ARC_CHAIN_HEX = "0x13b2";
 const SOUND_PREFERENCE_KEY = "yield-vacuum-mss2-mint-flyer-sound";
 const MOON_DISTANCE = 3000;
 const FLIGHT_STAGES: Array<{ id: FlightStage; name: string; start: number; instruction: string }> = [
-  { id: 1, name: "MINT STREAM", start: 0, instruction: "Collect cyan Mint Credits and build your combo." },
-  { id: 2, name: "BLOCK SURGE", start: 650, instruction: "Faster corrupted blocks now arrive in formations." },
+  { id: 1, name: "MINT STREAM", start: 0, instruction: "Collect MSS2 coins and build your combo." },
+  { id: 2, name: "BLOCK SURGE", start: 650, instruction: "Faster Glitch Blocks now arrive in formations." },
   { id: 3, name: "MOON RUN", start: 1650, instruction: "Survive maximum speed and reach the Moon." },
 ];
 const GRADE_TARGETS = [
@@ -855,7 +855,7 @@ export default function MintFlyer() {
         <div>
           <p>COLLECT. COMBO. CLIMB THE BOARD.</p>
           <h1>MINT <span>FLYER</span></h1>
-          <strong>Collect glowing coins, dodge pink blocks, and fly to the Moon.</strong>
+          <strong>Collect MSS2 coins. Dodge Glitch Blocks. Reach the Moon.</strong>
         </div>
         <aside>
           <small>$1 WORTH OF MSS2 PER FLIGHT</small>
@@ -912,7 +912,7 @@ export default function MintFlyer() {
           {phase === "playing" && (
             <div className={styles.playGuide} aria-label="Mint Flyer objective and controls">
               <span><i className={styles.guideMintIcon}><Image className={styles.mintGuideLogo} src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></i><b>COLLECT MSS2 MINT CREDITS</b><small>+250 POINTS EACH</small></span>
-              <span><i className={styles.guideHazardIcon}>!</i><b>AVOID PINK BLOCKS</b><small>LOSE 1 OF 3 LIVES</small></span>
+              <span><i className={styles.guideHazardIcon}>!</i><b>AVOID GLITCH BLOCKS</b><small>LOSE 1 OF 3 LIVES</small></span>
               <span className={styles.desktopControlGuide}><i className={styles.guideMoveIcon}>↕</i><b>STEER WITH YOUR MOUSE</b><small>NO CLICK NEEDED · W/S OR ARROWS ALSO WORK</small></span>
               <span className={styles.mobileControlGuide}><i className={styles.guideMoveIcon}>↕</i><b>PRESS + SLIDE TO STEER</b><small>DRAG YOUR FINGER UP + DOWN ANYWHERE</small></span>
             </div>
@@ -973,14 +973,27 @@ export default function MintFlyer() {
             <div className={`${styles.overlay} ${styles.launchOverlay}`}>
               <header className={styles.launchHeader}>
                 <small>MINT FLYER · {selectedNetworkLabel}</small>
-                <h2>FLY. COLLECT. SURVIVE.</h2>
-                <p>Reach the Moon at 3,000 meters. Build your combo and beat your best score.</p>
+                <h2>YOUR NEXT MOON RUN.</h2>
+                <p>3,000 meters. Three lives. How high can you score?</p>
               </header>
               <div className={styles.launchGrid}>
                 <div className={styles.launchInstructions} aria-label="How to play Mint Flyer">
-                  <div><i className={styles.howToMove} aria-hidden="true">↕</i><span><b>Move up and down</b><small><span className={styles.desktopControlText}>Use your mouse, W/S, or arrow keys.</span><span className={styles.mobileControlText}>Press and slide your finger to steer.</span></small></span></div>
-                  <div><i className={styles.howToMint} aria-hidden="true"><Image className={styles.howToMintLogo} src="/mss2-flyer-emblem.png" alt="" width={96} height={96} /></i><span><b>Collect glowing MSS2 coins</b><small>Each coin adds 250 points. Keep collecting to build a combo.</small></span></div>
-                  <div><i className={styles.howToHazard} aria-hidden="true">!</i><span><b>Avoid the pink blocks</b><small>You have three lives. Each hit costs one.</small></span></div>
+                  <div className={styles.launchScene} aria-hidden="true">
+                    <span className={styles.sceneOrbit} />
+                    <span className={styles.sceneMoon} />
+                    <span className={styles.sceneTrail} />
+                    <span className={styles.sceneShip}><Image src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></span>
+                    <span className={`${styles.sceneCoin} ${styles.sceneCoinOne}`}><Image src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></span>
+                    <span className={`${styles.sceneCoin} ${styles.sceneCoinTwo}`}><Image src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></span>
+                    <span className={`${styles.sceneCoin} ${styles.sceneCoinThree}`}><Image src="/mss2-flyer-emblem.png" alt="" width={64} height={64} /></span>
+                    <span className={`${styles.sceneGlitch} ${styles.sceneGlitchOne}`}><i /><b /></span>
+                    <span className={`${styles.sceneGlitch} ${styles.sceneGlitchTwo}`}><i /><b /></span>
+                    <strong>CHASE YOUR BEST.</strong>
+                    <small>THE MOON IS WAITING.</small>
+                  </div>
+                  <div><i className={styles.howToMove} aria-hidden="true">↕</i><span><b>Steer</b><small><span className={styles.desktopControlText}>Mouse, W/S, or ↑/↓.</span><span className={styles.mobileControlText}>Press + slide your finger.</span></small></span></div>
+                  <div><i className={styles.howToMint} aria-hidden="true"><Image className={styles.howToMintLogo} src="/mss2-flyer-emblem.png" alt="" width={96} height={96} /></i><span><b>Collect MSS2 coins</b><small>+250 points. Chain coins for up to 5×.</small></span></div>
+                  <div><i className={styles.howToHazard} aria-hidden="true">!</i><span><b>Dodge Glitch Blocks</b><small>Each hit costs one life.</small></span></div>
                 </div>
                 <section className={styles.launchEntry} aria-label="Flight entry">
                   <small className={styles.launchMode}>{!paymentReadiness ? "ENTRY STATUS" : liveEntryEnabled ? canaryEntryEnabled ? "PAID TEST FLIGHT" : "PAID FLIGHT" : "MSS2 PAYMENT REQUIRED"}</small>
@@ -1106,8 +1119,8 @@ export default function MintFlyer() {
 
         <footer className={styles.gameFooter}>
           <span><b>CONTROL</b> <span className={styles.desktopControlText}>MOUSE, W/S OR ↑/↓</span><span className={styles.mobileControlText}>PRESS + SLIDE</span> TO MOVE</span>
-          <span><b>COLLECT</b> CYAN MINT CREDITS · +250 POINTS</span>
-          <span><b>AVOID</b> PINK BLOCKS · -1 LIFE</span>
+          <span><b>COLLECT</b> MSS2 COINS · +250 GAME POINTS</span>
+          <span><b>AVOID</b> GLITCH BLOCKS · -1 LIFE</span>
         </footer>
       </section>
 
