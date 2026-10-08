@@ -48,6 +48,7 @@ type PaymentReadiness = {
   reason: string | null;
 };
 type LivePaymentQuote = {
+  nativeGasBalanceRaw?: string;
   balanceCheck?: Mss2EntryBalance;
   paymentId: string;
   runId: string;
@@ -187,10 +188,13 @@ export default function MintFlyer() {
   const [activePaymentId, setActivePaymentId] = useState("");
   const [activeRunNetwork, setActiveRunNetwork] = useState<"robinhood" | "arc">("robinhood");
   const [paymentTxHash, setPaymentTxHash] = useState("");
+  const [paymentIsOperation, setPaymentIsOperation] = useState(false);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [entryBalance, setEntryBalance] = useState<{ paymentId: string; check: Mss2EntryBalance } | null>(null);
   const walletContextRef = useRef<WalletConnection | null>(null);
+  const paymentInFlightRef = useRef(false);
+  const pendingPaymentsRef = useRef(new Map<string, { quote: LivePaymentQuote; hash: string; operation: boolean }>());
   const liveQuoteRequestRef = useRef<AbortController | null>(null);
   const currentBalanceCheck = entryBalance?.paymentId === livePaymentQuote?.paymentId ? entryBalance?.check : null;
 
@@ -209,15 +213,17 @@ export default function MintFlyer() {
     walletContextRef.current = connection;
     liveQuoteRequestRef.current?.abort();
     liveQuoteRequestRef.current = null;
-    setPaymentBusy(false);
+    setPaymentBusy(paymentInFlightRef.current);
     setPaymentReadiness(null);
     setReadinessFailed(false);
     setWalletConnection(connection);
     setEntryQuote(null);
     setQuoteUnavailable(false);
-    setLivePaymentQuote(null);
-    setPaymentTxHash("");
-    setPaymentMessage("");
+    const pending = connection ? pendingPaymentsRef.current.get(`${connection.account.toLowerCase()}:${Number(connection.chainId)}`) : undefined;
+    setLivePaymentQuote(pending?.quote ?? null);
+    setPaymentTxHash(pending?.hash ?? "");
+    setPaymentIsOperation(pending?.operation ?? false);
+    setPaymentMessage(pending ? "Your submitted payment was retained. Recheck it without paying again." : pendingPaymentsRef.current.size ? "A payment is pending for another wallet or network. Reconnect that wallet on its payment network to recheck it." : "");
     setEntryBalance(null);
   }, []);
 
@@ -465,7 +471,7 @@ export default function MintFlyer() {
       method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({ action: "balance-check", paymentId: livePaymentQuote.paymentId, playerKey, walletAddress: walletConnection.account }),
     });
-    const data = await response.json() as { paymentId?: string; balanceCheck?: Mss2EntryBalance; error?: string };
+    const data = await response.json() as { paymentId?: string; balanceCheck?: Mss2EntryBalance; nativeGasBalanceRaw?: string; error?: string };
     if (!response.ok || !data.balanceCheck || data.paymentId !== livePaymentQuote.paymentId || data.balanceCheck.requiredRaw !== livePaymentQuote.amountRaw) {
       throw new Error(data.error || "Your MSS2 balance could not be checked. Please retry before paying.");
     }
@@ -474,6 +480,7 @@ export default function MintFlyer() {
       throw new Error("Your wallet or network changed. Request a new entry quote.");
     }
     setEntryBalance({ paymentId: livePaymentQuote.paymentId, check: data.balanceCheck });
+    setLivePaymentQuote((current) => current && current.paymentId === data.paymentId ? { ...current, nativeGasBalanceRaw: data.nativeGasBalanceRaw } : current);
     return data.balanceCheck;
   }, [livePaymentQuote, playerKey, walletConnection]);
 
@@ -491,26 +498,66 @@ export default function MintFlyer() {
   }, [paymentBusy, readLiveEntryBalance]);
 
   const confirmLivePayment = useCallback(async () => {
-    if (!liveEntryEnabled || !paymentReadiness || !walletConnection || !livePaymentQuote || paymentBusy) return;
+    if (!liveEntryEnabled || !paymentReadiness || !walletConnection || !livePaymentQuote || paymentBusy || paymentInFlightRef.current) return;
     if (!paymentTxHash && Date.now() >= Date.parse(livePaymentQuote.expiresAt)) {
       setPaymentMessage("This live quote expired. Refresh the entry quote to continue.");
       setQuoteClock(Date.now());
       return;
     }
+    paymentInFlightRef.current = true;
     setPaymentBusy(true);
     setPaymentMessage(paymentTxHash ? "Rechecking your submitted payment…" : "Checking your MSS2 balance before opening the wallet…");
     try {
-      if (walletConnection.chainId.toLowerCase() !== paymentReadiness.chainHex) await walletConnection.switchChain(paymentReadiness.chainHex);
-      if (!paymentTxHash) {
+      const assertContext = () => {
+        const current = walletContextRef.current;
+        if (current?.account.toLowerCase() !== livePaymentQuote.walletAddress.toLowerCase()
+          || current.chainId.toLowerCase() !== `0x${livePaymentQuote.chainId.toString(16)}`) {
+          throw new Error("Your wallet or network changed. Reconnect the paying wallet to verify its payment.");
+        }
+      };
+      assertContext();
+      const smartWallet = walletConnection.kind === "topaz-id";
+      const contextKey = `${livePaymentQuote.walletAddress.toLowerCase()}:${livePaymentQuote.chainId}`;
+      let txHash = paymentTxHash;
+      if (!txHash && smartWallet) {
+        // The quote already checked the token and native balance. Start consent
+        // from this click, not after another HTTP/RPC await that blocks popups.
+        if (!currentBalanceCheck?.sufficient) throw new Error("Refresh your MSS2 balance before paying.");
+        if (!livePaymentQuote.nativeGasBalanceRaw || BigInt(livePaymentQuote.nativeGasBalanceRaw) <= BigInt(0)) {
+          throw new Error(`Fund your Topaz ID smart wallet with ${isArcContext ? "USDC on Arc" : "ETH on Robinhood Chain"} for network gas, then refresh your balance.`);
+        }
+        if (!walletConnection.sendCalls) throw new Error("Topaz ID is not ready to submit this payment. Reconnect and retry.");
+        setPaymentMessage("Review Topaz ID: exact MSS2 approval and 20/80 entry in one atomic consent window.");
+        txHash = await walletConnection.sendCalls([livePaymentQuote.approval, livePaymentQuote.entry]);
+        pendingPaymentsRef.current.set(contextKey, { quote: livePaymentQuote, hash: txHash, operation: true });
+        assertContext();
+        setPaymentIsOperation(true);
+        setPaymentTxHash(txHash);
+      } else if (!txHash) {
         const balance = await readLiveEntryBalance();
+        assertContext();
         if (!balance.sufficient) { setPaymentMessage(""); return; }
         if (Date.now() >= Date.parse(livePaymentQuote.expiresAt)) throw new Error("This entry quote expired during the balance check. Refresh the entry quote to continue.");
         setPaymentMessage(`Check your wallet. First approve the exact MSS2 amount for the verified ${paymentReadiness.network} router.`);
         await walletConnection.sendTransaction(livePaymentQuote.approval);
+        assertContext();
         setPaymentMessage("Approval submitted. Now review the router entry that sends 20% to the dead address and 80% to the Community Airdrop Reserve.");
+        txHash = await walletConnection.sendTransaction(livePaymentQuote.entry);
+        pendingPaymentsRef.current.set(contextKey, { quote: livePaymentQuote, hash: txHash, operation: false });
+        assertContext();
+        setPaymentTxHash(txHash);
       }
-      const txHash = paymentTxHash || await walletConnection.sendTransaction(livePaymentQuote.entry);
-      if (!paymentTxHash) setPaymentTxHash(txHash);
+      if (smartWallet) {
+        if (!walletConnection.resolveTransaction) throw new Error("Topaz ID receipt resolution is unavailable. Your submitted payment has been retained.");
+        setPaymentMessage("Topaz ID payment submitted. Resolving the smart-wallet operation—do not pay again.");
+        const resolved = await walletConnection.resolveTransaction(txHash);
+        assertContext();
+        if (!resolved) throw new Error("Your Topaz ID operation is still pending. Keep this page open and recheck payment; do not pay again.");
+        txHash = resolved;
+        pendingPaymentsRef.current.set(contextKey, { quote: livePaymentQuote, hash: txHash, operation: false });
+        setPaymentIsOperation(false);
+        setPaymentTxHash(txHash);
+      }
       setPaymentMessage(`${paymentTxHash ? "Rechecking" : "Entry submitted. Checking"} the ${paymentReadiness.network} receipt and confirmations…`);
       let verified = false;
       for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -520,6 +567,7 @@ export default function MintFlyer() {
           body: JSON.stringify({ action: "verify", paymentId: livePaymentQuote.paymentId, playerKey, walletAddress: walletConnection.account, txHash }),
         });
         const data = await response.json() as { pending?: boolean; confirmations?: number; error?: string };
+        assertContext();
         if (response.ok && !data.pending) {
           verified = true;
           break;
@@ -529,6 +577,7 @@ export default function MintFlyer() {
         await new Promise((resolve) => window.setTimeout(resolve, 2_000));
       }
       if (!verified) throw new Error("The payment is still pending. Keep the transaction hash and try verification again shortly.");
+      pendingPaymentsRef.current.delete(contextKey);
       setActivePaymentId(livePaymentQuote.paymentId);
       setActiveRunNetwork(livePaymentQuote.network);
       setPaymentMessage("MSS2 payment verified. Starting the paid flight.");
@@ -537,9 +586,10 @@ export default function MintFlyer() {
     } catch (error) {
       setPaymentMessage(error instanceof Error ? error.message : "The MSS2 payment could not be completed.");
     } finally {
+      paymentInFlightRef.current = false;
       setPaymentBusy(false);
     }
-  }, [liveEntryEnabled, livePaymentQuote, paymentBusy, paymentReadiness, paymentTxHash, playerKey, primeAudio, readLiveEntryBalance, resetFlight, walletConnection]);
+  }, [currentBalanceCheck, isArcContext, liveEntryEnabled, livePaymentQuote, paymentBusy, paymentReadiness, paymentTxHash, playerKey, primeAudio, readLiveEntryBalance, resetFlight, walletConnection]);
 
   const entryAction = mintFlyerEntryAction({
     supportedNetwork: selectedMss2Network !== "unsupported",
@@ -568,6 +618,7 @@ export default function MintFlyer() {
     setLivePaymentQuote(null);
     setActivePaymentId("");
     setPaymentTxHash("");
+    setPaymentIsOperation(false);
     setPaymentMessage("");
     setEntryBalance(null);
     if (!liveEntryEnabled && (!entryQuote || Date.now() >= Date.parse(entryQuote.validUntil))) void loadEntryQuote();
@@ -871,7 +922,7 @@ export default function MintFlyer() {
         <aside>
           <small>$1 WORTH OF MSS2 PER FLIGHT</small>
           <b>{!walletConnection ? "CONNECT TO PLAY" : selectedMss2Network === "unsupported" ? "CHOOSE A NETWORK" : !paymentReadiness ? readinessFailed ? "ENTRY CHECK UNAVAILABLE" : "CHECKING ENTRY" : liveEntryEnabled ? canaryEntryEnabled ? "PAID TEST ENTRY" : "PAID ENTRY READY" : "PAID ENTRY UNAVAILABLE"}</b>
-          <span>{!walletConnection ? "Connect MetaMask or Rabby. Choose Robinhood Chain or Arc." : liveEntryEnabled ? "One entry payment. Three stages. Your next personal best." : paymentReadiness?.releaseMode === "canary" ? "Paid testing is open to the approved test wallet. Public entry is not open yet." : "Check the entry panel below for availability."}</span>
+          <span>{!walletConnection ? "Connect Topaz ID, MetaMask, or Rabby. Choose Robinhood Chain or Arc." : liveEntryEnabled ? "One entry payment. Three stages. Your next personal best." : paymentReadiness?.releaseMode === "canary" ? "Paid testing is open to the approved test wallet. Public entry is not open yet." : "Check the entry panel below for availability."}</span>
         </aside>
       </section>
 
@@ -1014,7 +1065,7 @@ export default function MintFlyer() {
                       <span><small>Your MSS2 balance</small><b>{currentBalanceCheck ? `${currentBalanceCheck.balanceDisplay} MSS2` : "Checking…"}</b></span>
                     </div>
                     <p className={styles.launchExpiry}>{livePaymentQuote ? paymentTxHash ? "Payment submitted. Recheck to start without paying again." : liveQuoteExpired ? "Quote expired. Refresh it below." : `Quote valid for ${liveQuoteSecondsRemaining}s.` : "Checking the entry cost and your balance. This does not open your wallet."}</p>
-                    {!paymentTxHash && <p className={styles.launchConsent}>Transfers are final. Pay & Fly opens your wallet to approve MSS2, then confirm payment.</p>}
+                    {!paymentTxHash && <p className={styles.launchConsent}>{walletConnection.kind === "topaz-id" ? `Transfers are final. One Topaz ID window approves MSS2 and pays entry together. Your smart wallet needs ${isArcContext ? "USDC" : "ETH"} for network gas.` : "Transfers are final. Pay & Fly opens your wallet to approve MSS2, then confirm payment."}</p>}
                     {currentBalanceCheck && !currentBalanceCheck.sufficient && !paymentTxHash && <div className={styles.insufficientMss2} role="alert">
                       <strong>NOT ENOUGH MSS2 TO PLAY</strong>
                       <p>Add at least <b>{currentBalanceCheck.shortfallDisplay} MSS2</b> to this wallet on <b>{currentBalanceCheck.network === "arc" ? "Arc" : "Robinhood Chain"}</b>, then refresh your balance below.</p>
@@ -1038,7 +1089,8 @@ export default function MintFlyer() {
                   </div>
                   {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                   {entryAction === "connect-wallet" ? <a className={styles.launchButton} href="#mss2-wallet">{launchLabel}</a> : <button type="button" className={styles.launchButton} onClick={launchFlight} disabled={paymentBusy || entryAction === "wait" || entryAction === "select-network" || entryAction === "unavailable"}>{launchLabel}</button>}
-                  {paymentTxHash && <a className={styles.paymentTxLink} href={`${livePaymentQuote?.explorerUrl}/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">View submitted transaction ↗</a>}
+                  {paymentTxHash && !paymentIsOperation && <a className={styles.paymentTxLink} href={`${livePaymentQuote?.explorerUrl}/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">View submitted transaction ↗</a>}
+                  {livePaymentQuote && !paymentTxHash && walletConnection?.kind === "topaz-id" && <button type="button" className={styles.paymentTxLink} onClick={() => void refreshLiveBalance()} disabled={paymentBusy}>Refresh MSS2 and gas balance</button>}
                   {selectedMss2Network !== "unsupported" && <div className={styles.buyMss2Prompt}><a className={styles.buyMss2Link} href={MSS2_BUY_URLS[isArcContext ? "arc" : "robinhood"]} target="_blank" rel="noopener noreferrer">BUY MSS2 ↗</a><small>Buy on {isArcContext ? "Arc" : "Robinhood Chain"} using the same wallet.</small></div>}
                   {livePaymentQuote && liveEntryEnabled && <details className={styles.launchDetails}>
                     <summary>Payment details</summary>

@@ -38,6 +38,12 @@ export type PaymentEvidenceReceipt = {
   logs?: Array<{ address?: string; topics?: string[]; data?: string }>;
 };
 
+export function paymentReceiptKey(network: Mss2PaymentNetwork, txHash: string, paymentId: string) {
+  // Several paid entries may share a bundler transaction. Each must bind its
+  // own server-issued payment ID and selected chain, not claim the whole bundle.
+  return `transactions/${network}/${txHash.toLowerCase()}/${paymentId}.json`;
+}
+
 function containsTransfer(
   receipt: PaymentEvidenceReceipt,
   from: string,
@@ -78,6 +84,7 @@ export function validatePaymentEvidence(
   transaction: PaymentEvidenceTransaction,
   receipt: PaymentEvidenceReceipt,
   latestBlockHex: string,
+  onChainEvidence?: { payerCode: string },
 ) {
   const config = paymentNetworkConfig(quote.network);
   if (quote.chainId !== config.chainId || quote.tokenAddress.toLowerCase() !== MSS2_TOKEN.toLowerCase()) {
@@ -95,13 +102,19 @@ export function validatePaymentEvidence(
     && transaction.hash.toLowerCase() !== receipt.transactionHash.toLowerCase()) {
     throw new Error("The transaction and receipt hashes did not match.");
   }
-  if (transaction.from?.toLowerCase() !== quote.walletAddress.toLowerCase()
-    || transaction.to?.toLowerCase() !== quote.routerAddress.toLowerCase()) {
-    throw new Error("The transaction sender or entry router did not match the payment quote.");
+  const direct = transaction.from?.toLowerCase() === quote.walletAddress.toLowerCase()
+    && transaction.to?.toLowerCase() === quote.routerAddress.toLowerCase();
+  if (direct) {
+    if (transaction.input?.toLowerCase() !== encodeRouterEntry(quote.paymentId, quote.amountRaw).toLowerCase()) {
+      throw new Error("The router payment ID or MSS2 amount did not match the payment quote.");
+    }
+  } else if (!/^0x(?:[0-9a-fA-F]{2})+$/.test(onChainEvidence?.payerCode ?? "")) {
+    throw new Error("The transaction sender or entry router did not match, and no on-chain smart-wallet code was verified.");
   }
-  if (transaction.input?.toLowerCase() !== encodeRouterEntry(quote.paymentId, quote.amountRaw).toLowerCase()) {
-    throw new Error("The router payment ID or MSS2 amount did not match the payment quote.");
-  }
+
+  // A bundler is not the payer. For contract wallets the immutable router's
+  // event binds msg.sender, payment ID, token and amount to this exact receipt.
+  // Contract code comes from the server RPC at the mined block, never the client.
 
   const split = splitEntryAmount(quote.amountRaw);
   if (!containsTransfer(receipt, quote.walletAddress, quote.deadAddress, split.deadAddressAmount)) {
