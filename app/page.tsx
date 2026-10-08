@@ -1961,7 +1961,7 @@ export default function YieldVacuumGame() {
                   <p><b>{gradeGoal.next ? `NEXT TARGET · GRADE ${gradeGoal.next}` : "TOP GRADE EARNED"}</b>{gradeGoal.message}</p>
                 </div>
               )}
-              <div className="campaignProgress" aria-label={`${missionIndex + 1} of ${MISSIONS.length} missions reached`}>
+              <div className="campaignProgress" aria-label={`${completedMissions} of ${MISSIONS.length} missions cleared this session`}>
                 <div className="campaignProgressLabel">
                   <b>CAMPAIGN PROGRESS</b>
                   <span>{completedMissions}/{MISSIONS.length} CLEARED THIS SESSION</span>
