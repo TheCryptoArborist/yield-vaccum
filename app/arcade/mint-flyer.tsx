@@ -145,6 +145,15 @@ function gradeForScore(score: number) {
 
 export default function MintFlyer() {
   const pageTopRef = useRef<HTMLElement>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const updateVisibility = () => setShowBackToTop(window.scrollY > 320);
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    return () => window.removeEventListener("scroll", updateVisibility);
+  }, []);
+
   const [finishPanel, setFinishPanel] = useState<HTMLDivElement | null>(null);
   const [phase, setPhase] = useState<FlightPhase>("ready");
   const [playerY, setPlayerY] = useState(0.5);
@@ -1168,21 +1177,23 @@ export default function MintFlyer() {
         <div>
           <Link href="/">Yield Vacuum</Link>
           <a href={MSS2_BUY_URLS[isArcContext ? "arc" : "robinhood"]} target="_blank" rel="noopener noreferrer">Buy MSS2 ↗</a>
-          <button
-            type="button"
-            className={styles.backToTop}
-            onClick={() => {
-              pageTopRef.current?.focus({ preventScroll: true });
-              window.scrollTo({
-                top: 0,
-                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
-              });
-            }}
-          >
-            <span aria-hidden="true">↑</span> Back to Top
-          </button>
         </div>
       </footer>
+      {showBackToTop && !["countdown", "playing", "paused"].includes(phase) && (
+        <button
+          type="button"
+          className={styles.backToTop}
+          onClick={() => {
+            pageTopRef.current?.focus({ preventScroll: true });
+            window.scrollTo({
+              top: 0,
+              behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+            });
+          }}
+        >
+          <span aria-hidden="true">↑</span> Back to Top
+        </button>
+      )}
     </main>
   );
 }

@@ -181,6 +181,6 @@
 .sceneCoinOne{left:36%;top:42%}.sceneCoinTwo{left:53%;top:34%}.sceneCoinThree{left:71%;top:43%}
 .sceneGlitch{position:absolute;width:44px;height:44px;transform:rotate(-12deg)}.sceneGlitchOne{left:37%;top:10%}.sceneGlitchTwo{left:64%;top:68%;width:38px;height:38px;transform:rotate(9deg)}
 @media(max-width:720px){.launchInstructions>.launchScene{height:190px}.launchScene>strong{font-size:18px}.launchInstructions>div:not(.launchScene){padding:9px 12px}.sceneMoon{width:95px;height:95px}}
-.arcadeFooter .backToTop{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border:1px solid #3b557b;border-radius:12px;background:#0b1930;color:#b5fff8;font:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
-.arcadeFooter .backToTop:hover{border-color:#00ebf2;background:#132a43}
+.backToTop{position:fixed;right:max(20px,env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));z-index:30;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border:1px solid #3b557b;border-radius:12px;background:#0b1930;color:#b5fff8;box-shadow:0 6px 24px #0008;font:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
+.backToTop:hover{border-color:#00ebf2;background:#132a43}
 @media(prefers-reduced-motion:reduce){.arcadeShell *,.arcadeShell *:before,.arcadeShell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
