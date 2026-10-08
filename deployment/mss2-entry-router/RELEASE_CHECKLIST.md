@@ -107,6 +107,8 @@ For each canary, retain:
 
 ## 6. Production activation is a separate approval
 
-Production remains disabled until the canaries, backend replay protection, user-facing irreversible-transfer review, recovery/error states, monitoring, and operational ownership have all been reviewed. Enabling production requires a separate pull request and explicit production approval.
+Production activation requires reviewed canaries, backend replay protection, irreversible-transfer review, recovery/error states, monitoring, and operational ownership, plus a separate pull request and explicit production approval.
 
-Never describe dead-address transfers as native staking or automatically as a reduction in total token supply. Arcade payments do not guarantee income, token-price appreciation, an airdrop, or continued service. Free Yield Vacuum gameplay and free Mint Flyer restarts remain available.
+Public activation was explicitly approved by the site owner on 2026-10-08 UTC. Both networks' deployed bytecode and destinations were reverified before this release. Production uses the recorded verified routers and persistent payment, score, and wallet-proof stores; deploy previews retain the restricted canary. Read-only payment diagnostics are available at `/api/arcade-payment?chain=robinhood&diagnostics=1` and the equivalent `chain=arc` endpoint. Rollback: set `LIVE_PAYMENT_RELEASED` to `false` and redeploy; existing verified receipts remain available for score submission and payment rechecks.
+
+Never describe dead-address transfers as native staking or automatically as a reduction in total token supply. Community reward eligibility, timing, and distribution details are announced separately. Yield Vacuum remains free; each new Mint Flyer flight requires its own verified MSS2 payment.

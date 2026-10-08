@@ -1,4 +1,5 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
+import { deploymentContext } from "../lib/deployment-context";
 import { getAddress } from "ethers";
 import {
   MSS2_TOKEN,
@@ -47,7 +48,7 @@ export type ArcadePaymentQuote = {
 };
 
 function store() {
-  return process.env.CONTEXT === "production"
+  return deploymentContext() === "production"
     ? getStore("mint-flyer-payments", { consistency: "strong" })
     : getDeployStore("mint-flyer-payments");
 }
