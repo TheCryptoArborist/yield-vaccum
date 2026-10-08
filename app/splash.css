@@ -256,6 +256,8 @@
 
 .splashChoiceDescription { color: #e4e4eb; font-size: 14px; line-height: 1.4; }
 .splashChoiceNetworks { color: #a6e9f2; font-size: 11px; line-height: 1.4; }
+.splashEntryPurpose { display: grid; gap: 3px; padding: 7px 0; border-block: 1px solid rgba(0, 235, 242, 0.2); color: #d7edf2; font-size: 12px; line-height: 1.4; }
+.splashEntryPurpose strong { color: #8fffff; font-weight: 1000; }
 
 .splashTopazChoice {
   border: 2px solid #ff7438;
