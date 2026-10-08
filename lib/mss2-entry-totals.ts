@@ -95,19 +95,28 @@ export async function scanEntryTotals(network: Mss2PaymentNetwork, rpc: TotalsRp
   let throughBlock = fromBlock - 1;
   const recent: BlockTotal[] = [];
   let pageSize = network === "robinhood" ? 1_000_000 : PAGE_BLOCKS;
-  for (let page = 0; page < MAX_PAGES && throughBlock < head; page += 1) {
+  const pageLimit = network === "arc" ? 4 : MAX_PAGES;
+  for (let page = 0; page < pageLimit && throughBlock < head; page += 1) {
     const next = throughBlock + 1;
     let end = Math.min(head, next + pageSize - 1);
     let logs: EntryLog[];
     try {
-      logs = await rpc<EntryLog[]>("eth_getLogs", [{ address: record.router, topics: [ENTRY_PAID_TOPIC], fromBlock: hex(next), toBlock: hex(end) }]);
+      logs = await rpc<EntryLog[]>("eth_getLogs", [{ address: record.router, fromBlock: hex(next), toBlock: hex(end), topics: [ENTRY_PAID_TOPIC] }]);
     } catch (error) {
       // Some RPCs impose a smaller block-range limit. Retry the same page;
       // never skip a failed range or publish it as a zero contribution.
-      if (pageSize <= 1_000) throw error;
+      if (pageSize <= 1_000) {
+        if (throughBlock >= fromBlock) break;
+        throw error;
+      }
       pageSize = 1_000;
       end = Math.min(head, next + pageSize - 1);
-      logs = await rpc<EntryLog[]>("eth_getLogs", [{ address: record.router, topics: [ENTRY_PAID_TOPIC], fromBlock: hex(next), toBlock: hex(end) }]);
+      try {
+        logs = await rpc<EntryLog[]>("eth_getLogs", [{ address: record.router, fromBlock: hex(next), toBlock: hex(end), topics: [ENTRY_PAID_TOPIC] }]);
+      } catch (smallerRangeError) {
+        if (throughBlock >= fromBlock) break;
+        throw smallerRangeError;
+      }
     }
     if (!Array.isArray(logs)) throw new Error("Entry log response was unavailable.");
     for (const row of sumEntryLogs(logs, record.router, next, end)) {

@@ -81,6 +81,19 @@ test("RPC block-range limits use smaller pages without skipping contributions", 
   assert.equal(result.complete, true); assert.equal(result.entries, 2);
 });
 
+test("a failed later RPC page preserves a resumable checkpoint without publishing partial totals", async () => {
+  const underlying = fixture(2000000, [entry(100), entry(1500000, "5", "cd")]);
+  const interrupted: TotalsRpc = (method, params) => {
+    if (method === "eth_getLogs" && Number(BigInt((params[0] as { fromBlock: string }).fromBlock)) > 1000000) throw new Error("RPC temporarily unavailable");
+    return underlying(method, params);
+  };
+  const first = await scanEntryTotals("robinhood", interrupted, null, 90);
+  assert.equal(first.complete, false); assert.equal(first.entries, 1);
+  assert.equal(publicEntryTotals("robinhood", first).deadAmountRaw, null);
+  const next = await scanEntryTotals("robinhood", underlying, first, 90);
+  assert.equal(next.complete, true); assert.equal(next.entries, 2);
+});
+
 test("unavailable history and wrong-chain evidence cannot be displayed as zero", async () => {
   assert.equal(publicEntryTotals("arc", null).deadAmountRaw, null);
   assert.equal(publicEntryTotals("arc", null).entries, null);

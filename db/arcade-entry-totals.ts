@@ -1,6 +1,6 @@
 import { getStore } from "@netlify/blobs";
 import deployments from "../deployment/mss2-entry-router/deployments.json";
-import { rpcCall, type Mss2PaymentNetwork } from "../lib/mss2-payment";
+import { paymentNetworkConfig, rpcCall, type Mss2PaymentNetwork } from "../lib/mss2-payment";
 import { readRouterStartBlock, publicEntryTotals, scanEntryTotals, type TotalsRpc, type TotalsSnapshot } from "../lib/mss2-entry-totals";
 
 const memory = new Map<string, TotalsSnapshot>();
@@ -22,7 +22,23 @@ export function readArcadeEntryTotals(network: Mss2PaymentNetwork) {
       try { snapshot = await cache.get(blobKey, { type: "json" }) as TotalsSnapshot | null; } catch { /* Chain reads can continue without a cache. */ }
     }
     if (snapshot && Date.now() - Date.parse(snapshot.checkedAt) < (snapshot.complete ? 30_000 : 3_000)) return publicEntryTotals(network, snapshot);
-    const rpc: TotalsRpc = (method, params) => rpcCall(network, method, params);
+    const rpc: TotalsRpc = async (method, params) => {
+      try { return await rpcCall(network, method, params); }
+      catch (primaryError) {
+        if (network !== "arc") return rpcCall(network, method, params);
+        // Public mainnet providers listed in Arc's Connect to Arc reference.
+        // Fallbacks are for read-only contribution history; payment checks keep
+        // their original endpoint. Verify each fallback's chain before use.
+        for (const url of ["https://rpc.drpc.mainnet.arc.io", "https://rpc.quicknode.mainnet.arc.io"]) {
+          try {
+            const chain = await rpcCall<string>(network, "eth_chainId", [], url);
+            if (Number(BigInt(chain)) !== paymentNetworkConfig(network).chainId) continue;
+            return await rpcCall(network, method, params, url);
+          } catch { /* Try the next documented read-only provider. */ }
+        }
+        throw primaryError;
+      }
+    };
     let startBlock = snapshot?.startBlock;
     if (startBlock === undefined && cache) {
       try { startBlock = (await cache.get(`${blobKey}.origin`, { type: "json" }) as { block?: number } | null)?.block; } catch { /* Discover from the RPC below. */ }

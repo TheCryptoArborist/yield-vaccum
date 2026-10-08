@@ -231,9 +231,9 @@ export function paymentReadiness(network: Mss2PaymentNetwork = "robinhood", wall
   };
 }
 
-export async function rpcCall<T>(network: Mss2PaymentNetwork, method: string, params: unknown[]) {
+export async function rpcCall<T>(network: Mss2PaymentNetwork, method: string, params: unknown[], rpcUrl?: string) {
   const config = paymentNetworkConfig(network);
-  const response = await fetch(config.rpcUrl, {
+  const response = await fetch(rpcUrl || config.rpcUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "Yield Vacuum/1.0" },
     body: JSON.stringify({ jsonrpc: "2.0", id: crypto.randomUUID(), method, params }),
