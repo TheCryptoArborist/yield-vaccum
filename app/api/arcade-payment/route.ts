@@ -1,4 +1,4 @@
-import { checkArcadePaymentBalance, createArcadePaymentQuote, createDemoRunAuthorization, verifyArcadePayment } from "../../../db/arcade-payments";
+import { checkArcadePaymentBalance, createArcadePaymentQuote, verifyArcadePayment } from "../../../db/arcade-payments";
 import { paymentReadiness, readVerifiedMarketQuote, type Mss2PaymentNetwork } from "../../../lib/mss2-payment";
 
 export const dynamic = "force-dynamic";
@@ -29,9 +29,7 @@ export async function POST(request: Request) {
     const playerKey = String(payload.playerKey ?? "").trim();
     const walletAddress = String(payload.walletAddress ?? "").trim();
     if (action === "demo-run") {
-      const network = String(payload.network ?? "").trim();
-      if (network !== "robinhood" && network !== "arc") return Response.json({ error: "Choose Robinhood Chain or Arc." }, { status: 400 });
-      return Response.json(await createDemoRunAuthorization({ playerKey, network, walletAddress: walletAddress || undefined }), { headers: { "Cache-Control": "no-store" } });
+      return Response.json({ error: "Free flights are disabled. Each flight requires a verified MSS2 entry payment." }, { status: 403, headers: { "Cache-Control": "no-store" } });
     }
     if (action === "quote") {
       const runId = String(payload.runId ?? "").trim();

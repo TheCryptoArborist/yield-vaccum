@@ -44,7 +44,6 @@ export async function POST(request: Request) {
     const reachedMoon = payload.reachedMoon === true;
     const continued = payload.continued === true;
     const paymentId = String(payload.paymentId ?? "").trim();
-    const runAuthorizationId = String(payload.runAuthorizationId ?? "").trim();
 
     if (!/^[a-zA-Z0-9-]{16,80}$/.test(playerKey) || !/^[a-zA-Z0-9-]{16,80}$/.test(runId) || nickname.length < 2) {
       return Response.json({ error: "Choose a nickname with at least two letters or numbers." }, { status: 400 });
@@ -57,13 +56,12 @@ export async function POST(request: Request) {
       return Response.json({ error: "That flight result is inconsistent." }, { status: 400 });
     }
 
-    const entry = await requirePaymentForScore({ paymentId, runAuthorizationId, playerKey, runId });
+    if (!/^[a-zA-Z0-9-]{16,80}$/.test(paymentId) || continued) {
+      return Response.json({ error: "Each flight requires a verified MSS2 entry payment. Free flights and continues are disabled." }, { status: 403 });
+    }
+    const entry = await requirePaymentForScore({ paymentId, playerKey, runId });
     const displayRewardWallet = payload.displayRewardWallet === true;
-    const rewardWallet = String(payload.rewardWallet ?? "").trim();
-    const rewardSignature = String(payload.rewardSignature ?? "").trim();
-    const signedAt = displayRewardWallet && entry.mode === "demo"
-      ? await verifyAndConsumeWalletChallenge(playerKey, rewardWallet, rewardSignature, "rewards") : "";
-    const rewards = resolveRewardWallet(entry, displayRewardWallet, rewardWallet, signedAt);
+    const rewards = resolveRewardWallet(entry, displayRewardWallet);
     const result = await saveMintFlyerRun({ playerKey, runId, nickname, score: score!, distance: distance!, mintsCollected: mintsCollected!, maxCombo: maxCombo!, hits: hits!, lives: lives!, reachedMoon, continued, entryMode: entry.mode, entryNetwork: entry.network, ...rewards });
     return Response.json({ saved: true, ...result, profile: publicProfile(result.profile) });
   } catch {

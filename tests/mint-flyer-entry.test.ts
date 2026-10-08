@@ -8,8 +8,9 @@ const paidEntry = {
   balanceSufficient: true, paymentSubmitted: false,
 };
 
-test("a free flight starts without a market quote or wallet", () => {
-  assert.equal(mintFlyerEntryAction({ ...paidEntry, live: false, walletConnected: false, hasQuote: false }), "start-free");
+test("wallet connection and paid availability are required; no free fallback exists", () => {
+  assert.equal(mintFlyerEntryAction({ ...paidEntry, live: false, walletConnected: false, hasQuote: false }), "connect-wallet");
+  assert.equal(mintFlyerEntryAction({ ...paidEntry, live: false, hasQuote: false }), "unavailable");
 });
 
 test("paid entry requires a valid quote and a sufficient verified balance", () => {
@@ -28,6 +29,6 @@ test("unknown readiness, missing profile, and unsupported networks cannot start 
   assert.equal(mintFlyerEntryAction({ ...paidEntry, readinessKnown: false }), "wait");
   assert.equal(mintFlyerEntryAction({ ...paidEntry, readinessKnown: false, readinessFailed: true }), "retry-readiness");
   assert.equal(mintFlyerEntryAction({ ...paidEntry, playerReady: false }), "wait");
-  assert.equal(mintFlyerEntryAction({ ...paidEntry, walletConnected: false }), "wait");
+  assert.equal(mintFlyerEntryAction({ ...paidEntry, walletConnected: false }), "connect-wallet");
   assert.equal(mintFlyerEntryAction({ ...paidEntry, supportedNetwork: false }), "select-network");
 });

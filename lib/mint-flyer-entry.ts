@@ -1,4 +1,4 @@
-export type MintFlyerEntryAction = "wait" | "select-network" | "retry-readiness" | "start-free" | "prepare-quote" | "refresh-balance" | "pay" | "verify-payment";
+export type MintFlyerEntryAction = "wait" | "select-network" | "retry-readiness" | "connect-wallet" | "unavailable" | "prepare-quote" | "refresh-balance" | "pay" | "verify-payment";
 
 export function mintFlyerEntryAction(input: {
   supportedNetwork: boolean;
@@ -13,10 +13,10 @@ export function mintFlyerEntryAction(input: {
   paymentSubmitted: boolean;
 }): MintFlyerEntryAction {
   if (!input.supportedNetwork) return "select-network";
+  if (!input.walletConnected) return "connect-wallet";
   if (!input.readinessKnown) return input.readinessFailed ? "retry-readiness" : "wait";
   if (!input.playerReady) return "wait";
-  if (!input.live) return "start-free";
-  if (!input.walletConnected) return "wait";
+  if (!input.live) return "unavailable";
   // A submitted payment is verified without paying again, even after quote expiry.
   if (input.paymentSubmitted && input.hasQuote) return "verify-payment";
   if (!input.hasQuote || input.quoteExpired) return "prepare-quote";
