@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import WalletConnect, { type WalletConnection } from "../wallet-connect";
 import Mss2Commitments from "./mss2-commitments";
 import MintFlyerLeaderboard, { type LeaderboardFlightResult } from "./mint-flyer-leaderboard";
+import Mss2EntryTotals from "./mss2-entry-totals";
 import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
 import { MSS2_COMMUNITY_AIRDROP_RESERVE, MSS2_DEAD_ADDRESS } from "../../lib/mss2-payment-shared";
 import type { Mss2EntryBalance } from "../../lib/mss2-entry-balance";
@@ -1123,6 +1124,8 @@ export default function MintFlyer() {
           <span><b>AVOID</b> GLITCH BLOCKS · -1 LIFE</span>
         </footer>
       </section>
+
+      <Mss2EntryTotals network={isArcContext ? "arc" : "robinhood"} paymentId={activePaymentId} />
 
       <MintFlyerLeaderboard result={leaderboardResult} finishPanel={finishPanel} />
 

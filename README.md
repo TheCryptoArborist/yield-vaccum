@@ -56,6 +56,16 @@ Arc now has an independently validated indicative price source, but Arc payments
 
 ## Payment tests
 
+The arcade's community-impact panel shows lifetime MSS2 contributions through
+the verified entry router on Robinhood Chain or Arc. It sums confirmed
+`EntryPaid` events from the router's creation block, including paid canary
+entries, and keeps the networks separate. The reserve figure measures funding,
+not rewards distributed or its current wallet balance. The read-only
+`/api/arcade-entry-totals?chain=robinhood` endpoint also accepts `chain=arc`.
+Context-isolated aggregate caches survive redeployments; recent blocks are
+rescanned for chain reorganizations. Incomplete or unavailable history is
+clearly labeled and never displayed as a zero total.
+
 ```bash
 npm test
 ```
