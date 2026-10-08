@@ -94,7 +94,7 @@
   box-shadow: 0 0 45px rgba(0, 235, 242, 0.3), inset 0 0 35px rgba(129, 64, 229, 0.25);
 }
 
-.splashMintStage img {
+.splashLogoStage.splashMintStage img {
   animation-name: mintReveal;
 }
 
