@@ -837,9 +837,9 @@ export default function MintFlyer() {
   return (
     <main className={styles.arcadeShell}>
       <header ref={pageTopRef} tabIndex={-1} className={styles.siteHeader}>
-        <Link href="/" className={styles.homeLink} aria-label="Choose another game at Yield Vacuum">
+        <Link href="/" className={styles.homeLink} aria-label="Choose another game at Yield Vaccum">
           <Image src="/topaz-mark.png" alt="" width={40} height={40} />
-          <span><small>YIELD VACUUM</small><strong>CHOOSE A GAME</strong></span>
+          <span><small>YIELD VACCUM</small><strong>CHOOSE A GAME</strong></span>
         </Link>
         <div className={styles.arcadeIdentity}>
           <small>MSS2 COMMUNITY ARCADE</small>
@@ -1034,7 +1034,7 @@ export default function MintFlyer() {
                         <p>MSS2 sent to the Community Airdrop Reserve.</p>
                       </div>
                     </div>
-                    <p className={styles.entryBreakdownNote}><b>0% kept by Yield Vacuum.</b> Network fees are extra. Community reward distribution details will be announced.</p>
+                    <p className={styles.entryBreakdownNote}><b>0% kept by Yield Vaccum.</b> Network fees are extra. Community reward distribution details will be announced.</p>
                   </div>
                   {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                   {entryAction === "connect-wallet" ? <a className={styles.launchButton} href="#mss2-wallet">{launchLabel}</a> : <button type="button" className={styles.launchButton} onClick={launchFlight} disabled={paymentBusy || entryAction === "wait" || entryAction === "select-network" || entryAction === "unavailable"}>{launchLabel}</button>}
@@ -1096,7 +1096,7 @@ export default function MintFlyer() {
                   <span className={styles.deadAllocation}><b>20%</b><small>DEAD ADDRESS</small></span>
                   <span className={styles.communityAllocation}><b>80%</b><small>COMMUNITY AIRDROP RESERVE</small></span>
                 </div>
-                <p><b>0% RETAINED BY YIELD VACUUM</b><span>{liveEntryEnabled ? "The verified router performs both transfers in one wallet-approved transaction." : "Every new flight requires a verified payment using this 20/80 allocation."}</span></p>
+                <p><b>0% RETAINED BY YIELD VACCUM</b><span>{liveEntryEnabled ? "The verified router performs both transfers in one wallet-approved transaction." : "Every new flight requires a verified payment using this 20/80 allocation."}</span></p>
               </details>
             </div>
           )}
@@ -1189,7 +1189,7 @@ export default function MintFlyer() {
           <b>ABOUT +</b>
         </summary>
         <div className={styles.creatorCopy}>
-          <p>Yield Vacuum and Mint Flyer were independently created by The Crypto Arborist as educational and arcade experiences for the broader crypto community.</p>
+          <p>Yield Vaccum and Mint Flyer were independently created by The Crypto Arborist as educational and arcade experiences for the broader crypto community.</p>
           <p className={styles.creatorDisclosure}>This is not an official product of Topaz DEX, MintStakeShare, Robinhood Chain, Arc, or their affiliates. No endorsement, partnership, or sponsorship is implied.</p>
           <a href="https://x.com/thickquidity" target="_blank" rel="noreferrer">FOLLOW THE CRYPTO ARBORIST ON X ↗</a>
         </div>
@@ -1197,7 +1197,7 @@ export default function MintFlyer() {
       <footer className={styles.arcadeFooter}>
         <span><strong>Mint Flyer</strong><small>An independent community arcade by The Crypto Arborist.</small></span>
         <div>
-          <Link href="/">Yield Vacuum</Link>
+          <Link href="/">Yield Vaccum</Link>
           <a href={MSS2_BUY_URLS[isArcContext ? "arc" : "robinhood"]} target="_blank" rel="noopener noreferrer">Buy MSS2 ↗</a>
         </div>
       </footer>

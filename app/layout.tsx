@@ -8,12 +8,12 @@ import "./leaderboard.css";
 import "./polish.css";
 
 export const metadata: Metadata = {
-  title: "Yield Vacuum | Topaz & MSS2 Arcade",
+  title: "Yield Vaccum | Topaz & MSS2 Arcade",
   description: "Choose your game: learn Topaz DeFi, xTOPAZ and managed liquidity through sixteen free educational missions, or play MSS2 Mint Flyer with a $1 MSS2 entry on Robinhood Chain or Arc. An independent community arcade by The Crypto Arborist.",
-  applicationName: "Yield Vacuum",
+  applicationName: "Yield Vaccum",
   manifest: "/manifest.webmanifest",
   openGraph: {
-    title: "Yield Vacuum | Topaz & MSS2 Arcade",
+    title: "Yield Vaccum | Topaz & MSS2 Arcade",
     description: "Two worlds. Choose your game. Free Topaz educational missions or $1 MSS2 Mint Flyer flights on Robinhood Chain and Arc.",
     type: "website",
   },
