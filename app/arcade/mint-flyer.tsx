@@ -882,7 +882,7 @@ export default function MintFlyer() {
         <a href="#about-creator"><small>COMMUNITY PROJECT</small><strong>About the creator</strong></a>
       </nav>
 
-      <section id="mint-flyer" className={styles.gameCard} aria-label="Mint Flyer game">
+      <section id="mint-flyer" className={`${styles.gameCard} ${phase === "ready" ? styles.readyGame : ""}`} aria-label="Mint Flyer game">
         <div className={styles.hud}>
           <span className={hasCollectEffect ? styles.hudPulse : ""}><small>SCORE</small><strong>{score.toLocaleString()}</strong></span>
           <span><small>DISTANCE</small><strong>{distance}m</strong></span>
@@ -1008,7 +1008,7 @@ export default function MintFlyer() {
                 </div>
                 <section className={styles.launchEntry} aria-label="Flight entry">
                   <small className={styles.launchMode}>{!paymentReadiness ? "ENTRY STATUS" : liveEntryEnabled ? canaryEntryEnabled ? "PAID TEST FLIGHT" : "PAID FLIGHT" : "MSS2 PAYMENT REQUIRED"}</small>
-                  {liveEntryEnabled ? <>
+                  {liveEntryEnabled && walletConnection ? <>
                     <div className={styles.launchAmounts}>
                       <span><small>Entry cost · $1 USD</small><strong>{livePaymentQuote ? `${livePaymentQuote.displayAmount} MSS2` : "Getting quote…"}</strong></span>
                       <span><small>Your MSS2 balance</small><b>{currentBalanceCheck ? `${currentBalanceCheck.balanceDisplay} MSS2` : "Checking…"}</b></span>
@@ -1052,6 +1052,12 @@ export default function MintFlyer() {
                     </dl>
                   </details>}
                 </section>
+                <details className={styles.mobileInstructions}>
+                  <summary>How to play · 3 lives · 3,000m</summary>
+                  <p><b>Steer:</b> press and slide your finger.</p>
+                  <p><b>Collect MSS2 coins:</b> +250 points, with combos up to 5×.</p>
+                  <p><b>Dodge Glitch Blocks:</b> each hit costs one life.</p>
+                </details>
               </div>
             </div>
           )}
