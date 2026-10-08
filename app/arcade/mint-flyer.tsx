@@ -1013,13 +1013,29 @@ export default function MintFlyer() {
                       <span><small>Entry cost · $1 USD</small><strong>{livePaymentQuote ? `${livePaymentQuote.displayAmount} MSS2` : "Getting quote…"}</strong></span>
                       <span><small>Your MSS2 balance</small><b>{currentBalanceCheck ? `${currentBalanceCheck.balanceDisplay} MSS2` : "Checking…"}</b></span>
                     </div>
-                    <p className={styles.launchExpiry}>{livePaymentQuote ? paymentTxHash ? "Payment submitted. Recheck to start without paying again." : liveQuoteExpired ? "Quote expired. Refresh it below." : `Quote valid for ${liveQuoteSecondsRemaining}s. Network fees are extra.` : "Checking the entry cost and your balance. This does not open your wallet."}</p>
-                    {!paymentTxHash && <p className={styles.launchConsent}>Payment sends 20% to the dead address and 80% to the Community Airdrop Reserve. Transfers are final. Rewards are not guaranteed. Pay & Fly opens your wallet to approve MSS2, then confirm payment.</p>}
+                    <p className={styles.launchExpiry}>{livePaymentQuote ? paymentTxHash ? "Payment submitted. Recheck to start without paying again." : liveQuoteExpired ? "Quote expired. Refresh it below." : `Quote valid for ${liveQuoteSecondsRemaining}s.` : "Checking the entry cost and your balance. This does not open your wallet."}</p>
+                    {!paymentTxHash && <p className={styles.launchConsent}>Transfers are final. Pay & Fly opens your wallet to approve MSS2, then confirm payment.</p>}
                     {currentBalanceCheck && !currentBalanceCheck.sufficient && !paymentTxHash && <div className={styles.insufficientMss2} role="alert">
                       <strong>NOT ENOUGH MSS2 TO PLAY</strong>
                       <p>Add at least <b>{currentBalanceCheck.shortfallDisplay} MSS2</b> to this wallet on <b>{currentBalanceCheck.network === "arc" ? "Arc" : "Robinhood Chain"}</b>, then refresh your balance below.</p>
                     </div>}
                   </> : <p className={styles.launchStatus}><b>Every flight requires $1 worth of MSS2.</b><br />{selectedMss2Network === "unsupported" ? "Choose Robinhood Chain or Arc in the wallet bar above." : !walletConnection ? "Connect your wallet above to check entry availability." : readinessFailed ? "Entry availability could not be checked. Please retry." : !paymentReadiness ? "Checking flight availability…" : paymentReadiness.releaseMode === "canary" ? "Paid testing is limited to the approved test wallet. Public entry is not open yet." : "Paid entry is not available yet. Please check back later."}</p>}
+                  <div className={styles.entryBreakdown} aria-label="One dollar MSS2 entry breakdown">
+                    <h3>Where your $1 in MSS2 goes</h3>
+                    <div className={styles.entryBreakdownCards}>
+                      <div className={styles.entryDeadShare}>
+                        <strong>20% <span>· $0.20 worth</span></strong>
+                        <b>Dead address</b>
+                        <p>MSS2 permanently removed from circulation.</p>
+                      </div>
+                      <div className={styles.entryRewardsShare}>
+                        <strong>80% <span>· $0.80 worth</span></strong>
+                        <b>Community rewards</b>
+                        <p>MSS2 sent to the Community Airdrop Reserve.</p>
+                      </div>
+                    </div>
+                    <p className={styles.entryBreakdownNote}><b>0% kept by Yield Vacuum.</b> Network fees are extra. Future community rewards are not guaranteed.</p>
+                  </div>
                   {paymentMessage && <p className={styles.paymentMessage} role="status">{paymentMessage}</p>}
                   {entryAction === "connect-wallet" ? <a className={styles.launchButton} href="#mss2-wallet">{launchLabel}</a> : <button type="button" className={styles.launchButton} onClick={launchFlight} disabled={paymentBusy || entryAction === "wait" || entryAction === "select-network" || entryAction === "unavailable"}>{launchLabel}</button>}
                   {paymentTxHash && <a className={styles.paymentTxLink} href={`${livePaymentQuote?.explorerUrl}/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">View submitted transaction ↗</a>}
