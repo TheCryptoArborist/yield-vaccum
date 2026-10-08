@@ -90,6 +90,15 @@ type FlightEffect = {
   label?: string;
 };
 
+function isTextEntryTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement && (
+    target.isContentEditable ||
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  );
+}
+
 const MAX_LIVES = 3;
 const DEMO_CONTINUE_COST = 100;
 const STARTING_DEMO_CREDITS = 100;
@@ -588,6 +597,7 @@ export default function MintFlyer() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isTextEntryTarget(event.target)) return;
       if (["ArrowUp", "ArrowDown", "KeyW", "KeyS", "Space", "KeyP", "Escape"].includes(event.code)) event.preventDefault();
       heldKeysRef.current.add(event.code);
       if (event.code === "Space" && phase === "ready" && !reviewingEntry) reviewEntry();
