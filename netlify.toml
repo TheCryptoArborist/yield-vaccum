@@ -5,6 +5,13 @@ publish = ".next"
 [build.environment]
 NODE_VERSION = "22"
 
+# Public, deploy-preview-only payment canary configuration. The application
+# source gate keeps production payments disabled until a separate release.
+[context.deploy-preview.environment]
+MSS2_CANARY_WALLET = "0x90f9c1c0c675A0ce9D539c540DB7F4A1f7e583AE"
+MSS2_ENTRY_ROUTER_ROBINHOOD = "0x3eF32427eB1eA6cE7572358e22C800CeC740292A"
+MSS2_ENTRY_ROUTER_ARC = "0x3eF32427eB1eA6cE7572358e22C800CeC740292A"
+
 [[plugins]]
 package = "@netlify/plugin-nextjs"
 

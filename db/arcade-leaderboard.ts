@@ -1,8 +1,9 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
 import { MINT_FLYER_ACHIEVEMENTS, mintFlyerGrade, type MintFlyerAchievementId } from "../lib/mint-flyer-achievements";
 import { readRoundedRobinhoodMss2Balance } from "../lib/mss2-balance";
+import { publicRewardWallet, type RewardWalletFields } from "../lib/mint-flyer-rewards";
 
-export type MintFlyerRun = {
+export type MintFlyerRun = Partial<RewardWalletFields> & {
   runId: string;
   playerKey: string;
   nickname: string;
@@ -20,10 +21,11 @@ export type MintFlyerRun = {
   createdAt: string;
 };
 
-export type MintFlyerProfile = {
+export type MintFlyerProfile = Partial<RewardWalletFields> & {
   playerKey: string;
   nickname: string;
   bestScore: number;
+  bestDistance: number;
   bestGrade: "S" | "A" | "B" | "C";
   bestCombo: number;
   totalMints: number;
@@ -49,11 +51,12 @@ function arcadeStore() {
 }
 
 function emptyProfile(playerKey: string, nickname = ""): MintFlyerProfile {
-  return { playerKey, nickname, bestScore: 0, bestGrade: "C", bestCombo: 0, totalMints: 0, runs: 0, moonClears: 0, unlocked: [], updatedAt: new Date(0).toISOString() };
+  return { playerKey, nickname, bestScore: 0, bestDistance: 0, bestGrade: "C", bestCombo: 0, totalMints: 0, runs: 0, moonClears: 0, unlocked: [], updatedAt: new Date(0).toISOString() };
 }
 
 export async function readMintFlyerProfile(playerKey: string) {
-  return await arcadeStore().get(`profiles/${playerKey}.json`, { type: "json" }) as MintFlyerProfile | null ?? emptyProfile(playerKey);
+  const profile = await arcadeStore().get(`profiles/${playerKey}.json`, { type: "json" }) as MintFlyerProfile | null;
+  return profile ? { ...profile, bestDistance: profile.bestDistance ?? 0 } : emptyProfile(playerKey);
 }
 
 function achievementOrder(ids: MintFlyerAchievementId[]) {
@@ -74,10 +77,12 @@ export async function saveMintFlyerRun(input: Omit<MintFlyerRun, "grade" | "crea
   const previous = new Set(profile.unlocked);
   profile.nickname = input.nickname;
   profile.bestScore = Math.max(profile.bestScore, input.score);
+  profile.bestDistance = Math.max(profile.bestDistance ?? 0, input.distance);
   profile.bestGrade = mintFlyerGrade(profile.bestScore);
   profile.bestCombo = Math.max(profile.bestCombo, input.maxCombo);
   profile.totalMints += input.mintsCollected;
   profile.runs += 1;
+  Object.assign(profile, publicRewardWallet(input));
   if (input.reachedMoon) profile.moonClears += 1;
 
   const earned = new Set(profile.unlocked);
@@ -127,8 +132,8 @@ export async function readMintFlyerLeaderboard() {
   const profiles = (await Promise.all(blobs.map((blob) => store.get(blob.key, { type: "json" }) as Promise<MintFlyerProfile | null>)))
     .filter((profile): profile is MintFlyerProfile => Boolean(profile));
   return profiles
-    .filter((profile) => profile.moonClears > 0)
-    .sort((a, b) => b.bestScore - a.bestScore || b.moonClears - a.moonClears || a.updatedAt.localeCompare(b.updatedAt))
+    .filter((profile) => profile.runs > 0)
+    .sort((a, b) => b.bestScore - a.bestScore || (b.bestDistance ?? 0) - (a.bestDistance ?? 0) || b.moonClears - a.moonClears || a.updatedAt.localeCompare(b.updatedAt))
     .slice(0, 25)
     .map((profile): MintFlyerLeaderboardEntry => {
       const { playerKey: _playerKey, mss2Wallet: _wallet, ...publicProfile } = profile;
@@ -136,6 +141,8 @@ export async function readMintFlyerLeaderboard() {
       void _wallet;
       return {
         ...publicProfile,
+        ...publicRewardWallet(profile),
+        bestDistance: profile.bestDistance ?? 0,
         mss2HeldRounded: profile.displayMss2Balance && profile.mss2WalletVerifiedAt ? profile.mss2HeldRounded ?? null : null,
         displayedAchievements: profile.unlocked.slice(-3).reverse(),
       };

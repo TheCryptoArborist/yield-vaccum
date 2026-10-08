@@ -1,4 +1,4 @@
-import { createArcadePaymentQuote, createDemoRunAuthorization, verifyArcadePayment } from "../../../db/arcade-payments";
+import { checkArcadePaymentBalance, createArcadePaymentQuote, verifyArcadePayment } from "../../../db/arcade-payments";
 import { paymentReadiness, readVerifiedMarketQuote, type Mss2PaymentNetwork } from "../../../lib/mss2-payment";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ function requestedNetwork(value: string | null): Mss2PaymentNetwork {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const network = requestedNetwork(url.searchParams.get("chain"));
-  const readiness = paymentReadiness(network);
+  const readiness = paymentReadiness(network, url.searchParams.get("wallet") ?? "");
   if (url.searchParams.get("diagnostics") !== "1") {
     return Response.json(readiness, { headers: { "Cache-Control": "no-store" } });
   }
@@ -29,9 +29,7 @@ export async function POST(request: Request) {
     const playerKey = String(payload.playerKey ?? "").trim();
     const walletAddress = String(payload.walletAddress ?? "").trim();
     if (action === "demo-run") {
-      const network = String(payload.network ?? "").trim();
-      if (network !== "robinhood" && network !== "arc") return Response.json({ error: "Choose Robinhood Chain or Arc." }, { status: 400 });
-      return Response.json(await createDemoRunAuthorization({ playerKey, network }), { headers: { "Cache-Control": "no-store" } });
+      return Response.json({ error: "Free flights are disabled. Each flight requires a verified MSS2 entry payment." }, { status: 403, headers: { "Cache-Control": "no-store" } });
     }
     if (action === "quote") {
       const runId = String(payload.runId ?? "").trim();
@@ -47,6 +45,11 @@ export async function POST(request: Request) {
       const txHash = String(payload.txHash ?? "").trim();
       const result = await verifyArcadePayment({ paymentId, playerKey, walletAddress, txHash });
       return Response.json(result, { status: "pending" in result && result.pending ? 202 : 200, headers: { "Cache-Control": "no-store" } });
+    }
+    if (action === "balance-check") {
+      const paymentId = String(payload.paymentId ?? "").trim();
+      if (!/^[a-zA-Z0-9-]{16,80}$/.test(paymentId)) return Response.json({ error: "Request a valid entry quote first." }, { status: 400 });
+      return Response.json(await checkArcadePaymentBalance({ paymentId, playerKey, walletAddress }), { headers: { "Cache-Control": "no-store" } });
     }
     return Response.json({ error: "Choose a supported payment action." }, { status: 400 });
   } catch (error) {

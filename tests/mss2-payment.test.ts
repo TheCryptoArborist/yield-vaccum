@@ -1,9 +1,19 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { AbiCoder } from "ethers";
 import {
   ENTRY_PAID_TOPIC,
+  ARC_CHAIN_HEX,
+  ARC_CHAIN_ID,
+  ARC_EXPLORER_URL,
+  ARC_RPC_URL,
   MSS2_TOKEN,
+  MSS2_DECIMALS,
+  ROBINHOOD_CHAIN_HEX,
+  ROBINHOOD_CHAIN_ID,
+  ROBINHOOD_EXPLORER_URL,
+  ROBINHOOD_RPC_URL,
   TRANSFER_TOPIC,
   addressTopic,
   encodeRouterEntry,
@@ -13,7 +23,19 @@ import {
   splitEntryAmount,
 } from "../lib/mss2-payment";
 import { validatePaymentEvidence, type PaymentEvidenceReceipt } from "../lib/mss2-payment-verifier";
-import { MSS2_COMMUNITY_AIRDROP_RESERVE, MSS2_DEAD_ADDRESS } from "../lib/mss2-payment-shared";
+import {
+  MSS2_COMMUNITY_AIRDROP_RESERVE,
+  MSS2_DEAD_ADDRESS,
+  MSS2_ENTRY_AIRDROP_RESERVE_BPS,
+  MSS2_ENTRY_DEAD_ADDRESS_BPS,
+} from "../lib/mss2-payment-shared";
+
+const deploymentConfiguration = JSON.parse(
+  readFileSync(new URL("../deployment/mss2-entry-router/networks.json", import.meta.url), "utf8"),
+);
+const deploymentRecords = JSON.parse(
+  readFileSync(new URL("../deployment/mss2-entry-router/deployments.json", import.meta.url), "utf8"),
+);
 
 const paymentId = "12345678-1234-4abc-8def-1234567890ab";
 const wallet = "0x1111111111111111111111111111111111111111";
@@ -65,8 +87,25 @@ function validReceipt(): PaymentEvidenceReceipt {
 }
 
 test("live payments remain source-code locked on both networks", () => {
+  process.env.CONTEXT = "production";
+  process.env.MSS2_CANARY_WALLET = wallet;
   assert.equal(paymentReadiness("robinhood").enabled, false);
   assert.equal(paymentReadiness("arc").enabled, false);
+  delete process.env.CONTEXT;
+  delete process.env.MSS2_CANARY_WALLET;
+});
+
+test("deploy-preview canary requires the explicitly allowlisted non-reserve wallet", () => {
+  process.env.CONTEXT = "deploy-preview";
+  delete process.env.MSS2_CANARY_WALLET;
+  const canaryWallet = "0x90f9c1c0c675A0ce9D539c540DB7F4A1f7e583AE";
+  assert.equal(paymentReadiness("robinhood", canaryWallet).enabled, true);
+  assert.equal(paymentReadiness("arc", canaryWallet).enabled, true);
+  assert.equal(paymentReadiness("arc", "0x3333333333333333333333333333333333333333").enabled, false);
+  assert.equal(paymentReadiness("arc", MSS2_COMMUNITY_AIRDROP_RESERVE).enabled, false);
+  assert.equal(paymentReadiness("arc").releaseMode, "canary");
+  delete process.env.CONTEXT;
+  delete process.env.MSS2_CANARY_WALLET;
 });
 
 test("network configuration keeps Robinhood and Arc independent", () => {
@@ -74,6 +113,48 @@ test("network configuration keeps Robinhood and Arc independent", () => {
   assert.equal(paymentNetworkConfig("robinhood").confirmations, 2);
   assert.equal(paymentNetworkConfig("arc").chainId, 5042);
   assert.equal(paymentNetworkConfig("arc").confirmations, 1);
+});
+
+test("deployment configuration cannot drift from application constants", () => {
+  assert.equal(deploymentConfiguration.token, MSS2_TOKEN);
+  assert.equal(deploymentConfiguration.tokenDecimals, MSS2_DECIMALS);
+  assert.equal(deploymentConfiguration.deadAddress, MSS2_DEAD_ADDRESS);
+  assert.equal(deploymentConfiguration.communityAirdropReserve, MSS2_COMMUNITY_AIRDROP_RESERVE);
+  assert.equal(deploymentConfiguration.deadAddressBps, MSS2_ENTRY_DEAD_ADDRESS_BPS);
+  assert.equal(deploymentConfiguration.communityAirdropReserveBps, MSS2_ENTRY_AIRDROP_RESERVE_BPS);
+  assert.deepEqual(deploymentConfiguration.networks.robinhood, {
+    name: "Robinhood Chain",
+    chainId: ROBINHOOD_CHAIN_ID,
+    chainHex: ROBINHOOD_CHAIN_HEX,
+    rpcUrl: ROBINHOOD_RPC_URL,
+    explorerUrl: ROBINHOOD_EXPLORER_URL,
+    confirmations: 2,
+  });
+  assert.deepEqual(deploymentConfiguration.networks.arc, {
+    name: "Arc",
+    chainId: ARC_CHAIN_ID,
+    chainHex: ARC_CHAIN_HEX,
+    rpcUrl: ARC_RPC_URL,
+    explorerUrl: ARC_EXPLORER_URL,
+    confirmations: 1,
+  });
+});
+
+test("Robinhood deployment evidence is recorded before Arc release", () => {
+  assert.deepEqual(deploymentRecords.robinhood, {
+    status: "verified",
+    chainId: ROBINHOOD_CHAIN_ID,
+    router: "0x3eF32427eB1eA6cE7572358e22C800CeC740292A",
+    deploymentTransactionHash: "0x7c314bb85387590ebb68749c22d95ee8b8548b8cc6c5dcff1a74a324cd6cd78e",
+    runtimeCodeHash: "0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a",
+  });
+  assert.deepEqual(deploymentRecords.arc, {
+    status: "verified",
+    chainId: ARC_CHAIN_ID,
+    router: "0x3eF32427eB1eA6cE7572358e22C800CeC740292A",
+    deploymentTransactionHash: "0x7129b63c697f27e4998b39266a99f0feedb08425aec39220082c74bb7d4613c3",
+    runtimeCodeHash: "0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a",
+  });
 });
 
 test("20/80 split preserves every raw token unit", () => {

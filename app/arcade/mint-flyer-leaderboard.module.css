@@ -23,3 +23,77 @@
 
 @media(max-width:820px){.podiumGrid{grid-template-columns:1fr 1.08fr 1fr;gap:7px}.podiumCard{min-height:205px;padding-inline:8px}.podiumCard.place1{min-height:235px}.balancePanel{grid-template-columns:42px 1fr}.balancePanel>div{grid-column:1/-1;justify-content:flex-start;padding-left:50px}.achievementGrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.board>header{min-height:0;align-items:flex-start;padding:16px}.board>header strong{font-size:22px}.board>header strong>i{font-size:22px}.board>header span>em{font-size:10px}.boardStats>span{min-height:58px}.boardStats strong{font-size:18px}.balancePanel{margin:12px;grid-template-columns:38px 1fr;padding:12px}.balanceIcon{width:36px;height:36px}.balancePanel>span strong{font-size:13px}.balancePanel>span em{font-size:10px}.balancePanel>div{padding-left:0}.rankingArena{margin:0 12px 12px;padding:12px}.arenaHeading{align-items:flex-start;flex-direction:column;gap:5px}.podiumGrid{grid-template-columns:1fr}.podiumCard,.podiumCard.place1{min-height:180px}.podiumCard.place1{order:-1}.firstRunChallenge{grid-template-columns:45px 1fr}.firstRunChallenge>i{font-size:30px}.firstRunChallenge>b{grid-column:1/-1;text-align:center}.achievementSection{padding:16px 12px}.achievementHeading{align-items:flex-start;flex-direction:column}.achievementGrid{grid-template-columns:1fr}.achievementGrid article{min-height:92px}.tableHead{grid-template-columns:40px 1fr 100px}.row{grid-template-columns:40px 1fr 100px}.clears{display:none}}
+/* Named achievement ribbons remain readable without hover, including on mobile. */
+.badgeList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.achievementBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid rgba(157, 121, 255, .55);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(117, 77, 255, .18), rgba(17, 28, 54, .9));
+  color: #e8deff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.achievementBadge > span:first-child {
+  flex-shrink: 0;
+  font-size: 15px;
+  line-height: 1;
+}
+.achievementBadge.rarityLEGENDARY {
+  border-color: rgba(255, 211, 74, .65);
+  background: linear-gradient(135deg, rgba(255, 211, 74, .16), rgba(36, 28, 44, .9));
+  color: #ffe68d;
+}
+.achievementBadge.rarityRARE {
+  border-color: rgba(0, 235, 242, .45);
+  background: linear-gradient(135deg, rgba(0, 235, 242, .12), rgba(11, 29, 49, .9));
+  color: #b5fff8;
+}
+.identity {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding-right: 10px;
+}
+.identity > strong {
+  overflow-wrap: anywhere;
+}
+.podiumBadges {
+  width: 100%;
+  margin-top: 5px;
+}
+.podiumBadges .badgeList {
+  justify-content: center;
+}
+.podiumBadges .achievementBadge {
+  position: relative;
+  z-index: 1;
+}
+.finishCard{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px;border:1px solid rgba(0,235,242,.45);border-radius:12px;background:#0b1c36;text-align:left}
+.nameField{display:flex;flex-direction:column;gap:5px;min-width:0}.nameField>span,.savedName small{color:#00ebf2;font-size:9px;font-weight:900;letter-spacing:.1em}.nameField input{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #7088aa;border-radius:8px;background:#061226;color:#fff;font:inherit;font-size:14px}.nameField input:focus{outline:2px solid #00ebf2;outline-offset:2px}.nameField>small{color:#a9bcd5;font-size:10px}
+.savedName{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.savedName>span{display:flex;flex-direction:column;gap:4px;min-width:0}.savedName strong{overflow-wrap:anywhere;color:#fff;font-size:15px}.savedName>button{flex-shrink:0;padding:6px;border:0;background:transparent;color:#b5fff8;font-size:10px;text-decoration:underline;cursor:pointer}.saveFlight{min-height:44px;padding:10px 13px;border:1px solid #00ebf2;border-radius:8px;background:#00ebf2;color:#061629;font-size:11px;font-weight:900;cursor:pointer}.saveFlight:disabled{border-color:#557197;background:#263f65;color:#c0d1e7;cursor:default}.finishMessage{grid-column:1/-1;margin:0;color:#dbe6f4;font-size:11px;line-height:1.4}
+@media(max-width:520px){.finishCard{grid-template-columns:1fr}.saveFlight{width:100%}}
+.podiumFlights{color:#b5fff8;font-size:10px;letter-spacing:.06em}.tableHead,.row{grid-template-columns:58px minmax(0,1fr) 70px 130px 150px}.flightColumn{text-align:center;color:#b5fff8;font-size:17px;font-weight:900}.tableHead .flightColumn{color:#93a9c7;font-size:8px}.mobileFlights{display:none}.rewardWallet{min-width:0;padding:7px 9px;border:1px solid rgba(0,235,242,.3);border-radius:8px;background:rgba(0,235,242,.04)}.rewardWallet>span{display:flex;align-items:center;justify-content:space-between;gap:8px}.rewardWallet small{color:#b5fff8;font-size:8px;font-weight:800}.rewardWallet button{min-height:30px;padding:4px 7px;border:1px solid #557197;border-radius:6px;background:#102443;color:#b5fff8;font-size:8px;font-weight:900;cursor:pointer}.rewardWallet>a{display:block;margin-top:3px;color:#dbe6f4;text-decoration:none}.rewardWallet code{font-size:10px;overflow-wrap:anywhere}.rewardWallet a:hover{text-decoration:underline}.rewardChoice{grid-column:1/-1;display:flex;align-items:flex-start;gap:8px;color:#dbe6f4;font-size:11px;line-height:1.4}.rewardChoice>input{flex-shrink:0;margin-top:2px;accent-color:#00ebf2}.rewardChoice>span>small{display:block;margin-top:2px;color:#a9bcd5;font-size:10px}
+@media(max-width:760px){.tableHead,.row{grid-template-columns:42px minmax(0,1fr) 52px 82px 105px}}
+@media(max-width:620px){.tableHead,.row{grid-template-columns:36px minmax(0,1fr) 90px}.tableHead>span:nth-child(4){display:none}.tableHead>span:nth-child(5){text-align:right}.flightColumn{display:none}.mobileFlights{display:inline}.tableHead>span:nth-child(3){display:none}.rewardWallet code{font-size:9px}.rewardWallet>span{flex-wrap:wrap}}
+.board{margin-top:22px;scroll-margin-top:24px}.board>header{padding:24px;gap:20px}.board>header small{font-size:12px;letter-spacing:.07em}.board>header strong{font-size:28px;letter-spacing:-.01em;line-height:1.3}.board>header span>em{color:#e0eaf8;font-size:15px;line-height:1.5;font-style:normal}.board>header>b{font-size:12px;letter-spacing:.03em;white-space:nowrap}.boardStats>span{min-height:90px;padding:14px}.boardStats small{font-size:12px;letter-spacing:.03em}.boardStats strong{font-size:27px}.boardStats strong>em{font-size:16px;color:#e0eaf8}.message,.finishMessage{font-size:14px;line-height:1.5}.rankingArena{margin:20px;padding:20px}.arenaHeading small{font-size:12px;letter-spacing:.05em}.arenaHeading strong{font-size:24px;letter-spacing:0}.arenaHeading>b{color:#e0eaf8;font-size:13px;letter-spacing:0}.podiumGrid{gap:14px}.podiumCard{gap:10px;padding:22px 16px;min-height:280px}.podiumCard.place1{min-height:310px}.podiumCard>small{color:#d1dff1;font-size:12px;letter-spacing:.03em}.podiumCard>strong{font-size:21px}.place1>strong{font-size:25px}.podiumScore{font-size:32px}.podiumScore>em{font-size:12px}.podiumCard>span{color:#e0eaf8;font-size:13px;line-height:1.5}.podiumFlights{color:#b5fff8;font-size:14px}.podiumBadges{width:100%;min-height:0}.medal>b{font-size:12px}.loadingCard{padding:32px;font-size:15px;letter-spacing:.03em}.achievementBadge{font-size:12px;padding:6px 9px}.achievementBadge>span:first-child{font-size:17px}
+.tableHead,.row{grid-template-columns:58px minmax(0,1fr) 75px 125px 145px;gap:12px}.tableHead{min-height:48px;padding:12px 16px;color:#e0eaf8;font-size:12px;letter-spacing:.02em}.tableHead .flightColumn{font-size:12px;color:#e0eaf8}.row{padding:16px;min-height:100px;align-items:start}.rank{font-size:22px;padding-top:2px}.identity{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0}.identity>strong{font-size:18px;line-height:1.4;overflow-wrap:anywhere}.identity>small{color:#d1dff1;font-size:12px;line-height:1.5}.clears{padding-top:3px}.clears>b{font-size:21px}.clears>small{color:#d1dff1;font-size:11px;line-height:1.4}.score{padding-top:3px}.score b{font-size:23px}.score small{font-size:12px;line-height:1.5}.flightColumn{padding-top:4px;font-size:21px}.heldBalance,.podiumCard .heldBalance{font-size:12px}.rewardWallet{box-sizing:border-box;width:100%;padding:10px;max-width:430px}.rewardWallet small{font-size:11px;line-height:1.5}.rewardWallet button{min-height:40px;min-width:55px;font-size:11px}.rewardWallet code{font-size:12px;line-height:1.5}.rewardWallet>a{margin-top:7px}.rewardWallet a:focus-visible,.rewardWallet button:focus-visible{outline:2px solid #b5fff8;outline-offset:3px}
+.achievementSection{padding:24px}.achievementHeading small{font-size:12px;letter-spacing:.03em}.achievementHeading strong{font-size:24px}.achievementHeading span>em{color:#e0eaf8;font-size:15px;line-height:1.5}.achievementHeading>b{font-size:12px}.achievementProgress{height:28px}.achievementProgress>span{font-size:12px;letter-spacing:.03em}.achievementGrid{gap:14px}.achievementGrid article{min-height:126px;padding:16px;gap:12px}.achievementGrid strong{font-size:16px;line-height:1.4}.achievementGrid small{color:#e0eaf8;font-size:14px;line-height:1.5}.achievementGrid em{color:#c0d1e7;font-size:11px;letter-spacing:.03em}.achievementGrid .locked{opacity:1;filter:none;border-style:dashed}.achievementGrid .locked>i{color:#c0d1e7}.unlocks span{font-size:14px;padding:10px 12px}.firstRunChallenge small{font-size:12px}.firstRunChallenge strong{font-size:21px}.firstRunChallenge em{font-size:14px;line-height:1.5}.firstRunChallenge>a{grid-column:auto;padding:12px 16px;min-height:44px;box-sizing:border-box;border-radius:10px;background:#00ebf2;color:#061629;font-size:14px;font-weight:900;text-align:center;text-decoration:none}
+.finishCard{padding:18px;gap:14px}.nameField>span,.savedName small{font-size:12px;letter-spacing:.03em}.nameField input{min-height:48px;font-size:16px;padding:12px}.nameField>small{color:#e0eaf8;font-size:13px;line-height:1.5}.savedName strong{font-size:20px}.savedName>button{min-height:44px;font-size:14px;padding:8px}.saveFlight{min-height:50px;font-size:16px;padding:14px}.saveFlight:focus-visible,.savedName>button:focus-visible{outline:3px solid #b5fff8;outline-offset:3px}.rewardChoice{font-size:15px;line-height:1.5;gap:10px}.rewardChoice>input{width:19px;height:19px;margin-top:3px}.rewardChoice>span>small{font-size:13px;line-height:1.5;color:#d1dff1}
+@media(max-width:900px){.achievementGrid{grid-template-columns:repeat(2,1fr)}.tableHead,.row{grid-template-columns:45px minmax(0,1fr) 60px 110px 120px;gap:9px}.podiumCard,.podiumCard.place1{padding:18px 10px}}
+@media(max-width:760px){.board>header{padding:20px;align-items:flex-start;flex-direction:column;gap:12px}.board>header strong{font-size:25px}.boardStats>span{padding:12px 6px}.boardStats small{font-size:11px}.boardStats strong{font-size:23px}.rankingArena{margin:14px;padding:14px}.arenaHeading{align-items:flex-start;flex-direction:column;gap:7px}.tableHead,.row{grid-template-columns:34px minmax(0,1fr) 100px;gap:8px}.tableHead>span:nth-child(4),.clears,.flightColumn{display:none}.mobileFlights{display:inline}.row{padding:14px 10px}.tableHead{padding:12px 10px;font-size:11px}.score b{font-size:21px}.score small{font-size:11px}.identity>strong{font-size:16px}.identity>small{font-size:12px}.achievementSection{padding:20px 14px}.achievementHeading{align-items:flex-start;flex-direction:column}.achievementGrid{grid-template-columns:1fr}.firstRunChallenge>a{grid-column:1/-1}.rewardWallet code{font-size:12px}}
+@media(max-width:620px){.podiumGrid{grid-template-columns:1fr}.podiumCard,.podiumCard.place1{min-height:0;padding:22px 18px}.podiumCard.place1{order:-1}.podiumCard>strong,.place1>strong{font-size:24px}.finishCard{padding:15px}.rewardChoice{font-size:14px}.boardStats small{letter-spacing:0}.board>header small{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.board *{animation:none!important;transition:none!important}}

@@ -1,0 +1,241 @@
+{
+  "contractName": "Mss2EntryRouter",
+  "sourceName": "Mss2EntryRouter.sol",
+  "compilerVersion": "0.8.30+commit.73712a01.Emscripten.clang",
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  },
+  "sourceSha256": "c66042be3972adb0e04515a41e73d4be782487188223ee3934319945e8f9c7a3",
+  "creationCodeHash": "0x3c081dcb964e4e86890fa7627af32362da7c1dd8762ee9950cae8383a002d648",
+  "runtimeCodeHash": "0x4eb7734e73e5a95727f926429704bb7baf16eaf9334ce8141ab6b5cb25a55b0a",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "InvalidAmount",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidPaymentId",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NativeCurrencyNotAccepted",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "PaymentIdAlreadyUsed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TokenCallFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "UnexpectedTransferAmount",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "payer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "totalAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "deadAddressAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "communityReserveAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "EntryPaid",
+      "type": "event"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "fallback"
+    },
+    {
+      "inputs": [],
+      "name": "BPS_DENOMINATOR",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "COMMUNITY_AIRDROP_RESERVE",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "COMMUNITY_AIRDROP_RESERVE_BPS",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "DEAD_ADDRESS",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "DEAD_ADDRESS_BPS",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MSS2",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "enter",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "usedPaymentIds",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "used",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f5ffd5b506106d98061001c5f395ff3fe60806040526004361061007e575f3560e01c80638eadb9b31161004d5780638eadb9b31461015d5780639ba246601461017e578063c62651a1146101a5578063e1a45218146101cc5761009c565b806314d4b565146100b557806345f4d013146100dd5780634e6fd6c4146100f257806352e1e8a71461011f5761009c565b3661009c5760405163858d70bd60e01b815260040160405180910390fd5b60405163858d70bd60e01b815260040160405180910390fd5b3480156100c0575f5ffd5b506100ca611f4081565b6040519081526020015b60405180910390f35b3480156100e8575f5ffd5b506100ca6107d081565b3480156100fd575f5ffd5b5061010761dead81565b6040516001600160a01b0390911681526020016100d4565b34801561012a575f5ffd5b5061014d6101393660046105b6565b5f6020819052908152604090205460ff1681565b60405190151581526020016100d4565b348015610168575f5ffd5b5061017c6101773660046105cd565b6101e1565b005b348015610189575f5ffd5b5061010773091f0c7e675a787a4018eb47c30bed3fa2013b6581565b3480156101b0575f5ffd5b5061010773e8b63245dddab73c7a276818942341d8cfb7d7a781565b3480156101d7575f5ffd5b506100ca61271081565b816101ff57604051632c46fa3160e21b815260040160405180910390fd5b60058110156102215760405163162908e360e11b815260040160405180910390fd5b5f8281526020819052604090205460ff16156102575760405163cf4cf60d60e01b81526004810183905260240160405180910390fd5b5f6127106102676107d084610601565b610271919061061e565b90505f61027e828461063d565b5f858152602081905260408120805460ff191660011790559091506102a461dead6103be565b90505f6102c473e8b63245dddab73c7a276818942341d8cfb7d7a76103be565b90506102d33361dead866104b2565b6102f23373e8b63245dddab73c7a276818942341d8cfb7d7a7856104b2565b83826102ff61dead6103be565b610309919061063d565b14158061033d5750828161033073e8b63245dddab73c7a276818942341d8cfb7d7a76103be565b61033a919061063d565b14155b1561035b57604051634168cf8d60e01b815260040160405180910390fd5b604080518681526020810186905290810184905273091f0c7e675a787a4018eb47c30bed3fa2013b6590339088907fb01d69832a2ea262f0b1fb1c3a9a4120d6a690e1391b3fb2cd89c9d60fc759989060600160405180910390a4505050505050565b604080516001600160a01b03831660248083019190915282518083039091018152604490910182526020810180516001600160e01b03166370a0823160e01b17905290515f918291829173091f0c7e675a787a4018eb47c30bed3fa2013b65916104289190610650565b5f60405180830381855afa9150503d805f8114610460576040519150601f19603f3d011682016040523d82523d5f602084013e610465565b606091505b5091509150811580610478575060208151105b1561049657604051631fa04fcd60e11b815260040160405180910390fd5b808060200190518101906104aa9190610666565b949350505050565b604080516001600160a01b03858116602483015284166044820152606480820184905282518083039091018152608490910182526020810180516001600160e01b03166323b872dd60e01b17905290515f91829173091f0c7e675a787a4018eb47c30bed3fa2013b659161052591610650565b5f604051808303815f865af19150503d805f811461055e576040519150601f19603f3d011682016040523d82523d5f602084013e610563565b606091505b5091509150811580610591575080511580159061059157508080602001905181019061058f919061067d565b155b156105af57604051631fa04fcd60e11b815260040160405180910390fd5b5050505050565b5f602082840312156105c6575f5ffd5b5035919050565b5f5f604083850312156105de575f5ffd5b50508035926020909101359150565b634e487b7160e01b5f52601160045260245ffd5b8082028115828204841417610618576106186105ed565b92915050565b5f8261063857634e487b7160e01b5f52601260045260245ffd5b500490565b81810381811115610618576106186105ed565b5f82518060208501845e5f920191825250919050565b5f60208284031215610676575f5ffd5b5051919050565b5f6020828403121561068d575f5ffd5b8151801515811461069c575f5ffd5b939250505056fea2646970667358221220e9a969d3d163b75cd3e2d01041dbcf62dd0242d86bddf719b24f5569ff4eba8964736f6c634300081e0033",
+  "deployedBytecode": "0x60806040526004361061007e575f3560e01c80638eadb9b31161004d5780638eadb9b31461015d5780639ba246601461017e578063c62651a1146101a5578063e1a45218146101cc5761009c565b806314d4b565146100b557806345f4d013146100dd5780634e6fd6c4146100f257806352e1e8a71461011f5761009c565b3661009c5760405163858d70bd60e01b815260040160405180910390fd5b60405163858d70bd60e01b815260040160405180910390fd5b3480156100c0575f5ffd5b506100ca611f4081565b6040519081526020015b60405180910390f35b3480156100e8575f5ffd5b506100ca6107d081565b3480156100fd575f5ffd5b5061010761dead81565b6040516001600160a01b0390911681526020016100d4565b34801561012a575f5ffd5b5061014d6101393660046105b6565b5f6020819052908152604090205460ff1681565b60405190151581526020016100d4565b348015610168575f5ffd5b5061017c6101773660046105cd565b6101e1565b005b348015610189575f5ffd5b5061010773091f0c7e675a787a4018eb47c30bed3fa2013b6581565b3480156101b0575f5ffd5b5061010773e8b63245dddab73c7a276818942341d8cfb7d7a781565b3480156101d7575f5ffd5b506100ca61271081565b816101ff57604051632c46fa3160e21b815260040160405180910390fd5b60058110156102215760405163162908e360e11b815260040160405180910390fd5b5f8281526020819052604090205460ff16156102575760405163cf4cf60d60e01b81526004810183905260240160405180910390fd5b5f6127106102676107d084610601565b610271919061061e565b90505f61027e828461063d565b5f858152602081905260408120805460ff191660011790559091506102a461dead6103be565b90505f6102c473e8b63245dddab73c7a276818942341d8cfb7d7a76103be565b90506102d33361dead866104b2565b6102f23373e8b63245dddab73c7a276818942341d8cfb7d7a7856104b2565b83826102ff61dead6103be565b610309919061063d565b14158061033d5750828161033073e8b63245dddab73c7a276818942341d8cfb7d7a76103be565b61033a919061063d565b14155b1561035b57604051634168cf8d60e01b815260040160405180910390fd5b604080518681526020810186905290810184905273091f0c7e675a787a4018eb47c30bed3fa2013b6590339088907fb01d69832a2ea262f0b1fb1c3a9a4120d6a690e1391b3fb2cd89c9d60fc759989060600160405180910390a4505050505050565b604080516001600160a01b03831660248083019190915282518083039091018152604490910182526020810180516001600160e01b03166370a0823160e01b17905290515f918291829173091f0c7e675a787a4018eb47c30bed3fa2013b65916104289190610650565b5f60405180830381855afa9150503d805f8114610460576040519150601f19603f3d011682016040523d82523d5f602084013e610465565b606091505b5091509150811580610478575060208151105b1561049657604051631fa04fcd60e11b815260040160405180910390fd5b808060200190518101906104aa9190610666565b949350505050565b604080516001600160a01b03858116602483015284166044820152606480820184905282518083039091018152608490910182526020810180516001600160e01b03166323b872dd60e01b17905290515f91829173091f0c7e675a787a4018eb47c30bed3fa2013b659161052591610650565b5f604051808303815f865af19150503d805f811461055e576040519150601f19603f3d011682016040523d82523d5f602084013e610563565b606091505b5091509150811580610591575080511580159061059157508080602001905181019061058f919061067d565b155b156105af57604051631fa04fcd60e11b815260040160405180910390fd5b5050505050565b5f602082840312156105c6575f5ffd5b5035919050565b5f5f604083850312156105de575f5ffd5b50508035926020909101359150565b634e487b7160e01b5f52601160045260245ffd5b8082028115828204841417610618576106186105ed565b92915050565b5f8261063857634e487b7160e01b5f52601260045260245ffd5b500490565b81810381811115610618576106186105ed565b5f82518060208501845e5f920191825250919050565b5f60208284031215610676575f5ffd5b5051919050565b5f6020828403121561068d575f5ffd5b8151801515811461069c575f5ffd5b939250505056fea2646970667358221220e9a969d3d163b75cd3e2d01041dbcf62dd0242d86bddf719b24f5569ff4eba8964736f6c634300081e0033",
+  "standardJsonInput": {
+    "language": "Solidity",
+    "sources": {
+      "Mss2EntryRouter.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.30;\n\n/// @title Yield Vacuum MSS2 Entry Router\n/// @notice Splits one MSS2 arcade entry directly between the permanent dead\n///         address and the designated Community Airdrop Reserve.\n/// @dev This contract has no owner, upgrade path, withdrawal function, or\n///      token custody. The caller must approve exactly enough MSS2 before entry.\ncontract Mss2EntryRouter {\n    address public constant MSS2 = 0x091F0c7e675A787A4018eb47c30BeD3FA2013B65;\n    address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;\n    address public constant COMMUNITY_AIRDROP_RESERVE = 0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7;\n\n    uint256 public constant DEAD_ADDRESS_BPS = 2_000;\n    uint256 public constant COMMUNITY_AIRDROP_RESERVE_BPS = 8_000;\n    uint256 public constant BPS_DENOMINATOR = 10_000;\n\n    mapping(bytes32 paymentId => bool used) public usedPaymentIds;\n\n    error InvalidPaymentId();\n    error InvalidAmount();\n    error PaymentIdAlreadyUsed(bytes32 paymentId);\n    error TokenCallFailed();\n    error UnexpectedTransferAmount();\n    error NativeCurrencyNotAccepted();\n\n    event EntryPaid(\n        bytes32 indexed paymentId,\n        address indexed payer,\n        address indexed token,\n        uint256 totalAmount,\n        uint256 deadAddressAmount,\n        uint256 communityReserveAmount\n    );\n\n    /// @notice Pay one arcade entry using a server-issued payment identifier.\n    /// @param paymentId Unique bytes32 identifier bound to the quoted game run.\n    /// @param totalAmount Exact raw 18-decimal MSS2 amount quoted by the server.\n    function enter(bytes32 paymentId, uint256 totalAmount) external {\n        if (paymentId == bytes32(0)) revert InvalidPaymentId();\n        if (totalAmount < 5) revert InvalidAmount();\n        if (usedPaymentIds[paymentId]) revert PaymentIdAlreadyUsed(paymentId);\n\n        uint256 deadAddressAmount = (totalAmount * DEAD_ADDRESS_BPS) / BPS_DENOMINATOR;\n        uint256 communityReserveAmount = totalAmount - deadAddressAmount;\n        usedPaymentIds[paymentId] = true;\n\n        uint256 deadBalanceBefore = _balanceOf(DEAD_ADDRESS);\n        uint256 reserveBalanceBefore = _balanceOf(COMMUNITY_AIRDROP_RESERVE);\n\n        _safeTransferFrom(msg.sender, DEAD_ADDRESS, deadAddressAmount);\n        _safeTransferFrom(msg.sender, COMMUNITY_AIRDROP_RESERVE, communityReserveAmount);\n\n        if (\n            _balanceOf(DEAD_ADDRESS) - deadBalanceBefore != deadAddressAmount\n                || _balanceOf(COMMUNITY_AIRDROP_RESERVE) - reserveBalanceBefore != communityReserveAmount\n        ) revert UnexpectedTransferAmount();\n\n        emit EntryPaid(\n            paymentId,\n            msg.sender,\n            MSS2,\n            totalAmount,\n            deadAddressAmount,\n            communityReserveAmount\n        );\n    }\n\n    function _safeTransferFrom(address from, address to, uint256 amount) private {\n        (bool success, bytes memory returnData) = MSS2.call(\n            abi.encodeWithSelector(bytes4(keccak256(\"transferFrom(address,address,uint256)\")), from, to, amount)\n        );\n        if (!success || (returnData.length != 0 && !abi.decode(returnData, (bool)))) revert TokenCallFailed();\n    }\n\n    function _balanceOf(address account) private view returns (uint256 balance) {\n        (bool success, bytes memory returnData) = MSS2.staticcall(\n            abi.encodeWithSelector(bytes4(keccak256(\"balanceOf(address)\")), account)\n        );\n        if (!success || returnData.length < 32) revert TokenCallFailed();\n        balance = abi.decode(returnData, (uint256));\n    }\n\n    receive() external payable {\n        revert NativeCurrencyNotAccepted();\n    }\n\n    fallback() external payable {\n        revert NativeCurrencyNotAccepted();\n    }\n}\n"
+      }
+    },
+    "settings": {
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "*": [
+            "abi",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object"
+          ]
+        }
+      }
+    }
+  }
+}
