@@ -1805,7 +1805,7 @@ export default function YieldVacuumGame() {
                 <span className="splashChoiceBrand"><img src="/mss2-flyer-emblem.png" alt="MSS2" width="40" height="40" /><small>ARCADE GAME</small></span>
                 <strong>MINT FLYER</strong>
                 <span className="splashChoiceDescription">Collect. Combo. Reach the Moon.</span>
-                <b>$1 WORTH OF MSS2 PER FLIGHT</b>
+                <b>FIRST FLIGHT FREE · THEN $1 WORTH OF MSS2</b>
                 <span className="splashEntryPurpose"><span><strong>20%</strong> to the dead address</span><span><strong>80%</strong> to community rewards reserve</span></span>
                 <span className="splashChoiceNetworks">Robinhood Chain + Arc</span>
                 <em>PLAY MINT FLYER →</em>

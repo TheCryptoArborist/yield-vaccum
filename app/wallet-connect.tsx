@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { stringToHex } from "viem";
 import styles from "./wallet-connect.module.css";
 
 type WalletRequest = {
@@ -271,7 +272,7 @@ export default function WalletConnect({
       sendCalls: selectedWallet.sendCalls ? (calls) => selectedWallet.sendCalls!(account, chainId, calls) : undefined,
       resolveTransaction: selectedWallet.resolveTransaction ? (hash) => selectedWallet.resolveTransaction!(account, chainId, hash) : undefined,
       signMessage: async (message: string) => {
-        const signature = await selectedWallet.provider.request({ method: "personal_sign", params: [message, account] });
+        const signature = await selectedWallet.provider.request({ method: "personal_sign", params: [stringToHex(message), account] });
         if (typeof signature !== "string") throw new Error("The wallet did not return a valid signature.");
         return signature;
       },

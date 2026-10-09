@@ -243,3 +243,5 @@
   .entryBreakdown .entryBreakdownNote{margin-top:8px;font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){.arcadeShell *,.arcadeShell *:before,.arcadeShell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.introEntry{padding:16px;border:1px solid #00ebf2;border-radius:12px;background:linear-gradient(135deg,#0d3044,#251e4c);margin-bottom:16px}.introEntry>strong{color:#b5fff8;font-size:16px}.introEntry>p,.introResult{color:#e0eaf8;font-size:14px;line-height:1.5}.introEntry .launchButton{width:100%;margin-top:10px}
