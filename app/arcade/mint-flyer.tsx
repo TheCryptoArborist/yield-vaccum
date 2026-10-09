@@ -11,6 +11,7 @@ import Mss2EntryTotals from "./mss2-entry-totals";
 import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
 import { MSS2_COMMUNITY_AIRDROP_RESERVE, MSS2_DEAD_ADDRESS } from "../../lib/mss2-payment-shared";
 import type { Mss2EntryBalance } from "../../lib/mss2-entry-balance";
+import type { TrialChallenge } from "../../lib/mint-flyer-trial";
 import { mintFlyerEntryAction } from "../../lib/mint-flyer-entry";
 import styles from "./mint-flyer.module.css";
 
@@ -187,6 +188,10 @@ export default function MintFlyer() {
   const [readinessRetry, setReadinessRetry] = useState(0);
   const [livePaymentQuote, setLivePaymentQuote] = useState<LivePaymentQuote | null>(null);
   const [activePaymentId, setActivePaymentId] = useState("");
+  const [trial, setTrial] = useState<{ available: boolean; challenge: TrialChallenge; message: string } | null>(null);
+  const [trialStatus, setTrialStatus] = useState("");
+  const [trialRetry, setTrialRetry] = useState(0);
+  const [introRun, setIntroRun] = useState(false);
   const [activeRunNetwork, setActiveRunNetwork] = useState<"robinhood" | "arc">("robinhood");
   const [paymentTxHash, setPaymentTxHash] = useState("");
   const [paymentIsOperation, setPaymentIsOperation] = useState(false);
@@ -218,6 +223,8 @@ export default function MintFlyer() {
     setPaymentReadiness(null);
     setReadinessFailed(false);
     setWalletConnection(connection);
+    setTrial(null);
+    setTrialStatus("");
     setEntryQuote(null);
     setQuoteUnavailable(false);
     const pending = connection ? pendingPaymentsRef.current.get(`${connection.account.toLowerCase()}:${Number(connection.chainId)}`) : undefined;
@@ -579,6 +586,7 @@ export default function MintFlyer() {
       }
       if (!verified) throw new Error("The payment is still pending. Keep the transaction hash and try verification again shortly.");
       pendingPaymentsRef.current.delete(contextKey);
+      setIntroRun(false);
       setActivePaymentId(livePaymentQuote.paymentId);
       setActiveRunNetwork(livePaymentQuote.network);
       setPaymentMessage("MSS2 payment verified. Starting the paid flight.");
@@ -601,6 +609,52 @@ export default function MintFlyer() {
       setPaymentBusy(false);
     }
   }, [currentBalanceCheck, isArcContext, liveEntryEnabled, livePaymentQuote, paymentBusy, paymentReadiness, paymentTxHash, playerKey, primeAudio, readLiveEntryBalance, resetFlight, walletConnection]);
+
+  useEffect(() => {
+    if (!walletConnection || !playerKey || selectedMss2Network === "unsupported") return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ wallet: walletConnection.account, playerKey, network: selectedMss2Network });
+        const response = await fetch(`/api/mint-flyer-trial?${params}`, { cache: "no-store", signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Free-flight check unavailable.");
+        if (!controller.signal.aborted) { setTrial(data); setTrialStatus(""); }
+      } catch (error) {
+        if (!controller.signal.aborted) setTrialStatus(error instanceof Error ? error.message : "Free-flight check unavailable.");
+      }
+    }, 0);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [walletConnection, playerKey, selectedMss2Network, trialRetry]);
+
+  const launchTrial = useCallback(async () => {
+    if (!walletConnection || !trial?.available || paymentInFlightRef.current || pendingPaymentsRef.current.size || selectedMss2Network === "unsupported") return;
+    if (Date.now() - trial.challenge.issuedAt > 300_000) { setTrial(null); setTrialRetry(value => value + 1); setTrialStatus("Refreshing your free-flight request. Try again shortly."); return; }
+    paymentInFlightRef.current = true;
+    setPaymentBusy(true);
+    setTrialStatus("Confirm the free-flight message in your wallet. No tokens are transferred.");
+    const account = walletConnection.account.toLowerCase();
+    const chain = walletConnection.chainId;
+    try {
+      // Invoke signing directly from the user's click, preserving Topaz ID popup consent.
+      const signature = await walletConnection.signMessage(trial.message);
+      const matches = () => walletContextRef.current?.account.toLowerCase() === account && walletContextRef.current?.chainId === chain;
+      if (!matches()) throw new Error("Your wallet or network changed. Reconnect before claiming the free flight.");
+      const response = await fetch("/api/mint-flyer-trial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ challenge: trial.challenge, signature }) });
+      const data = await response.json();
+      if (!response.ok) { if (data.used && matches()) setTrial({ ...trial, available: false }); throw new Error(data.error || "Free flight could not be claimed."); }
+      if (!data.authorized || data.runId !== trial.challenge.runId || data.network !== selectedMss2Network) throw new Error("Free-flight authorization did not match this request.");
+      if (!matches()) throw new Error("The introductory flight was claimed for the previous wallet. Your wallet changed before launch.");
+      setTrial({ ...trial, available: false });
+      setActivePaymentId("");
+      setActiveRunNetwork(selectedMss2Network);
+      setIntroRun(true);
+      setTrialStatus("");
+      primeAudio();
+      resetFlight(data.runId);
+    } catch (error) { setTrialStatus(error instanceof Error ? error.message : "Free flight could not be claimed."); }
+    finally { paymentInFlightRef.current = false; setPaymentBusy(false); }
+  }, [walletConnection, trial, selectedMss2Network, primeAudio, resetFlight]);
 
   const entryAction = mintFlyerEntryAction({
     supportedNetwork: selectedMss2Network !== "unsupported",
@@ -882,7 +936,7 @@ export default function MintFlyer() {
   const headerQuoteMeta = headerQuoteAmount
     ? `${livePaymentQuote && !liveQuoteExpired ? "ENTRY QUOTE" : "MARKET REFERENCE"} · ${livePaymentQuote && !liveQuoteExpired ? liveQuoteSecondsRemaining : quoteSecondsRemaining}s`
     : liveEntryEnabled ? "PAID FLIGHT" : paymentReadiness ? "PAID ENTRY UNAVAILABLE" : "CHECKING ENTRY";
-  const leaderboardResult: LeaderboardFlightResult | null = (phase === "crashed" || phase === "victory") && runId ? {
+  const leaderboardResult: LeaderboardFlightResult | null = (phase === "crashed" || phase === "victory") && runId && activePaymentId ? {
     runId,
     score,
     distance,
@@ -931,9 +985,9 @@ export default function MintFlyer() {
           <strong>Collect MSS2 coins. Dodge Glitch Blocks. Reach the Moon.</strong>
         </div>
         <aside>
-          <small>$1 WORTH OF MSS2 PER FLIGHT</small>
+          <small>FIRST FLIGHT FREE · THEN $1 WORTH OF MSS2</small>
           <b>{!walletConnection ? "CONNECT TO PLAY" : selectedMss2Network === "unsupported" ? "CHOOSE A NETWORK" : !paymentReadiness ? readinessFailed ? "ENTRY CHECK UNAVAILABLE" : "CHECKING ENTRY" : liveEntryEnabled ? canaryEntryEnabled ? "PAID TEST ENTRY" : "PAID ENTRY READY" : "PAID ENTRY UNAVAILABLE"}</b>
-          <span>{!walletConnection ? "Connect Topaz ID, MetaMask, or Rabby. Choose Robinhood Chain or Arc." : liveEntryEnabled ? "One entry payment. Three stages. Your next personal best." : paymentReadiness?.releaseMode === "canary" ? "Paid testing is open to the approved test wallet. Public entry is not open yet." : "Check the entry panel below for availability."}</span>
+          <span>{!walletConnection ? "Connect Topaz ID, MetaMask, or Rabby for one free introductory flight. Then pay with MSS2 on Robinhood Chain or Arc." : liveEntryEnabled ? "One entry payment. Three stages. Your next personal best." : paymentReadiness?.releaseMode === "canary" ? "Paid testing is open to the approved test wallet. Public entry is not open yet." : "Check the entry panel below for availability."}</span>
         </aside>
       </section>
 
@@ -951,7 +1005,7 @@ export default function MintFlyer() {
           <span className={styles.mintCounter}><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
           <span className={combo >= 3 ? styles.comboActive : ""}><small>COMBO</small><strong>{combo} · {currentMultiplier}X</strong></span>
           <span><small>LIVES</small><strong>{"◆".repeat(lives)}<i>{"◇".repeat(MAX_LIVES - lives)}</i></strong></span>
-          <span><small>ENTRY</small><strong>$1 MSS2</strong></span>
+          <span><small>ENTRY</small><strong>{introRun && phase !== "ready" ? "FREE INTRO" : "$1 MSS2"}</strong></span>
         </div>
 
         <div className={styles.flightProgress} aria-label={`Stage ${stage} of 3: ${currentStage.name}. ${Math.round(flightProgress)} percent to the Moon.`}>
@@ -1069,6 +1123,13 @@ export default function MintFlyer() {
                   <div><i className={styles.howToHazard} aria-hidden="true">!</i><span><b>Dodge Glitch Blocks</b><small>Each hit costs one life.</small></span></div>
                 </div>
                 <section className={styles.launchEntry} aria-label="Flight entry">
+                  <div className={styles.introEntry}>
+                    <strong>{trial?.available ? "YOUR FIRST FLIGHT IS FREE" : trial ? "FREE INTRODUCTORY FLIGHT USED" : "ONE FREE INTRODUCTORY FLIGHT PER WALLET"}</strong>
+                    <p>{trial?.available ? "Try the full game with no MSS2 payment. Confirm a wallet message to claim it. Practice scores do not enter the paid leaderboard." : trial ? "All further flights use paid entry. Reconnecting or switching networks does not reset your free flight." : "Connect a wallet on Robinhood Chain or Arc to check eligibility. No token purchase is needed for your first flight."}</p>
+                    {trial?.available && <button className={styles.launchButton} type="button" disabled={paymentBusy || Boolean(paymentTxHash)} onClick={() => void launchTrial()}>START MY FREE FLIGHT</button>}
+                    {trialStatus && <p role="status">{trialStatus}</p>}
+                    {walletConnection && !trial && trialStatus && <button type="button" onClick={() => setTrialRetry(value => value + 1)} disabled={paymentBusy}>Retry free-flight check</button>}
+                  </div>
                   <small className={styles.launchMode}>{!paymentReadiness ? "ENTRY STATUS" : liveEntryEnabled ? canaryEntryEnabled ? "PAID TEST FLIGHT" : "PAID FLIGHT" : "MSS2 PAYMENT REQUIRED"}</small>
                   {liveEntryEnabled && walletConnection ? <>
                     <div className={styles.launchAmounts}>
@@ -1078,10 +1139,10 @@ export default function MintFlyer() {
                     <p className={styles.launchExpiry}>{livePaymentQuote ? paymentTxHash ? "Payment submitted. Recheck to start without paying again." : liveQuoteExpired ? "Quote expired. Refresh it below." : `Quote valid for ${liveQuoteSecondsRemaining}s.` : "Checking the entry cost and your balance. This does not open your wallet."}</p>
                     {!paymentTxHash && <p className={styles.launchConsent}>{walletConnection.kind === "topaz-id" ? `Transfers are final. One Topaz ID window approves MSS2 and pays entry together. Your smart wallet needs ${isArcContext ? "USDC" : "ETH"} for network gas.` : "Transfers are final. Pay & Fly opens your wallet to approve MSS2, then confirm payment."}</p>}
                     {currentBalanceCheck && !currentBalanceCheck.sufficient && !paymentTxHash && <div className={styles.insufficientMss2} role="alert">
-                      <strong>NOT ENOUGH MSS2 TO PLAY</strong>
+                      <strong>NOT ENOUGH MSS2 FOR PAID ENTRY</strong>
                       <p>Add at least <b>{currentBalanceCheck.shortfallDisplay} MSS2</b> to this wallet on <b>{currentBalanceCheck.network === "arc" ? "Arc" : "Robinhood Chain"}</b>, then refresh your balance below.</p>
                     </div>}
-                  </> : <p className={styles.launchStatus}><b>Every flight requires $1 worth of MSS2.</b><br />{selectedMss2Network === "unsupported" ? "Choose Robinhood Chain or Arc in the wallet bar above." : !walletConnection ? "Connect your wallet above to check entry availability." : readinessFailed ? "Entry availability could not be checked. Please retry." : !paymentReadiness ? "Checking flight availability…" : paymentReadiness.releaseMode === "canary" ? "Paid testing is limited to the approved test wallet. Public entry is not open yet." : "Paid entry is not available yet. Please check back later."}</p>}
+                  </> : <p className={styles.launchStatus}><b>After your introductory flight, each flight requires $1 worth of MSS2.</b><br />{selectedMss2Network === "unsupported" ? "Choose Robinhood Chain or Arc in the wallet bar above." : !walletConnection ? "Connect your wallet above to check entry availability." : readinessFailed ? "Entry availability could not be checked. Please retry." : !paymentReadiness ? "Checking flight availability…" : paymentReadiness.releaseMode === "canary" ? "Paid testing is limited to the approved test wallet. Public entry is not open yet." : "Paid entry is not available yet. Please check back later."}</p>}
                   <div className={styles.entryBreakdown} aria-label="One dollar MSS2 entry breakdown">
                     <h3>Where your $1 in MSS2 goes</h3>
                     <div className={styles.entryBreakdownCards}>
@@ -1135,6 +1196,7 @@ export default function MintFlyer() {
                 {newBest && <b>★ PERSONAL BEST ★</b>}
               </div>
               <div ref={setFinishPanel} className={styles.finishPanel} />
+              {introRun && <p className={styles.introResult}>Free practice flight complete. Your next flight costs $1 worth of MSS2 and can enter the leaderboard.</p>}
               <div className={styles.finalScore}>
                 <span><small>LOCAL BEST</small><strong>{bestScore.toLocaleString()}</strong></span>
                 <span><small>MINT CREDITS</small><strong>{mintsCollected}</strong></span>
@@ -1189,6 +1251,7 @@ export default function MintFlyer() {
                 </div>
               </section>
               <div ref={setFinishPanel} className={styles.finishPanel} />
+              {introRun && <p className={styles.introResult}>Free practice flight complete. Your next flight costs $1 worth of MSS2 and can enter the leaderboard.</p>}
               <div className={styles.arrivalBonus}><small>MOON ARRIVAL BONUS</small><strong>+{moonBonus.toLocaleString()}</strong><span>Completion + surviving lives + best combo</span></div>
               <div className={styles.scoreBreakdown} aria-label="Final score breakdown">
                 <span><small>FLIGHT DISTANCE</small><strong>+{distanceScore.toLocaleString()}</strong></span>
