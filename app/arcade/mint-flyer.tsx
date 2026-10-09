@@ -628,7 +628,7 @@ export default function MintFlyer() {
   }, [walletConnection, playerKey, selectedMss2Network, trialRetry]);
 
   const launchTrial = useCallback(async () => {
-    if (!walletConnection || !trial?.available || paymentInFlightRef.current || pendingPaymentsRef.current.size || selectedMss2Network === "unsupported") return;
+    if (!walletConnection || !trial?.available || paymentInFlightRef.current || Boolean(paymentTxHash) || selectedMss2Network === "unsupported") return;
     if (Date.now() - trial.challenge.issuedAt > 300_000) { setTrial(null); setTrialRetry(value => value + 1); setTrialStatus("Refreshing your free-flight request. Try again shortly."); return; }
     paymentInFlightRef.current = true;
     setPaymentBusy(true);
@@ -654,7 +654,7 @@ export default function MintFlyer() {
       resetFlight(data.runId);
     } catch (error) { setTrialStatus(error instanceof Error ? error.message : "Free flight could not be claimed."); }
     finally { paymentInFlightRef.current = false; setPaymentBusy(false); }
-  }, [walletConnection, trial, selectedMss2Network, primeAudio, resetFlight]);
+  }, [walletConnection, trial, selectedMss2Network, primeAudio, resetFlight, paymentTxHash]);
 
   const entryAction = mintFlyerEntryAction({
     supportedNetwork: selectedMss2Network !== "unsupported",
@@ -1211,7 +1211,7 @@ export default function MintFlyer() {
                   <small>NEW ENTRY PAYMENT REQUIRED</small>
                 </button>
               </div>
-              <details className={styles.runEntrySummary}>
+              {!introRun && <details className={styles.runEntrySummary}>
                 <summary>Where your entry went</summary>
                 <header>
                   <span><small>$1 MSS2 GAME ENTRY</small><strong>{selectedNetworkLabel}</strong></span>
@@ -1222,7 +1222,7 @@ export default function MintFlyer() {
                   <span className={styles.communityAllocation}><b>80%</b><small>COMMUNITY AIRDROP RESERVE</small></span>
                 </div>
                 <p><b>0% RETAINED BY YIELD VACCUM</b><span>{liveEntryEnabled ? "The verified router performs both transfers in one wallet-approved transaction." : "Every new flight requires a verified payment using this 20/80 allocation."}</span></p>
-              </details>
+              </details>}
             </div>
           )}
 
@@ -1231,7 +1231,7 @@ export default function MintFlyer() {
               <div className={styles.moonArrival} aria-hidden="true"><i /><span>✓</span></div>
               <small>ALL THREE STAGES CLEARED</small>
               <h2>MOON REACHED</h2>
-              <p>All three stages cleared. Your score is ready for the leaderboard.</p>
+              <p>{introRun ? "All three stages cleared. Free practice flight complete." : "All three stages cleared. Your score is ready for the leaderboard."}</p>
               <div className={styles.victoryScore}>
                 <span><small>FINAL SCORE</small><strong>{score.toLocaleString()}</strong>{newBest && <b>NEW LOCAL BEST</b>}</span>
                 <span className={`${styles.gradeBadge} ${gradeClass}`}><small>YOUR FLIGHT GRADE</small><strong>{runGrade}</strong><b>{GRADE_NAMES[runGrade]}</b></span>
