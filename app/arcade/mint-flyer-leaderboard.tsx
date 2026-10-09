@@ -91,6 +91,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
   const [unlocked, setUnlocked] = useState<MintFlyerAchievementId[]>([]);
   const [newAchievements, setNewAchievements] = useState<MintFlyerAchievementId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rankingsError, setRankingsError] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedRunId, setSavedRunId] = useState("");
   const [message, setMessage] = useState("");
@@ -98,29 +99,42 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
   const [displayRewardWallet, setDisplayRewardWallet] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
 
-  const load = useCallback(async (key: string) => {
+  const load = useCallback(async (key = "") => {
     setLoading(true);
+    setRankingsError("");
     try {
-      const response = await fetch(`/api/arcade-leaderboard?playerKey=${encodeURIComponent(key)}`, { cache: "no-store" });
-      const data = await response.json() as { entries?: Entry[]; profile?: Entry | null; error?: string };
+      // Public rankings never depend on a wallet, player identity, or storage.
+      const response = await fetch("/api/arcade-leaderboard", { cache: "no-store", signal: AbortSignal.timeout(12_000) });
+      const data = await response.json() as { entries?: Entry[]; error?: string };
       if (!response.ok) throw new Error(data.error || "Leaderboard unavailable.");
       setEntries(data.entries ?? []);
-      setUnlocked(data.profile?.unlocked ?? []);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Leaderboard unavailable.");
+      setRankingsError(error instanceof Error && error.name !== "TimeoutError" ? error.message : "Rankings could not be loaded. Please refresh the leaderboard.");
     } finally {
       setLoading(false);
+    }
+    // Personal badges are optional and cannot hide or block the public board.
+    if (key) {
+      try {
+        const response = await fetch(`/api/arcade-leaderboard?playerKey=${encodeURIComponent(key)}`, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
+        if (!response.ok) return;
+        const data = await response.json() as { profile?: Entry | null };
+        setUnlocked(data.profile?.unlocked ?? []);
+      } catch { /* Public rankings remain available if the profile is unavailable. */ }
     }
   }, []);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const key = ensureMintFlyerPlayerKey();
-      const storedNickname = window.localStorage.getItem(NICKNAME_KEY) || "";
-      setPlayerKey(key);
-      setNickname(storedNickname);
-      setRememberedNickname(storedNickname);
-      setDisplayRewardWallet(window.localStorage.getItem(REWARD_DISPLAY_KEY) === "true");
+      let key = "";
+      try {
+        key = ensureMintFlyerPlayerKey();
+        setPlayerKey(key);
+        const storedNickname = window.localStorage.getItem(NICKNAME_KEY) || "";
+        setNickname(storedNickname);
+        setRememberedNickname(storedNickname);
+        setDisplayRewardWallet(window.localStorage.getItem(REWARD_DISPLAY_KEY) === "true");
+      } catch { /* Storage restrictions must not prevent browsing rankings. */ }
       void load(key);
     });
     return () => window.cancelAnimationFrame(frame);
@@ -196,22 +210,23 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
     <section id="mint-flyer-leaderboard" className={styles.board} aria-label="Mint Flyer leaderboard and achievements">
       {finishPanel && finishCard && createPortal(finishCard, finishPanel)}
       <header>
-        <span><small>MSS2 ARCADE · FLIGHT RANKINGS</small><strong><i aria-hidden="true">🏆</i> Mint Flyer leaderboard</strong><em>Ranked by personal best. Every saved flight counts, including crashes.</em></span>
-        <b><i aria-hidden="true" /> BEST FLIGHTS</b>
+        <span><small>MSS2 ARCADE · FLIGHT RANKINGS</small><strong><i aria-hidden="true">🏆</i> Mint Flyer leaderboard</strong><em>Public rankings · No wallet connection needed. Every saved flight counts, including crashes.</em></span>
+        <button className={styles.refreshRankings} disabled={loading} onClick={() => void load(playerKey)}>{loading ? "Loading rankings…" : "Refresh leaderboard"}</button>
       </header>
 
       <div className={styles.boardStats} aria-label="Leaderboard summary">
-        <span><small>PILOTS RANKED</small><strong>{entries.length}</strong></span>
+        <span><small>PILOTS RANKED</small><strong>{loading || (rankingsError && !entries.length) ? "—" : entries.length}</strong></span>
         <span><small>TOP SCORE</small><strong>{entries[0]?.bestScore.toLocaleString() ?? "—"}</strong></span>
         <span><small>YOUR BADGES</small><strong>{unlocked.length}<em> / {MINT_FLYER_ACHIEVEMENTS.length}</em></strong></span>
       </div>
 
       {message && <p className={styles.message} role="status">{message}</p>}
+      {rankingsError && <p className={styles.message} role="alert">{rankingsError}{entries.length > 0 ? " Showing the last loaded rankings." : ""}</p>}
       {newAchievements.length > 0 && <div className={styles.unlocks}>{newAchievements.map((id) => { const item = achievement(id); return item ? <span key={id}><i>{item.icon}</i><b>{item.name}</b></span> : null; })}</div>}
 
       <section className={styles.rankingArena} aria-label="Mint Flyer rankings">
         <div className={styles.arenaHeading}><span><small>TOP PILOTS</small><strong>Top pilots</strong></span><b>Ranked by best score</b></div>
-        {loading ? <div className={styles.loadingCard} role="status">Loading flight rankings…</div> : (
+        {loading ? <div className={styles.loadingCard} role="status">Loading flight rankings…</div> : (!rankingsError || entries.length > 0) && (
           <div className={styles.podiumGrid}>
             {podiumOrder.map((entryIndex) => {
               const entry = entries[entryIndex];
@@ -239,7 +254,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
           </div>
         )}
 
-        {!loading && entries.length === 0 && <div className={styles.firstRunChallenge}><i aria-hidden="true">🚀</i><span><small>THE BOARD IS WIDE OPEN</small><strong>BE THE FIRST RANKED PILOT</strong><em>Finish any flight, save your score, and claim the first seat.</em></span><a href="#mint-flyer">Play a flight ↑</a></div>}
+        {!loading && !rankingsError && entries.length === 0 && <div className={styles.firstRunChallenge}><i aria-hidden="true">🚀</i><span><small>THE BOARD IS WIDE OPEN</small><strong>BE THE FIRST RANKED PILOT</strong><em>Finish any flight, save your score, and claim the first seat.</em></span><a href="#mint-flyer">Play a flight ↑</a></div>}
 
         {entries.length > 0 && <div className={styles.table}>
           <div className={styles.tableHead}><span>RANK</span><span>PILOT + BADGES</span><span className={styles.flightColumn}>FLIGHTS</span><span>BEST DISTANCE</span><span>BEST SCORE</span></div>

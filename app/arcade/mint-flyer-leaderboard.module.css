@@ -99,3 +99,5 @@
 .achievementToggle{display:none}
 @media(max-width:720px){.achievementToggle{display:block;min-height:44px;margin-top:12px;padding:10px 14px;border:1px solid #557197;border-radius:9px;background:#10203a;color:#b5fff8;font:inherit;font-size:14px;font-weight:700;cursor:pointer}.achievementToggle:focus-visible{outline:3px solid #b5fff8;outline-offset:4px}.achievementBody{display:none}.achievementBodyOpen{display:block}.board>header{padding:16px;gap:8px}.board>header strong{font-size:22px}.boardStats>span{min-height:70px;padding:10px 6px}.achievementSection{padding:16px 14px}.achievementHeading strong{font-size:21px}}
 @media(prefers-reduced-motion:reduce){.board *{animation:none!important;transition:none!important}}
+
+.refreshRankings{min-height:44px;padding:10px 14px;border:1px solid #557197;border-radius:9px;background:#10203a;color:#b5fff8;font:inherit;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}.refreshRankings:disabled{opacity:.6;cursor:wait}.refreshRankings:focus-visible{outline:3px solid #b5fff8;outline-offset:4px}
