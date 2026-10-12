@@ -42,7 +42,7 @@ export default function Mss2EntryTotals({ network, paymentId }: { network: "robi
   const networkLabel = selected === "arc" ? "Arc" : "Robinhood Chain";
   return <section className={styles.panel} id="mss2-entry-totals" aria-label="MSS2 entry contribution totals">
     <header>
-      <span><small>EVERY PAID FLIGHT CONTRIBUTES</small><h2>MSS2 community impact</h2></span>
+      <span><small>LIVE ON-CHAIN STATS · PAID FLIGHTS</small><h2>MSS2 community impact</h2></span>
       <div className={styles.networks} aria-label="Contribution network">
         <button type="button" aria-pressed={selected === "robinhood"} onClick={() => setSelected("robinhood")}>Robinhood Chain</button>
         <button type="button" aria-pressed={selected === "arc"} onClick={() => setSelected("arc")}>Arc</button>
