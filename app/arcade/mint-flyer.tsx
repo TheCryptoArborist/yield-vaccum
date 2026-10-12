@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import WalletConnect, { type WalletConnection } from "../wallet-connect";
 import { TopazIdPaymentFailedError } from "../../lib/topaz-id-payment-error";
-import Mss2Commitments from "./mss2-commitments";
 import MintFlyerLeaderboard, { type LeaderboardFlightResult } from "./mint-flyer-leaderboard";
 import Mss2EntryTotals from "./mss2-entry-totals";
 import { ensureMintFlyerPlayerKey } from "../../lib/arcade-player";
@@ -994,7 +993,7 @@ export default function MintFlyer() {
       <nav className={styles.arcadeNav} aria-label="Arcade sections">
         <a className={styles.activeNav} href="#mint-flyer"><small>THE GAME</small><strong>Play Mint Flyer</strong></a>
         <a href="#mint-flyer-leaderboard"><small>FLIGHTS + REWARDS</small><strong>Leaderboard</strong></a>
-        <a href="#mss2-commitments"><small>OPTIONAL DEMO</small><strong>MSS2 Commitments</strong></a>
+        <a href="#mss2-entry-totals"><small>LIVE ON-CHAIN STATS</small><strong>Community impact</strong></a>
         <a href="#about-creator"><small>COMMUNITY PROJECT</small><strong>About the creator</strong></a>
       </nav>
 
@@ -1290,15 +1289,10 @@ export default function MintFlyer() {
       <details className={styles.infoDrawer} id="payment-safety">
         <summary><span><small>PAYMENT SAFETY · {selectedNetworkLabel}</small><strong>{liveEntryEnabled ? `${selectedNetworkLabel} MSS2 ENTRY` : "$1 MSS2 REQUIRED PER FLIGHT"}</strong></span><b>VIEW DETAILS +</b></summary>
         <div className={styles.drawerBody}>
-          <p>Each flight requires $1.00 worth of MSS2 on the selected network. Starting a new flight requires a new payment. Free flights and free continues are disabled.</p>
+          <p>Each wallet can claim one free introductory practice flight. After that, each new flight requires $1.00 worth of MSS2 on the selected network. Free continues are disabled.</p>
           <p>The entry quote uses the {isArcContext ? "Arc MSS2/USDC" : "Robinhood MSS2/WETH"} market. The verified router sends <b>20%</b> to <code>{DEAD_ADDRESS}</code> and <b>80%</b> to the Community Airdrop Reserve at <code>{COMMUNITY_AIRDROP_WALLET}</code>.</p>
           <p>The Community Airdrop Reserve funds community rewards. Eligibility, timing, and distribution details will be announced.</p>
         </div>
-      </details>
-
-      <details className={styles.commitmentsDrawer} id="mss2-commitments">
-        <summary><span><small>OPTIONAL MEMBERSHIP DEMO</small><strong>MSS2 COMMITMENTS</strong><em>Preview the proposed permanent-contribution flow. No real tokens move.</em></span><b>OPEN DEMO +</b></summary>
-        <Mss2Commitments />
       </details>
 
       <details className={styles.creatorPanel} id="about-creator">
