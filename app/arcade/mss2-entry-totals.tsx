@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { EntryTotals } from "../../lib/mss2-entry-totals";
-import { formatEntryTotal } from "../../lib/mss2-entry-totals-display";
+import { formatEntryTotal, formatEntryUsdValue } from "../../lib/mss2-entry-totals-display";
 import { MSS2_COMMUNITY_AIRDROP_RESERVE, MSS2_DEAD_ADDRESS } from "../../lib/mss2-payment-shared";
 import styles from "./mss2-entry-totals.module.css";
+
+type ImpactPrice = { chainId: "robinhood" | "arc"; priceUsd: string; validUntil: string; checkedAt: string; source: string; pairUrl: string };
 
 export default function Mss2EntryTotals({ network, paymentId }: { network: "robinhood" | "arc"; paymentId: string }) {
   const [selected, setSelected] = useState(network);
@@ -37,8 +39,34 @@ export default function Mss2EntryTotals({ network, paymentId }: { network: "robi
     void load();
     return () => { controller.abort(); clearTimeout(timer); };
   }, [selected, retry, paymentId]);
+  const [price, setPrice] = useState<ImpactPrice | null>(null);
+  const [priceUnavailable, setPriceUnavailable] = useState(false);
+  const [priceClock, setPriceClock] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const clock = setInterval(() => setPriceClock(Date.now()), 1000);
+    const load = async () => {
+      try {
+        const response = await fetch(`/api/mss2-price?chain=${selected}`, { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]) });
+        const quote = await response.json() as ImpactPrice;
+        if (!response.ok || quote.chainId !== selected || formatEntryUsdValue("0", quote.priceUsd ?? "") === null || !Number.isFinite(Date.parse(quote.validUntil)) || Date.parse(quote.validUntil) <= Date.now()) throw new Error("Price unavailable.");
+        if (!controller.signal.aborted) { setPrice(quote); setPriceUnavailable(false); setPriceClock(Date.now()); }
+      } catch {
+        if (!controller.signal.aborted) { setPrice(null); setPriceUnavailable(true); }
+      } finally {
+        if (!controller.signal.aborted) timer = setTimeout(() => void load(), 30_000);
+      }
+    };
+    void load();
+    return () => { controller.abort(); clearTimeout(timer); clearInterval(clock); };
+  }, [selected, retry]);
+  const currentPrice = price?.chainId === selected && Date.parse(price.validUntil) > priceClock ? price : null;
   const totals = data[selected];
   const ready = totals?.status === "ready";
+  const usdValue = (raw: string | null | undefined) => ready && raw != null && currentPrice ? formatEntryUsdValue(raw, currentPrice.priceUsd) : null;
+  const deadUsd = usdValue(totals?.deadAmountRaw);
+  const communityUsd = usdValue(totals?.communityAmountRaw);
   const networkLabel = selected === "arc" ? "Arc" : "Robinhood Chain";
   return <section className={styles.panel} id="mss2-entry-totals" aria-label="MSS2 entry contribution totals">
     <header>
@@ -52,12 +80,14 @@ export default function Mss2EntryTotals({ network, paymentId }: { network: "robi
       <article className={styles.dead}>
         <span><small>DEAD ADDRESS</small><b>20% OF EACH ENTRY</b></span>
         <strong>{ready && totals.deadAmountRaw !== null ? formatEntryTotal(totals.deadAmountRaw) : "—"}<small>MSS2 SENT</small></strong>
+        <div className={styles.usdValue}><b>{deadUsd ?? "—"}</b><span>ESTIMATED CURRENT USD VALUE</span></div>
         <p>Permanently sent to the dead address.</p>
         {totals?.explorerUrl && <a href={`${totals.explorerUrl}/address/${MSS2_DEAD_ADDRESS}`} target="_blank" rel="noreferrer">View destination ↗</a>}
       </article>
       <article className={styles.community}>
         <span><small>COMMUNITY REWARDS RESERVE</small><b>80% OF EACH ENTRY</b></span>
         <strong>{ready && totals.communityAmountRaw !== null ? formatEntryTotal(totals.communityAmountRaw) : "—"}<small>MSS2 FUNDED</small></strong>
+        <div className={styles.usdValue}><b>{communityUsd ?? "—"}</b><span>ESTIMATED CURRENT USD VALUE</span></div>
         <p>Sent to the Community Airdrop Reserve.</p>
         {totals?.explorerUrl && <a href={`${totals.explorerUrl}/address/${MSS2_COMMUNITY_AIRDROP_RESERVE}`} target="_blank" rel="noreferrer">View destination ↗</a>}
       </article>
@@ -66,7 +96,8 @@ export default function Mss2EntryTotals({ network, paymentId }: { network: "robi
       <p role="status">{ready ? <><b>{totals.entries?.toLocaleString()} confirmed paid {totals.entries === 1 ? "entry" : "entries"}</b> on {networkLabel}. Checked {totals.checkedAt ? new Date(totals.checkedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "just now"}.</> : totals?.status === "syncing" ? "Syncing confirmed entry history…" : totals?.status === "unavailable" ? "On-chain totals are temporarily unavailable. Please retry." : "Loading confirmed entry totals…"}</p>
       <button type="button" disabled={busy} onClick={() => setRetry((value) => value + 1)}>{busy ? "Checking…" : "Refresh totals"}</button>
     </footer>
-    <p className={styles.scope}>Lifetime contributions through the Mint Flyer entry router on {networkLabel}, including paid test entries. Figures are rounded to six decimals. Reserve funding does not represent rewards distributed to players.</p>
+    <p className={styles.priceNote}>{currentPrice ? <>MSS2 price: ${currentPrice.priceUsd} on {networkLabel} · checked {new Date(currentPrice.checkedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. <a href={currentPrice.pairUrl} target="_blank" rel="noreferrer">{currentPrice.source} ↗</a></> : priceUnavailable || price ? "Current MSS2 price is unavailable. USD estimates will resume when a fresh quote is available." : "Loading current MSS2 price…"}</p>
+    <p className={styles.scope}>Lifetime contributions through the Mint Flyer entry router on {networkLabel}, including paid test entries. Figures are rounded to six decimals. USD estimates update with the selected network’s market price and value these contributions, not the reserve’s current wallet balance. Reserve funding does not represent rewards distributed to players.</p>
     {totals?.explorerUrl && <a className={styles.proof} href={`${totals.explorerUrl}/address/${totals.routerAddress}`} target="_blank" rel="noreferrer">Verify entry payments on-chain ↗</a>}
   </section>;
 }
