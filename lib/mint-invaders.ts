@@ -60,9 +60,9 @@ export function tickInvaders(g: InvadersGame, seconds: number, input: { move: nu
       g.enemyAt = g.time + Math.max(.3, (boss ? .65 : 1.25) - g.wave * .045);
     }
   }
-  if (input.fire && g.time >= g.shootAt && !g.nextWaveAt && g.shots.filter(b => !b.enemy).length < (g.doubleUntil > g.time ? 2 : 1)) {
+  if (input.fire && g.time >= g.shootAt && !g.nextWaveAt) {
     (g.doubleUntil > g.time ? [-9, 9] : [0]).forEach(offset => g.shots.push({ x: g.x + offset, y: 562, vx: 0, vy: -430, enemy: false }));
-    g.shootAt = g.time + .3;
+    g.shootAt = g.time + .16;
   }
   for (const b of g.shots) {
     const oldX = b.x, oldY = b.y;

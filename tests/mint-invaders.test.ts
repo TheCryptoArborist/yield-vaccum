@@ -86,3 +86,12 @@ test("a defeated mothership's pickup survives the next wave transition", () => {
   assert.equal(g.wave, 5); assert.equal(g.drops.length, 1);
   assert.ok(g.drops[0].y > 280 && g.drops[0].y < 580);
 });
+
+test("held fire launches another shot before the previous projectile leaves the screen", () => {
+  const g = createInvadersGame(1);
+  for (let i = 0; i < 8; i++) tickInvaders(g, .04, { move: 0, fire: true });
+  assert.equal(g.shots.filter(b => !b.enemy).length, 2);
+  const count = g.shots.length;
+  tickInvaders(g, .001, { move: 0, fire: true });
+  assert.equal(g.shots.length, count);
+});
