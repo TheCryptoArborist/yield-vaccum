@@ -3,3 +3,5 @@
 .console{flex-wrap:wrap}.audioNotice{color:#dfc7ff;font-size:12px;line-height:1.5;margin:12px 2px 0}@media(max-width:420px){.console>span{flex-basis:100%;padding:4px 0}.console button{flex:1}}
 
 .power b{display:flex;align-items:center;gap:9px}.power b svg{flex-shrink:0;filter:drop-shadow(0 0 5px currentColor)}.power .doubleLabel{color:#c88bff}
+
+.console .fireButton{background:#00f5d4;color:#042425;border-color:#00f5d4;min-width:72px;font-weight:900;touch-action:manipulation}.console .fireButton:active{background:#b5fff4}

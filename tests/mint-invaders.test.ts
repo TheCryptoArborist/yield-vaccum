@@ -87,11 +87,13 @@ test("a defeated mothership's pickup survives the next wave transition", () => {
   assert.ok(g.drops[0].y > 280 && g.drops[0].y < 580);
 });
 
-test("held fire launches another shot before the previous projectile leaves the screen", () => {
+test("one firing request produces one shot, and a later press can fire before it leaves", () => {
   const g = createInvadersGame(1);
-  for (let i = 0; i < 8; i++) tickInvaders(g, .04, { move: 0, fire: true });
+  tickInvaders(g, .04, { move: 0, fire: true });
+  for (let i = 0; i < 6; i++) tickInvaders(g, .04, idle);
+  assert.equal(g.shots.filter(b => !b.enemy).length, 1);
+  tickInvaders(g, .04, { move: 0, fire: true });
   assert.equal(g.shots.filter(b => !b.enemy).length, 2);
-  const count = g.shots.length;
   tickInvaders(g, .001, { move: 0, fire: true });
-  assert.equal(g.shots.length, count);
+  assert.equal(g.shots.filter(b => !b.enemy).length, 2);
 });
