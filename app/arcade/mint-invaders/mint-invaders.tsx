@@ -23,6 +23,48 @@ function pixels(ctx: CanvasRenderingContext2D, bitmap: string[], x: number, y: n
   ctx.fillStyle = color;
   bitmap.forEach((row, iy) => [...row].forEach((pixel, ix) => { if (pixel === "1") ctx.fillRect(Math.round(x + (ix - row.length / 2) * size), Math.round(y + (iy - bitmap.length / 2) * size), size, size); }));
 }
+const shieldPickup = [
+  "00111111100", "01111111110", "11000000011", "11000000011",
+  "11000000011", "11000000011", "01100000110", "01100000110",
+  "00110001100", "00011011000", "00001110000", "00000100000",
+];
+const twinPickup = [
+  "0001000001000", "0011100011100", "0011100011100", "0011100011100",
+  "0011100011100", "0011100011100", "0011100011100", "0011100011100",
+  "0001000001000", "0010100010100", "0001000001000", "0000000000000",
+];
+function drawPickup(ctx: CanvasRenderingContext2D, type: "shield" | "double", x: number, y: number, seconds: number) {
+  ctx.save();
+  const color = type === "shield" ? "#00f5d4" : "#c88bff";
+  const bob = Math.sin(seconds * 6 + x) * 2;
+  const pulse = 1 + Math.sin(seconds * 5 + x) * .08;
+  // A rising particle trail, glowing halo, and orbiting sparks identify pickups at a glance.
+  for (let i = 0; i < 3; i++) {
+    ctx.globalAlpha = .35 - i * .09; ctx.fillStyle = color;
+    ctx.fillRect(Math.round(x + Math.sin(seconds * 4 + i) * 5 - 1), Math.round(y - 23 - i * 8), 3, 3);
+  }
+  ctx.globalAlpha = 1;
+  const halo = ctx.createRadialGradient(x, y + bob, 4, x, y + bob, 29 * pulse);
+  halo.addColorStop(0, type === "shield" ? "#00f5d440" : "#c88bff40"); halo.addColorStop(1, "#00000000");
+  ctx.fillStyle = halo; ctx.fillRect(x - 32, y - 34, 64, 68);
+  ctx.strokeStyle = type === "shield" ? "#00f5d455" : "#c88bff55";
+  ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y + bob, 22 * pulse, 0, Math.PI * 2); ctx.stroke();
+  for (let i = 0; i < 3; i++) {
+    const angle = seconds * 1.7 + i * Math.PI * 2 / 3;
+    ctx.fillStyle = i === 0 ? "#eafffa" : color;
+    ctx.fillRect(Math.round(x + Math.cos(angle) * 22 * pulse - 1), Math.round(y + bob + Math.sin(angle) * 22 * pulse - 1), 3, 3);
+  }
+  ctx.shadowColor = color; ctx.shadowBlur = 7;
+  pixels(ctx, type === "shield" ? shieldPickup : twinPickup, x, y + bob, 2, color);
+  ctx.shadowBlur = 0;
+  if (type === "shield") {
+    pixels(ctx, ["00100", "00100", "11111", "00100", "00100"], x, y + bob - 3, 2, "#e5fff8");
+  } else {
+    ctx.fillStyle = "#f5eaff"; ctx.fillRect(x - 7, y + bob - 7, 2, 10); ctx.fillRect(x + 5, y + bob - 7, 2, 10);
+    ctx.fillStyle = "#ffb36d"; ctx.fillRect(x - 7, y + bob + 8, 2, 3 + Math.floor(seconds * 12) % 3); ctx.fillRect(x + 5, y + bob + 8, 2, 3 + Math.floor(seconds * 12 + 1) % 3);
+  }
+  ctx.restore();
+}
 function draw(ctx: CanvasRenderingContext2D, g: InvadersGame | null, seconds: number) {
   ctx.fillStyle = "#050b19"; ctx.fillRect(0, 0, 560, 640);
   for (let i = 0; i < 75; i++) {
@@ -44,7 +86,7 @@ function draw(ctx: CanvasRenderingContext2D, g: InvadersGame | null, seconds: nu
     } else pixels(ctx, (g.marchStep % 2 ? alternateSprites : sprites)[e.kind], e.x, e.y, 4, ["#00f5d4", "#bb76ff", "#ffba63"][e.kind]);
   });
   g.shots.forEach(b => { ctx.fillStyle = b.enemy ? "#ff6eac" : "#b5fff4"; if (b.enemy) { for (let i = 0; i < 4; i++) ctx.fillRect(b.x + ((i + Math.floor(g.time * 12)) % 2 ? -2 : 1), b.y - 6 + i * 3, 3, 3); } else ctx.fillRect(b.x - 1, b.y - 6, 3, 12); });
-  g.drops.forEach(d => { ctx.fillStyle = d.type === "shield" ? "#00f5d4" : "#bb76ff"; ctx.fillRect(d.x - 12, d.y - 12, 24, 24); ctx.fillStyle = "#050b19"; ctx.font = "bold 17px monospace"; ctx.textAlign = "center"; ctx.fillText(d.type === "shield" ? "S" : "2", d.x, d.y + 6); });
+  g.drops.forEach(d => drawPickup(ctx, d.type, d.x, d.y, seconds));
   if (g.shield) { ctx.strokeStyle = "#00f5d4"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(g.x, 580, 27, 0, Math.PI * 2); ctx.stroke(); }
   if (g.time >= g.invincibleUntil || Math.floor(g.time * 12) % 2 === 0) pixels(ctx, ship, g.x, 580, 5, "#00f5d4");
   if (g.nextWaveAt) { ctx.fillStyle = "#b5fff4"; ctx.textAlign = "center"; ctx.font = "bold 25px monospace"; ctx.fillText("WAVE CLEARED", 280, 290); ctx.font = "16px monospace"; ctx.fillText(`NEXT: ${((g.wave + 1) % 4 === 0) ? "MOTHERSHIP" : "WAVE " + (g.wave + 1)}`, 280, 323); }
@@ -169,7 +211,7 @@ export default function MintInvaders() {
       </section>
       <aside className={styles.side}>
         <article><small>YOUR NEXT HIGH SCORE</small><h2>CLASSIC ARCADE.<br /><span>MSS2 ENERGY.</span></h2><p>Aliens march sideways in steps, drop toward your ship at the edges, and speed up as you thin their ranks. Shelter beneath four destructible bunkers. A mothership arrives every fourth wave.</p><div className={styles.best}><span>LOCAL BEST</span><b>{best.toLocaleString()}</b></div></article>
-        <article><small>FLIGHT MANUAL</small><h3>MOVE. FIRE. SURVIVE.</h3><p><b>Desktop:</b> A/D or ←/→ to move. Hold the left mouse button inside the game to fire. Space also works.</p><p><b>Mobile:</b> Press and drag inside the game to move and fire together.</p><p><b>Pause:</b> Use the button below the game. Switching tabs pauses your run.</p><p><b>Audio:</b> Music and effects start when you press Play. Music has its own switch; Sound mutes everything.</p><div className={styles.power}><b>FOUR DEFENSE BUNKERS</b><span>Enemy shots chip them away. Your shots carve firing lanes from below. Descending aliens can crush them.</span><b>S · SHIELD</b><span>Absorbs one enemy hit.</span><b>2 · DOUBLE SHOT</b><span>Two shots for eight seconds.</span></div></article>
+        <article><small>FLIGHT MANUAL</small><h3>MOVE. FIRE. SURVIVE.</h3><p><b>Desktop:</b> A/D or ←/→ to move. Hold the left mouse button inside the game to fire. Space also works.</p><p><b>Mobile:</b> Press and drag inside the game to move and fire together.</p><p><b>Pause:</b> Use the button below the game. Switching tabs pauses your run.</p><p><b>Audio:</b> Music and effects start when you press Play. Music has its own switch; Sound mutes everything.</p><div className={styles.power}><b>FOUR DEFENSE BUNKERS</b><span>Enemy shots chip them away. Your shots carve firing lanes from below. Descending aliens can crush them.</span><b><svg aria-hidden="true" width="22" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2 3 5v7c0 5 9 10 9 10s9-5 9-10V5Z"/><path d="M12 7v8M8 11h8"/></svg> SHIELD</b><span>Absorbs one enemy hit.</span><b className={styles.doubleLabel}><svg aria-hidden="true" width="22" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 2-3 5v10h6V7Zm12 0-3 5v10h6V7Z"/><path d="M6 19v3m12-3v3"/></svg> DOUBLE SHOT</b><span>Two shots for eight seconds.</span></div></article>
         <article className={styles.preview}><small>FIRST PLAYABLE BUILD</small><h3>TRY THE GAMEPLAY</h3><p>This preview records only your local best. Paid entry, public rankings, and community rewards are not active here.</p><p>Planned entry: <b>$1 worth of MSS2</b> on Robinhood Chain or Arc, with 20% to the dead address and 80% to the community rewards reserve.</p></article>
       </aside>
     </div>
