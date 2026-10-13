@@ -15,7 +15,7 @@ export type InvadersGame = {
 };
 function random(g: InvadersGame) { g.seed = (Math.imul(g.seed, 1664525) + 1013904223) >>> 0; return g.seed / 4294967296; }
 function spawn(g: InvadersGame) {
-  g.shots = []; g.drops = []; g.direction = 1;
+  g.shots = []; g.direction = 1;
   if (g.wave % 4 === 0) g.enemies = [{ x: 280, y: 92, hp: 20 + g.wave * 3, boss: true, kind: 3 }];
   else {
     g.enemies = [];

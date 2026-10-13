@@ -75,3 +75,14 @@ test("normal aliens fire only from the bottom of their column", () => {
   const bottom = g.enemies.filter(e => e.x === shot.x).sort((a, b) => b.y - a.y)[0];
   assert.ok(bottom); assert.ok(Math.abs(shot.y - bottom.y - 18) < 3);
 });
+
+test("a defeated mothership's pickup survives the next wave transition", () => {
+  const g = createInvadersGame(1); g.wave = 4;
+  g.enemies = [{ x: 280, y: 88, hp: 1, boss: true, kind: 3 }];
+  g.shots = [{ x: 280, y: 92.3, vx: 0, vy: -430, enemy: false }];
+  tickInvaders(g, .01, idle);
+  assert.equal(g.drops.length, 1);
+  for (let i = 0; i < 52; i++) tickInvaders(g, .04, idle);
+  assert.equal(g.wave, 5); assert.equal(g.drops.length, 1);
+  assert.ok(g.drops[0].y > 280 && g.drops[0].y < 580);
+});
