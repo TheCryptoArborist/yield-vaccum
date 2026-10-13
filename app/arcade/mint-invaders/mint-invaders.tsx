@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { createBunkers, createInvadersGame, tickInvaders, type InvadersGame } from "../../../lib/mint-invaders";
 import styles from "./mint-invaders.module.css";
 
@@ -53,6 +53,8 @@ export default function MintInvaders() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const game = useRef<InvadersGame | null>(null);
   const input = useRef({ left: false, right: false, fire: false, targetX: undefined as number | undefined });
+  const pointerFire = useRef(false);
+  const activePointer = useRef<number | null>(null);
   const paused = useRef(false);
   const [phase, setPhase] = useState<"ready" | "playing" | "paused" | "over">("ready");
   const [hud, setHud] = useState({ score: 0, lives: 3, wave: 1, shield: false, double: false, reason: "" });
@@ -85,11 +87,11 @@ export default function MintInvaders() {
   };
   const start = () => {
     enableAudio(); musicStep.current = -1;
-    game.current = createInvadersGame(); paused.current = false;
+    game.current = createInvadersGame(); paused.current = false; pointerFire.current = false; activePointer.current = null;
     input.current = { left: false, right: false, fire: false, targetX: undefined };
     setHud({ score: 0, lives: 3, wave: 1, shield: false, double: false, reason: "" }); setPhase("playing"); canvas.current?.focus({ preventScroll: true });
   };
-  const pause = () => { if (game.current?.phase === "playing") { paused.current = !paused.current; input.current.fire = false; input.current.left = false; input.current.right = false; input.current.targetX = undefined; setPhase(paused.current ? "paused" : "playing"); if (!paused.current) { enableAudio(); canvas.current?.focus({ preventScroll: true }); } } };
+  const pause = () => { if (game.current?.phase === "playing") { paused.current = !paused.current; input.current.fire = false; pointerFire.current = false; activePointer.current = null; input.current.left = false; input.current.right = false; input.current.targetX = undefined; setPhase(paused.current ? "paused" : "playing"); if (!paused.current) { enableAudio(); canvas.current?.focus({ preventScroll: true }); } } };
   useEffect(() => {
     try { const value = Number(localStorage.getItem("mint-invaders-preview-best")); if (Number.isSafeInteger(value) && value >= 0) bestRef.current = value; } catch { /* Local best is optional. */ }
     let frame = 0, previous = 0, hudAt = 0;
@@ -98,7 +100,7 @@ export default function MintInvaders() {
       const g = game.current;
       if (g && !paused.current && g.phase === "playing") {
         const oldLives = g.lives, oldScore = g.score, oldShot = g.shootAt, oldMarch = g.marchStep;
-        tickInvaders(g, dt, { move: Number(input.current.right) - Number(input.current.left), targetX: input.current.targetX, fire: input.current.fire });
+        tickInvaders(g, dt, { move: Number(input.current.right) - Number(input.current.left), targetX: input.current.targetX, fire: input.current.fire || pointerFire.current });
         if (g.lives < oldLives) beep(100, .2); else if (g.score > oldScore) beep(650); else if (g.shootAt > oldShot) beep(240, .025);
         if (g.marchStep > oldMarch) beep([220, 196, 175, 165][g.marchStep % 4], .09, .085, "triangle");
         const beatLength = Math.max(.16, .25 - (g.wave - 1) * .006);
@@ -129,11 +131,29 @@ export default function MintInvaders() {
       if (event.key === " ") input.current.fire = down;
     };
     const down = (e: KeyboardEvent) => key(e, true), up = (e: KeyboardEvent) => key(e, false);
-    const blur = () => { input.current = { left: false, right: false, fire: false, targetX: undefined }; if (game.current?.phase === "playing") { paused.current = true; setPhase("paused"); } };
+    const blur = () => { pointerFire.current = false; activePointer.current = null; input.current = { left: false, right: false, fire: false, targetX: undefined }; if (game.current?.phase === "playing") { paused.current = true; setPhase("paused"); } };
     const visibility = () => { if (document.hidden) blur(); };
     window.addEventListener("keydown", down); window.addEventListener("keyup", up); window.addEventListener("blur", blur); document.addEventListener("visibilitychange", visibility);
     return () => { cancelAnimationFrame(frame); window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); document.removeEventListener("visibilitychange", visibility); void audio.current?.close(); audio.current = null; };
   }, []);
+  const handlePointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (phase !== "playing" || activePointer.current !== null || (event.pointerType === "mouse" && event.button !== 0)) return;
+    event.preventDefault(); event.currentTarget.focus({ preventScroll: true });
+    event.currentTarget.setPointerCapture(event.pointerId);
+    activePointer.current = event.pointerId; pointerFire.current = true;
+    // Mouse is fire-only: A/D and arrows keep exclusive control of movement.
+    if (event.pointerType === "mouse") input.current.targetX = undefined;
+    else { const rect = event.currentTarget.getBoundingClientRect(); input.current.targetX = (event.clientX - rect.left) / rect.width * 560; }
+  };
+  const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (phase !== "playing" || event.pointerType === "mouse" || activePointer.current !== event.pointerId || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    input.current.targetX = (event.clientX - rect.left) / rect.width * 560;
+  };
+  const releasePointer = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (activePointer.current !== event.pointerId) return;
+    pointerFire.current = false; activePointer.current = null; input.current.targetX = undefined;
+  };
   return <main className={styles.page}>
     <header className={styles.header}><Link href="/">← YIELD VACCUM</Link><span>MSS2 COMMUNITY ARCADE</span><Link href="/arcade">MINT FLYER ↗</Link></header>
     <section className={styles.title}><Image src="/mss2-flyer-emblem.png" alt="MSS2" width="60" height="60" /><div><small>DEFEND THE MINT. HOLD THE LINE.</small><h1>MINT <span>INVADERS</span></h1></div><b>GAMEPLAY PREVIEW</b></section>
@@ -141,15 +161,15 @@ export default function MintInvaders() {
       <section className={styles.cabinet} aria-label="Mint Invaders game">
         <div className={styles.hud}><span><small>SCORE</small><b>{hud.score.toLocaleString()}</b></span><span><small>WAVE</small><b>{hud.wave % 4 === 0 ? "BOSS " : ""}{hud.wave.toString().padStart(2, "0")}</b></span><span><small>SHIPS</small><b>{"♥ ".repeat(hud.lives) || "0"}</b></span></div>
         <div className={styles.screen}>
-          <canvas ref={canvas} tabIndex={0} width="560" height="640" aria-label="Space shooter: move left and right and fire at incoming invaders" onPointerDown={e => { if (phase !== "playing") return; e.currentTarget.setPointerCapture(e.pointerId); const rect = e.currentTarget.getBoundingClientRect(); input.current.targetX = (e.clientX - rect.left) / rect.width * 560; input.current.fire = true; }} onPointerMove={e => { if (phase !== "playing" || !e.currentTarget.hasPointerCapture(e.pointerId)) return; const rect = e.currentTarget.getBoundingClientRect(); input.current.targetX = (e.clientX - rect.left) / rect.width * 560; }} onPointerUp={() => { input.current.fire = false; }} onPointerCancel={() => { input.current.fire = false; }} />
+          <canvas ref={canvas} tabIndex={0} width="560" height="640" aria-label="Space shooter: move left and right and fire at incoming invaders" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={releasePointer} onPointerCancel={releasePointer} onLostPointerCapture={releasePointer} onContextMenu={e => e.preventDefault()} />
           {phase !== "playing" && <div className={styles.overlay}><small>{phase === "ready" ? "SECTOR 02 · MSS2" : phase === "paused" ? "TAKE A BREATHER" : "MISSION REPORT"}</small><h2>{phase === "ready" ? <>THE MINT<br />NEEDS YOU.</> : phase === "paused" ? "PAUSED" : "GAME OVER"}</h2><p>{phase === "ready" ? "Three ships. Endless waves. One defense line." : phase === "paused" ? "Your wave is waiting. Resume when ready." : hud.reason}</p>{phase === "over" && <strong>{hud.score.toLocaleString()} POINTS · WAVE {hud.wave}</strong>}<button onClick={phase === "paused" ? pause : start}>{phase === "ready" ? "START PREVIEW" : phase === "paused" ? "RESUME GAME" : "PLAY AGAIN"} →</button><span>No wallet or payment in this preview.</span></div>}
         </div>
-        <div className={styles.console}><span>{hud.shield ? "◈ SHIELD READY" : hud.double ? "✦ DOUBLE SHOT ACTIVE" : "DRAG TO MOVE + FIRE"}</span><button disabled={phase !== "playing" && phase !== "paused"} onClick={pause}>{phase === "paused" ? "RESUME" : "PAUSE"}</button><button aria-pressed={music} onClick={() => { musicEnabled.current = !music; setMusic(!music); if (!music) enableAudio(); if (phase === "playing") canvas.current?.focus({ preventScroll: true }); }}>{music ? "MUSIC ON" : "MUSIC OFF"}</button><button aria-pressed={sound} onClick={() => { const enabled = audioBlocked || !sound; soundEnabled.current = enabled; setSound(enabled); if (enabled) enableAudio(); if (phase === "playing") canvas.current?.focus({ preventScroll: true }); }}>{audioBlocked ? "ENABLE AUDIO" : sound ? "SOUND ON" : "SOUND OFF"}</button></div>
+        <div className={styles.console}><span>{hud.shield ? "◈ SHIELD READY" : hud.double ? "✦ DOUBLE SHOT ACTIVE" : "A/D + LEFT CLICK · TOUCH: DRAG"}</span><button disabled={phase !== "playing" && phase !== "paused"} onClick={pause}>{phase === "paused" ? "RESUME" : "PAUSE"}</button><button aria-pressed={music} onClick={() => { musicEnabled.current = !music; setMusic(!music); if (!music) enableAudio(); if (phase === "playing") canvas.current?.focus({ preventScroll: true }); }}>{music ? "MUSIC ON" : "MUSIC OFF"}</button><button aria-pressed={sound} onClick={() => { const enabled = audioBlocked || !sound; soundEnabled.current = enabled; setSound(enabled); if (enabled) enableAudio(); if (phase === "playing") canvas.current?.focus({ preventScroll: true }); }}>{audioBlocked ? "ENABLE AUDIO" : sound ? "SOUND ON" : "SOUND OFF"}</button></div>
         {audioBlocked && <p className={styles.audioNotice} role="status">Audio needs another tap to start. Select Enable Audio, and check your device volume.</p>}
       </section>
       <aside className={styles.side}>
         <article><small>YOUR NEXT HIGH SCORE</small><h2>CLASSIC ARCADE.<br /><span>MSS2 ENERGY.</span></h2><p>Aliens march sideways in steps, drop toward your ship at the edges, and speed up as you thin their ranks. Shelter beneath four destructible bunkers. A mothership arrives every fourth wave.</p><div className={styles.best}><span>LOCAL BEST</span><b>{best.toLocaleString()}</b></div></article>
-        <article><small>FLIGHT MANUAL</small><h3>MOVE. FIRE. SURVIVE.</h3><p><b>Desktop:</b> A/D or ←/→ to move. Hold Space to fire.</p><p><b>Mobile:</b> Press and drag inside the game to move and fire together.</p><p><b>Pause:</b> Use the button below the game. Switching tabs pauses your run.</p><p><b>Audio:</b> Music and effects start when you press Play. Music has its own switch; Sound mutes everything.</p><div className={styles.power}><b>FOUR DEFENSE BUNKERS</b><span>Enemy shots chip them away. Your shots carve firing lanes from below. Descending aliens can crush them.</span><b>S · SHIELD</b><span>Absorbs one enemy hit.</span><b>2 · DOUBLE SHOT</b><span>Two shots for eight seconds.</span></div></article>
+        <article><small>FLIGHT MANUAL</small><h3>MOVE. FIRE. SURVIVE.</h3><p><b>Desktop:</b> A/D or ←/→ to move. Hold the left mouse button inside the game to fire. Space also works.</p><p><b>Mobile:</b> Press and drag inside the game to move and fire together.</p><p><b>Pause:</b> Use the button below the game. Switching tabs pauses your run.</p><p><b>Audio:</b> Music and effects start when you press Play. Music has its own switch; Sound mutes everything.</p><div className={styles.power}><b>FOUR DEFENSE BUNKERS</b><span>Enemy shots chip them away. Your shots carve firing lanes from below. Descending aliens can crush them.</span><b>S · SHIELD</b><span>Absorbs one enemy hit.</span><b>2 · DOUBLE SHOT</b><span>Two shots for eight seconds.</span></div></article>
         <article className={styles.preview}><small>FIRST PLAYABLE BUILD</small><h3>TRY THE GAMEPLAY</h3><p>This preview records only your local best. Paid entry, public rankings, and community rewards are not active here.</p><p>Planned entry: <b>$1 worth of MSS2</b> on Robinhood Chain or Arc, with 20% to the dead address and 80% to the community rewards reserve.</p></article>
       </aside>
     </div>
