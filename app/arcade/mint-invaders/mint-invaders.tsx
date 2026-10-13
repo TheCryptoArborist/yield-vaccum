@@ -15,8 +15,10 @@ const alternateSprites = [
   ["00011000", "00111100", "01111110", "11011011", "11111111", "01011010", "10100101", "01000010"],
   ["00111100", "01111110", "11111111", "11011011", "11111111", "10100101", "01000010", "10000001"],
 ];
-const melody = [64, 0, 67, 71, 76, 71, 67, 0, 62, 0, 66, 69, 74, 69, 66, 0, 60, 0, 64, 67, 72, 67, 64, 0, 59, 62, 66, 69, 71, 69, 66, 62];
-const bossMelody = [64, 67, 70, 71, 76, 71, 70, 67, 62, 65, 68, 69, 74, 69, 68, 65];
+// Original minor-key pulse: sparse, low-register signals rather than a bright arpeggio.
+const melody = [52, 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 54, 0, 0, 0, 52, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 47, 0, 0, 0];
+const bossMelody = [52, 0, 55, 0, 58, 0, 59, 0, 52, 0, 55, 0, 54, 0, 50, 0];
+const bassPulse = [40, 0, 40, 0, 47, 40, 0, 40, 38, 0, 38, 0, 45, 38, 0, 38];
 const displayBunkers = createBunkers();
 const ship = ["0001000", "0011100", "0011100", "0111110", "1111111", "1101011", "1000001"];
 function pixels(ctx: CanvasRenderingContext2D, bitmap: string[], x: number, y: number, size: number, color: string) {
@@ -109,12 +111,14 @@ export default function MintInvaders() {
   const musicStep = useRef(-1);
   const audio = useRef<AudioContext | null>(null);
   const bestRef = useRef(0);
-  const beep = (frequency: number, duration = .06, level = .07, voice: OscillatorType = "square") => {
+  const beep = (frequency: number, duration = .06, level = .07, voice: OscillatorType = "square", endFrequency?: number) => {
     const a = audio.current;
     if (!a || !soundEnabled.current || a.state !== "running") return;
     const osc = a.createOscillator(); const volume = a.createGain(); osc.type = voice; osc.frequency.value = frequency;
+    if (endFrequency) osc.frequency.exponentialRampToValueAtTime(endFrequency, a.currentTime + duration);
     volume.gain.setValueAtTime(level, a.currentTime); volume.gain.exponentialRampToValueAtTime(.001, a.currentTime + duration);
-    osc.connect(volume); volume.connect(a.destination); osc.start(); osc.stop(a.currentTime + duration);
+    const filter = a.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = voice === "sawtooth" ? 680 : 1800;
+    osc.connect(filter); filter.connect(volume); volume.connect(a.destination); osc.start(); osc.stop(a.currentTime + duration);
   };
   const enableAudio = () => {
     try {
@@ -144,15 +148,22 @@ export default function MintInvaders() {
         const oldLives = g.lives, oldScore = g.score, oldShot = g.shootAt, oldMarch = g.marchStep;
         tickInvaders(g, dt, { move: Number(input.current.right) - Number(input.current.left), targetX: input.current.targetX, fire: input.current.fire || pointerFire.current });
         if (g.lives < oldLives) beep(100, .2); else if (g.score > oldScore) beep(650); else if (g.shootAt > oldShot) beep(240, .025);
-        if (g.marchStep > oldMarch) beep([220, 196, 175, 165][g.marchStep % 4], .09, .085, "triangle");
-        const beatLength = Math.max(.16, .25 - (g.wave - 1) * .006);
+        if (g.marchStep > oldMarch) beep([110, 98, 87, 82][g.marchStep % 4], .09, .08, "square");
+        const beatLength = Math.max(.14, .22 - (g.wave - 1) * .005);
         const step = Math.floor(g.time / beatLength);
         if (musicEnabled.current && step !== musicStep.current && audio.current?.state === "running") {
           musicStep.current = step;
           const tune = g.wave % 4 === 0 ? bossMelody : melody;
           const note = tune[step % tune.length];
-          if (note) beep(440 * 2 ** ((note - 69) / 12), beatLength * .65, .035);
-          if (step % 4 === 0) { const bass = [40, 38, 36, 35][Math.floor(step / 8) % 4]; beep(440 * 2 ** ((bass - 69) / 12), beatLength * 1.4, .08, "triangle"); }
+          if (note) beep(440 * 2 ** ((note - 69) / 12), beatLength * 1.3, .025, "sawtooth");
+          const bass = bassPulse[step % bassPulse.length];
+          if (bass) {
+            const frequency = 440 * 2 ** ((bass - 69) / 12);
+            beep(frequency, beatLength * .7, .07, "triangle");
+            beep(frequency * 2, beatLength * .45, .018, "square");
+          }
+          if (step % 4 === 0) beep(125, .11, .09, "sine", 45);
+          if (step % 4 === 2) beep(180, .045, .023, "triangle", 95);
         }
         if ((g as InvadersGame).phase === "over") {
           setPhase("over"); bestRef.current = Math.max(bestRef.current, g.score);
