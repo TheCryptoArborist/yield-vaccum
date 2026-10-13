@@ -36,3 +36,42 @@ test("double shot expires, firing has a cooldown, and movement stays inside the 
   g.shots = []; g.time = 9; tickInvaders(g, .01, { move: 0, fire: true });
   assert.equal(g.shots.filter(b => !b.enemy).length, 1);
 });
+
+test("bunkers stop incoming shots and both sides carve lasting holes", () => {
+  const g = createInvadersGame(1);
+  const before = g.bunkers[0].cells.filter(Boolean).length;
+  g.shots = [{ x: 84, y: 460, vx: 0, vy: 1400, enemy: true }];
+  tickInvaders(g, .04, idle);
+  assert.equal(g.shots.length, 0);
+  const afterEnemy = g.bunkers[0].cells.filter(Boolean).length;
+  assert.ok(afterEnemy < before);
+  g.shots = [{ x: 64, y: 520, vx: 0, vy: -430, enemy: false }];
+  tickInvaders(g, .04, idle); tickInvaders(g, .04, idle);
+  assert.equal(g.shots.length, 0);
+  assert.ok(g.bunkers[0].cells.filter(Boolean).length < afterEnemy);
+  const damage = [...g.bunkers[0].cells]; g.enemies = []; tickInvaders(g, .01, idle);
+  for (let i = 0; i < 52; i++) tickInvaders(g, .04, idle);
+  assert.deepEqual(g.bunkers[0].cells, damage);
+});
+
+test("aliens march in timed steps, descend at edges, and accelerate as survivors shrink", () => {
+  const g = createInvadersGame(1); const x = g.enemies[0].x;
+  g.marchAt = .2;
+  for (let i = 0; i < 4; i++) tickInvaders(g, .04, idle);
+  assert.equal(g.enemies[0].x, x);
+  tickInvaders(g, .04, idle); tickInvaders(g, .04, idle);
+  assert.equal(g.enemies[0].x, x + 12); assert.equal(g.marchStep, 1);
+  const fullDelay = g.marchAt - g.time;
+  g.enemies = [{ ...g.enemies[0], x: 532 }]; const y = g.enemies[0].y; g.marchAt = g.time;
+  tickInvaders(g, .01, idle);
+  assert.equal(g.direction, -1); assert.equal(g.enemies[0].y, y + 20);
+  assert.ok(g.marchAt - g.time < fullDelay);
+});
+
+test("normal aliens fire only from the bottom of their column", () => {
+  const g = createInvadersGame(3); g.enemyAt = 0;
+  tickInvaders(g, .01, idle);
+  const shot = g.shots.find(b => b.enemy)!;
+  const bottom = g.enemies.filter(e => e.x === shot.x).sort((a, b) => b.y - a.y)[0];
+  assert.ok(bottom); assert.ok(Math.abs(shot.y - bottom.y - 18) < 3);
+});
