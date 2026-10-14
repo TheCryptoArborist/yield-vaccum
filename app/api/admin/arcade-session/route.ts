@@ -1,3 +1,4 @@
+import {deploymentContext} from '../../../../lib/deployment-context';
 import {createAdminChallenge,consumeAdminChallenge,readAdminSession,deleteAdminSession} from '../../../../db/arcade-admin-session';
 import {adminCookie,adminHeaders,adminToken,requireSameOrigin} from '../../../../lib/arcade-admin-auth';
 export const dynamic='force-dynamic';
@@ -19,7 +20,7 @@ export async function POST(request:Request) {
   const code=typeof error==='object'&&error!==null&&'code' in error&&typeof error.code==='string'&&/^[A-Z0-9]{5}$/.test(error.code)?error.code:undefined;
   // Never log messages, signatures, cookies, SQL details or connection strings.
   console.warn('arcade_admin_sign_in_rejected',{phase,errorType:error instanceof Error?error.constructor.name:'UnknownError',code,originMatches:request.headers.get('origin')===new URL(request.url).origin});
-  return Response.json({error:error instanceof Error&&/^(The admin wallet signature|This sign-in request|Too many sign-in)/.test(error.message)?error.message:'Only the configured administrator wallet can sign in. Reconnect and retry if the service is unavailable.'},{status:403,headers:{...adminHeaders,...(process.env.CONTEXT==='deploy-preview'?{'X-Admin-Stage':phase,'X-Admin-Error':code??(error instanceof Error?error.constructor.name:'UnknownError')}: {})}});
+  return Response.json({error:error instanceof Error&&/^(The admin wallet signature|This sign-in request|Too many sign-in)/.test(error.message)?error.message:'Only the configured administrator wallet can sign in. Reconnect and retry if the service is unavailable.'},{status:403,headers:{...adminHeaders,...(deploymentContext()==='deploy-preview'?{'X-Admin-Stage':phase,'X-Admin-Error':code??(error instanceof Error?error.constructor.name:'UnknownError')}: {})}});
  }
 }
 export async function DELETE(request:Request) {
