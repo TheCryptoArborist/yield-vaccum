@@ -13,3 +13,18 @@ export function championship(rows:Omit<ArcadeStanding,'points'|'rank'>[]):Arcade
  let rank=0;
  return sorted.map((row,index)=>{if(index===0||row.points!==sorted[index-1].points)rank=index+1;return {...row,rank};});
 }
+
+export function gamesPlayedStandings(rows:Omit<ArcadeStanding,'points'|'rank'>[]):ArcadeStanding[] {
+ const sorted=championship(rows).sort((a,b)=>b.runs-a.runs||a.id.localeCompare(b.id));
+ let rank=0;
+ return sorted.map((row,index)=>{if(index===0||row.runs!==sorted[index-1].runs)rank=index+1;return {...row,rank};});
+}
+
+export function arcadeWeekWindow(week?:string,now=new Date()) {
+ const current=new Date(now);
+ current.setUTCDate(current.getUTCDate()-((current.getUTCDay()+6)%7));
+ current.setUTCHours(0,0,0,0);
+ const start=week?new Date(`${week}T00:00:00.000Z`):current;
+ if(week&&(!/^\d{4}-\d{2}-\d{2}$/.test(week)||!Number.isFinite(start.getTime())||start.toISOString().slice(0,10)!==week||start.getUTCDay()!==1||start>current))throw new Error('Choose a valid current or previous Monday for the weekly leaderboard.');
+ return {start,end:new Date(start.getTime()+7*86400000)};
+}
