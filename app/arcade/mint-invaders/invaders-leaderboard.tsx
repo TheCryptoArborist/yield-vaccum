@@ -2,29 +2,40 @@
 import { useEffect, useState } from "react";
 import type { PaidArcadeAuthorization } from "../shared/paid-arcade-entry";
 import type { InvadersResult } from "../../../lib/mint-invaders-result";
-import styles from "./mint-invaders.module.css";
-type Row = { nickname: string; score: number; wave: number; network: string };
-export default function InvadersLeaderboard({ result, entry }: { result: InvadersResult | null; entry: PaidArcadeAuthorization | null }) {
-  const [rows,setRows] = useState<Row[]>([]), [nickname,setNickname] = useState(""), [message,setMessage] = useState(""), [busy,setBusy] = useState(false), [saved,setSaved] = useState(""), [refresh,setRefresh] = useState(0);
-  const [loaded,setLoaded] = useState(false);
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetch("/api/mint-invaders-leaderboard", { cache:"no-store", signal:controller.signal }).then(async response => { const data=await response.json(); if(!response.ok) throw new Error(data.error); if(!controller.signal.aborted){setRows(data.entries);setLoaded(true);setMessage("");} }).catch(() => {if(!controller.signal.aborted)setMessage("Leaderboard unavailable. Retry shortly.");});
+import type { InvadersProfile } from "../../../db/mint-invaders-profile";
+import { INVADERS_ACHIEVEMENTS, emptyInvadersProgress } from "../../../lib/mint-invaders-achievements";
+import styles from "./invaders-leaderboard.module.css";
+type Row = { rank:number; nickname:string; score:number; wave:number; network:string; unlocked:string[]; runs:number };
+type Stats = {games:number;pilots:number;record:number;wave:number};
+function Badge({icon}:{icon:string}) {
+  const paths:Record<string,string>={target:"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",shield:"M12 2 4 5v7c0 5 8 10 8 10s8-5 8-10V5ZM8 11l3 3 5-6",fleet:"M3 7h5v5H3ZM16 7h5v5h-5ZM9 14h6v6H9ZM5 3v2m14-2v2m-7 6v2",boss:"m4 9 4-5h8l4 5v6H4Zm4 6v4m8-4v4M8 9h1m6 0h1",orbit:"M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM2 15 22 9M12 2v3m0 14v3",crosshair:"M12 5a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM12 2v6m0 8v6M2 12h6m8 0h6",bolt:"m13 2-8 12h6l-1 8 9-13h-6Z",star:"m12 2 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z",wings:"m12 5 3 7-3 8-3-8ZM3 6l6 4m-6 2 6 2m12-8-6 4m6 2-6 2",crown:"m3 7 5 4 4-8 4 8 5-4-3 13H6ZM7 16h10",medal:"m6 3 2 6m10-6-2 6M12 8a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm0 4v4m-2-2h4",link:"m9 8 3-3a5 5 0 0 1 7 7l-3 3M8 9l-3 3a5 5 0 0 0 7 7l3-3M8 16l8-8"};
+  return <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round"><path d={paths[icon]??paths.star}/></svg>;
+}
+export default function InvadersLeaderboard({result,entry}:{result:InvadersResult|null;entry:PaidArcadeAuthorization|null}) {
+  const [rows,setRows]=useState<Row[]>([]),[profile,setProfile]=useState<InvadersProfile|null>(null),[stats,setStats]=useState<Stats|null>(null);
+  const [nickname,setNickname]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[saved,setSaved]=useState(""),[refresh,setRefresh]=useState(0),[loaded,setLoaded]=useState(false);
+  const [filter,setFilter]=useState("all"),[newBadges,setNewBadges]=useState<string[]>([]);
+  useEffect(()=>{
+    const controller=new AbortController();
+    let key=entry?.playerKey??"";try{key ||= localStorage.getItem("mint-invaders-player-v1")??"";}catch{/* Public rankings need no local storage. */}
+    void fetch(`/api/mint-invaders-leaderboard${key?`?playerKey=${encodeURIComponent(key)}`:""}`,{cache:"no-store",signal:controller.signal}).then(async response=>{const data=await response.json();if(!response.ok)throw new Error(data.error);if(!controller.signal.aborted){setRows(data.entries);setStats(data.stats);setProfile(data.profile);setLoaded(true);setMessage("");if(data.profile?.nickname)setNickname(previous=>previous||data.profile.nickname);}}).catch(()=>{if(!controller.signal.aborted)setMessage("Rankings are temporarily unavailable. Your saved results are retained.");});
     return()=>controller.abort();
-  },[refresh]);
-  const save = async () => {
-    if(!result || !entry || busy) return;
-    setBusy(true);
-    try {
-      const response=await fetch("/api/mint-invaders-leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...result,...entry,nickname}),signal:AbortSignal.timeout(20000)});
-      const data=await response.json();if(!response.ok || !data.saved)throw new Error(data.error || "Result not saved.");
-      setSaved(entry.runId);setMessage("Your paid score was saved.");setRefresh(value=>value+1);
-    }catch(e){setMessage(e instanceof Error?e.message:"Result unavailable.");}finally{setBusy(false);}
+  },[refresh,entry?.playerKey]);
+  const save=async()=>{
+    if(!result||!entry||busy)return;setBusy(true);
+    try{const response=await fetch("/api/mint-invaders-leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...result,...entry,nickname}),signal:AbortSignal.timeout(20000)});const data=await response.json();if(!response.ok||!data.saved)throw new Error(data.error||"Result not saved.");setSaved(entry.runId);setNewBadges(data.newlyUnlocked??[]);setProfile(data.profile);setMessage("Score saved. Welcome to the sector rankings.");setRefresh(value=>value+1);}catch(e){setMessage(e instanceof Error?e.message:"Result unavailable.");}finally{setBusy(false);}
   };
-  return <section className={styles.leaderboard} id="mint-invaders-leaderboard"><small>PUBLIC · VERIFIED PAID ENTRIES</small><h2>MINT INVADERS LEADERBOARD</h2>
-    {result && entry && saved!==entry.runId && <form onSubmit={event=>{event.preventDefault();void save();}}><label htmlFor="invaders-nickname">Name on the leaderboard</label><input id="invaders-nickname" value={nickname} maxLength={22} minLength={2} required onChange={event=>setNickname(event.target.value)} /><button disabled={busy}>{busy?"SAVING…":"SAVE MY SCORE"}</button><p>{result.score.toLocaleString()} points · Wave {result.wave}. Wallet addresses are not displayed publicly.</p></form>}
-    <p role="status">{message || (!loaded?"Loading leaderboard…":!rows.length?"No ranked games yet. Finish a paid game to set the first score.":"Best score per player. View without connecting a wallet.")}</p>
-    {rows.length>0 && <div className={styles.tableScroll}><table><thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Wave</th><th>Network</th></tr></thead><tbody>{rows.map((row,index)=><tr key={`${index}-${row.nickname}`}><td>{index+1}</td><td>{row.nickname}</td><td>{row.score.toLocaleString()}</td><td>{row.wave}</td><td>{row.network==="arc"?"Arc":"Robinhood"}</td></tr>)}</tbody></table></div>}
-    <button onClick={()=>setRefresh(value=>value+1)}>REFRESH LEADERBOARD</button>
+  const progress=profile??emptyInvadersProgress;
+  const unlocked=new Set(profile?.unlocked??[]);
+  const visible=rows.filter(row=>filter==="all"||row.network===filter);
+  return <section className={styles.board} id="mint-invaders-leaderboard">
+    <header className={styles.heading}><div><small>MSS2 ARCADE · VERIFIED PAID ENTRIES</small><h2>SECTOR <span>RANKINGS</span></h2><p>Your best run takes the spotlight. Every saved game builds your badge collection.</p></div><button onClick={()=>setRefresh(value=>value+1)} aria-label="Refresh Mint Invaders rankings">↻ REFRESH</button></header>
+    <div className={styles.stats}><div><small>PILOTS</small><strong>{stats?.pilots.toLocaleString()??"—"}</strong></div><div><small>PAID GAMES SAVED</small><strong>{stats?.games.toLocaleString()??"—"}</strong></div><div><small>SECTOR RECORD</small><strong>{stats?.record.toLocaleString()??"—"}</strong></div><div><small>FURTHEST WAVE</small><strong>{stats?String(stats.wave).padStart(2,"0"):"—"}</strong></div></div>
+    {result&&entry&&<div className={styles.result}><div><small>MISSION COMPLETE</small><strong>{result.score.toLocaleString()} <span>POINTS</span></strong><p>Wave {result.wave} · {result.kills} aliens · {result.bossKills} bosses · {result.pickups} pickups</p></div>{saved!==entry.runId?<form onSubmit={event=>{event.preventDefault();void save();}}><label htmlFor="invaders-nickname">Your pilot name</label><div><input id="invaders-nickname" value={nickname} maxLength={22} minLength={2} required onChange={event=>setNickname(event.target.value)} placeholder="Choose your call sign"/><button disabled={busy}>{busy?"SAVING…":"SAVE SCORE + BADGES"}</button></div><small>Public name only. Your wallet address stays private.</small></form>:<div className={styles.saved}>✓ SCORE SAVED{newBadges.length>0&&<span>{newBadges.length} new {newBadges.length===1?"badge":"badges"} unlocked</span>}</div>}</div>}
+    {loaded&&rows.length>0&&<div className={styles.podium}>{[0,1,2].map(index=>{const row=rows[index];return <article key={index} className={`${styles.podiumCard} ${index===0?styles.champion:""}`}><span className={styles.place}>{index===0?"♛":"0"+(index+1)}</span><small>{index===0?"SECTOR LEADER":`RANK ${index+1}`}</small>{row?<><h3>{row.nickname}</h3><strong>{row.score.toLocaleString()}<span>POINTS</span></strong><p>Wave {row.wave} · {row.network==="arc"?"Arc":"Robinhood Chain"}</p><div className={styles.miniBadges}>{row.unlocked.slice().reverse().slice(0,4).map(id=>{const badge=INVADERS_ACHIEVEMENTS.find(b=>b.id===id);return badge?<span key={id} title={`${badge.name}: ${badge.description}`}><Badge icon={badge.icon}/></span>:null;})}</div></>:<><h3>OPEN POSITION</h3><p>Finish a paid game.<br/>Make your mark.</p></>}</article>;})}</div>}
+    <nav className={styles.filters} aria-label="Leaderboard network filter">{[["all","ALL PILOTS"],["robinhood","ROBINHOOD"],["arc","ARC"]].map(([value,label])=><button key={value} aria-pressed={filter===value} onClick={()=>setFilter(value)}>{label}</button>)}</nav>
+    <p className={styles.status} role="status">{message||(!loaded?"Loading sector rankings…":!rows.length?"The sector is waiting for its first pilot. Finish a paid game to claim the lead.":"Global ranks · best score per player · ties use wave, then earliest saved result.")}</p>
+    {loaded&&rows.length>0&&<div className={styles.rankList}><div className={styles.listHead}><span>RANK / PILOT</span><span>BADGES</span><span>WAVE</span><span>SCORE</span></div>{visible.map(row=><article key={row.rank} className={styles.rankRow}><div className={styles.pilot}><b>{String(row.rank).padStart(2,"0")}</b><span><strong>{row.nickname}</strong><small>{row.network==="arc"?"ARC":"ROBINHOOD CHAIN"} · {row.runs} saved {row.runs===1?"game":"games"}</small></span></div><div className={styles.rowBadges}>{row.unlocked.slice().reverse().slice(0,3).map(id=>{const badge=INVADERS_ACHIEVEMENTS.find(b=>b.id===id);return badge?<span key={id} title={badge.name} aria-label={badge.name}><Badge icon={badge.icon}/></span>:null;})}<small>{row.unlocked.length} earned</small></div><span className={styles.wave}>W{String(row.wave).padStart(2,"0")}</span><strong className={styles.score}>{row.score.toLocaleString()}</strong></article>)}{!visible.length&&<p className={styles.noRows}>No pilots ranked on this network yet.</p>}</div>}
+    <section className={styles.collection}><header><div><small>YOUR PILOT COLLECTION</small><h3>ACHIEVEMENTS</h3></div><b>{unlocked.size} / {INVADERS_ACHIEVEMENTS.length} UNLOCKED</b></header><p>Badges unlock from saved paid games. Your collection is linked to this browser’s arcade profile. Earlier scores keep their wave and score milestones; kill and pickup tracking starts with newly saved games.</p><div className={styles.badgeGrid}>{INVADERS_ACHIEVEMENTS.map(badge=>{const earned=unlocked.has(badge.id);const value=Math.min(progress[badge.metric],badge.target);return <article key={badge.id} className={`${styles.badgeCard} ${earned?styles.earned:""} ${styles[badge.tone]} ${newBadges.includes(badge.id)?styles.newBadge:""}`}><div className={styles.badgeIcon}><Badge icon={badge.icon}/></div><div><small>{earned?newBadges.includes(badge.id)?"NEWLY UNLOCKED":"UNLOCKED":"LOCKED"}</small><h4>{badge.name}</h4><p>{badge.description}</p><div className={styles.progressTrack} role="progressbar" aria-label={`${badge.name} progress`} aria-valuemin={0} aria-valuemax={badge.target} aria-valuenow={value}><i style={{width:`${value/badge.target*100}%`}}/></div><span>{value.toLocaleString()} / {badge.target.toLocaleString()} {badge.unit}</span></div></article>;})}</div></section>
   </section>;
 }
