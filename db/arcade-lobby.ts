@@ -4,10 +4,10 @@ import { championship, gamesPlayedStandings, arcadeWeekWindow } from '../lib/arc
 import type { ArcadeGame } from '../lib/arcade-game';
 let database:ReturnType<typeof getDatabase>|undefined;
 const db=()=>database??=getDatabase({connectionString:process.env.NETLIFY_DB_URL});
-export async function recordArcadeResult(input:{game:ArcadeGame;runId:string;playerKey:string;walletAddress:string;nickname:string;score:number;tieBreak:number;createdAt:string},database=db()) {
+export async function recordArcadeResult(input:{game:ArcadeGame;runId:string;playerKey:string;walletAddress:string;nickname:string;score:number;tieBreak:number;createdAt:string;network?:'arc'|'robinhood'},database=db()) {
  const context=deploymentContext(),wallet=input.walletAddress.toLowerCase();
  await database.sql`INSERT INTO arcade_pilots(context,wallet_address) VALUES(${context},${wallet}) ON CONFLICT DO NOTHING`;
- await database.sql`INSERT INTO arcade_results(context,game,run_id,player_key,wallet_address,nickname,score,tie_break,created_at) VALUES(${context},${input.game},${input.runId},${input.playerKey},${wallet},${input.nickname},${input.score},${input.tieBreak},${input.createdAt}) ON CONFLICT DO NOTHING`;
+ await database.sql`INSERT INTO arcade_results(context,game,run_id,player_key,wallet_address,nickname,score,tie_break,created_at,network) VALUES(${context},${input.game},${input.runId},${input.playerKey},${wallet},${input.nickname},${input.score},${input.tieBreak},${input.createdAt},${input.network??null}) ON CONFLICT(context,game,run_id) DO UPDATE SET network=COALESCE(arcade_results.network,EXCLUDED.network) WHERE arcade_results.wallet_address=EXCLUDED.wallet_address AND arcade_results.player_key=EXCLUDED.player_key`;
 }
 export async function readArcadeLobby(keys:string[],weekly:boolean,database=db(),options:{ranking?:'games'|'points';week?:string;now?:Date;page?:number}={}) {
  const context=deploymentContext();
