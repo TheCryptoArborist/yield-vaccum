@@ -117,12 +117,13 @@ export default function PaidArcadeEntry({ onAuthorized }: { onAuthorized: (entry
   const expired = Boolean(quote && Date.parse(quote.expiresAt) <= clock);
   return <section className={styles.entryPanel} aria-label="Mint Invaders paid entry">
     <WalletConnect theme="mss" onConnectionChange={connectionChange} />
-    <p><b>$1 WORTH OF MSS2 PER GAME</b> · 20% to the dead address · 80% to the community rewards reserve</p>
+    <div className={styles.entrySummary}><p><b>$1 WORTH OF MSS2 PER GAME</b><span>20% to the dead address · 80% to community rewards reserve</span></p><div className={styles.entryActions}>
     {wallet && !network && <p>Select Robinhood Chain or Arc in the wallet bar.</p>}
     {network && readiness && !readiness.enabled && <p>{readiness.reason}</p>}
     {quote && <p><b>{quote.displayAmount} MSS2</b> on {quote.network === "arc" ? "Arc" : "Robinhood Chain"}. {expired ? "Quote expired." : "Current entry quote."}</p>}
     {pending ? <button onClick={() => void pay()} disabled={busy || !wallet}>RECHECK SUBMITTED PAYMENT</button> : <><button onClick={() => void prepare()} disabled={busy || !readiness?.enabled || !playerKey}>{quote ? "REFRESH ENTRY QUOTE" : "GET ENTRY QUOTE"}</button>{quote && <button onClick={() => void pay()} disabled={busy || expired || !quote.balanceCheck?.sufficient}>PAY & AUTHORIZE GAME</button>}</>}
-    <p role="status">{busy ? "Please keep this page open. " : ""}{message}</p>
+    </div></div>
+    <p className={styles.entryStatus} role="status">{busy ? "Please keep this page open. " : ""}{message}</p>
     <small>Each game requires a new verified entry. No automatic reward payouts. Pending payments are retained for rechecking.</small>
   </section>;
 }
