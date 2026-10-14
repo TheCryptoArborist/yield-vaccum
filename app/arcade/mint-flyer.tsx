@@ -994,7 +994,7 @@ export default function MintFlyer() {
         <a className={styles.activeNav} href="#mint-flyer"><small>THE GAME</small><strong>Play Mint Flyer</strong></a>
         <a href="#mint-flyer-leaderboard"><small>FLIGHTS + REWARDS</small><strong>Leaderboard</strong></a>
         <a href="#mss2-entry-totals"><small>LIVE ON-CHAIN STATS</small><strong>Community impact</strong></a>
-        <a href="#about-creator"><small>COMMUNITY PROJECT</small><strong>About the creator</strong></a>
+        <a href="/arcade/mint-invaders"><small>RETRO ARCADE</small><strong>Mint Invaders →</strong></a>
       </nav>
 
       <section id="mint-flyer" className={`${styles.gameCard} ${phase === "ready" ? styles.readyGame : ""}`} aria-label="Mint Flyer game">

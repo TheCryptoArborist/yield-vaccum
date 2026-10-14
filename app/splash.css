@@ -367,3 +367,9 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Three games, one shared launch menu. */
+.splashGameMenu { width:min(1050px,100%); }
+.splashActions { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.splashInvadersChoice { background:linear-gradient(135deg,#10362f,#241440); }
+@media(max-width:800px) { .splashGameMenu { width:min(560px,100%); } .splashActions { grid-template-columns:1fr; } }

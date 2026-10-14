@@ -1,5 +1,6 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
 import { deploymentContext } from "../lib/deployment-context";
+import { assertPaymentGame, type ArcadeGame } from "../lib/arcade-game";
 import { getAddress } from "ethers";
 import {
   MSS2_TOKEN,
@@ -19,6 +20,7 @@ import { readRawMss2Balance } from "../lib/mss2-balance";
 import { assessMss2EntryBalance } from "../lib/mss2-entry-balance";
 
 export type ArcadePaymentQuote = {
+  game?: ArcadeGame;
   paymentId: string;
   playerKey: string;
   runId: string;
@@ -61,7 +63,7 @@ function validKey(value: string) {
   return /^[a-zA-Z0-9-]{16,80}$/.test(value);
 }
 
-export async function createArcadePaymentQuote(input: { playerKey: string; runId: string; walletAddress: string; network: Mss2PaymentNetwork }) {
+export async function createArcadePaymentQuote(input: { playerKey: string; runId: string; walletAddress: string; network: Mss2PaymentNetwork; game?: ArcadeGame }) {
   const readiness = paymentReadiness(input.network, input.walletAddress);
   const networkConfig = paymentNetworkConfig(input.network);
   if (!readiness.enabled) throw new Error(readiness.reason || "Real MSS2 payments are disabled.");
@@ -80,6 +82,7 @@ export async function createArcadePaymentQuote(input: { playerKey: string; runId
   const createdAt = new Date();
   const quote: ArcadePaymentQuote = {
     paymentId,
+    game: input.game ?? "mint-flyer",
     playerKey: input.playerKey,
     runId: input.runId,
     walletAddress: walletAddress.toLowerCase(),
@@ -125,11 +128,12 @@ export async function createArcadePaymentQuote(input: { playerKey: string; runId
   };
 }
 
-export async function checkArcadePaymentBalance(input: { paymentId: string; playerKey: string; walletAddress: string }) {
+export async function checkArcadePaymentBalance(input: { paymentId: string; playerKey: string; walletAddress: string; game?: ArcadeGame }) {
   const quote = await store().get(quoteKey(input.paymentId), { type: "json" }) as ArcadePaymentQuote | null;
   if (!quote || quote.playerKey !== input.playerKey || quote.walletAddress !== input.walletAddress.toLowerCase()) {
     throw new Error("The entry quote does not match this wallet. Request a new quote.");
   }
+  assertPaymentGame(quote, input.game);
   const [balance, nativeGasBalanceRaw] = await Promise.all([
     readRawMss2Balance(quote.walletAddress, quote.network === "arc" ? "0x13b2" : "0x1237"),
     rpcCall<string>(quote.network, "eth_getBalance", [quote.walletAddress, "latest"]),
@@ -137,13 +141,14 @@ export async function checkArcadePaymentBalance(input: { paymentId: string; play
   return { paymentId: quote.paymentId, balanceCheck: assessMss2EntryBalance(balance.raw, quote.amountRaw, balance.network), nativeGasBalanceRaw };
 }
 
-export async function verifyArcadePayment(input: { paymentId: string; playerKey: string; walletAddress: string; txHash: string }) {
+export async function verifyArcadePayment(input: { paymentId: string; playerKey: string; walletAddress: string; txHash: string; game?: ArcadeGame }) {
   if (!/^0x[0-9a-fA-F]{64}$/.test(input.txHash)) throw new Error("Enter a valid transaction hash.");
   const paymentStore = store();
   const quote = await paymentStore.get(quoteKey(input.paymentId), { type: "json" }) as ArcadePaymentQuote | null;
   if (!quote || quote.playerKey !== input.playerKey || quote.walletAddress !== input.walletAddress.toLowerCase()) {
     throw new Error("The payment quote was not found for this wallet and run.");
   }
+  assertPaymentGame(quote, input.game);
   if (quote.status === "verified") {
     if (quote.txHash?.toLowerCase() !== input.txHash.toLowerCase()) throw new Error("This run was already paid with another transaction.");
     return quote;
@@ -176,11 +181,12 @@ export async function verifyArcadePayment(input: { paymentId: string; playerKey:
   return { ...verified, pending: false as const, confirmations: evidence.confirmations, explorerUrl: `${paymentNetworkConfig(quote.network).explorerUrl}/tx/${input.txHash}` };
 }
 
-export async function requirePaymentForScore(input: { paymentId: string; playerKey: string; runId: string }) {
+export async function requirePaymentForScore(input: { paymentId: string; playerKey: string; runId: string; game?: ArcadeGame }) {
   if (!validKey(input.paymentId)) throw new Error("A verified MSS2 entry payment is required before this flight can be saved.");
   const quote = await store().get(quoteKey(input.paymentId), { type: "json" }) as ArcadePaymentQuote | null;
   if (!quote || quote.status !== "verified" || quote.playerKey !== input.playerKey || quote.runId !== input.runId || !quote.txHash) {
     throw new Error("A verified MSS2 entry payment is required before this flight can be saved.");
   }
+  assertPaymentGame(quote, input.game);
   return { mode: "paid" as const, network: quote.network, walletAddress: quote.walletAddress, verifiedAt: quote.verifiedAt };
 }
