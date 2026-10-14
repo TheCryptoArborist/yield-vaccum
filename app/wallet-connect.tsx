@@ -31,6 +31,7 @@ type WalletOption = {
   disconnect?: () => Promise<void>;
   label?: (account: string) => Promise<string>;
   prepare?: (account: string) => Promise<void>;
+  signMessage?: (account: string, chainId: string, message: string) => Promise<string>;
   sendCalls?: (account: string, chainId: string, calls: { to?: string; data: string; value?: string; gas?: string }[]) => Promise<string>;
   resolveTransaction?: (account: string, chainId: string, hash: string) => Promise<string | null>;
 };
@@ -272,6 +273,7 @@ export default function WalletConnect({
       sendCalls: selectedWallet.sendCalls ? (calls) => selectedWallet.sendCalls!(account, chainId, calls) : undefined,
       resolveTransaction: selectedWallet.resolveTransaction ? (hash) => selectedWallet.resolveTransaction!(account, chainId, hash) : undefined,
       signMessage: async (message: string) => {
+        if (selectedWallet.signMessage) return selectedWallet.signMessage(account, chainId, message);
         const signature = await selectedWallet.provider.request({ method: "personal_sign", params: [stringToHex(message), account] });
         if (typeof signature !== "string") throw new Error("The wallet did not return a valid signature.");
         return signature;
