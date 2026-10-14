@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     const result = await saveMintFlyerRun({ playerKey, runId, nickname, score: score!, distance: distance!, mintsCollected: mintsCollected!, maxCombo: maxCombo!, hits: hits!, lives: lives!, reachedMoon, continued, entryMode: entry.mode, entryNetwork: entry.network, ...rewards });
     const savedRun=await readSavedMintFlyerRun(playerKey,runId);
     if (!savedRun) throw new Error("Saved flight not found.");
-    await recordArcadeResult({game:"mint-flyer",runId,playerKey,walletAddress:entry.walletAddress,nickname:savedRun.nickname,score:savedRun.score,tieBreak:savedRun.distance,createdAt:savedRun.createdAt});
+    await recordArcadeResult({game:"mint-flyer",runId,playerKey,walletAddress:entry.walletAddress,nickname:savedRun.nickname,score:savedRun.score,tieBreak:savedRun.distance,createdAt:savedRun.createdAt,network:entry.network});
     return Response.json({ saved: true, ...result, profile: publicProfile(result.profile) });
   } catch {
     return Response.json({ error: "The flight result could not be saved right now." }, { status: 503 });

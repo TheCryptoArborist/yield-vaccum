@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const rows = await db().sql`INSERT INTO mint_invaders_runs (context,run_id,payment_id,player_key,nickname,wallet_address,network,score,wave,metrics) VALUES (${deploymentContext()},${p.runId},${p.paymentId},${p.playerKey},${nickname},${entry.walletAddress},${entry.network},${p.score},${p.wave},${metrics}::jsonb) ON CONFLICT DO NOTHING RETURNING run_id`;
     const original=await db().sql`SELECT nickname,score,wave,created_at FROM mint_invaders_runs WHERE context=${deploymentContext()} AND run_id=${p.runId} AND player_key=${p.playerKey}`;
     if(!original[0]) throw new Error("Saved run not found.");
-    await recordArcadeResult({game:"mint-invaders",runId:p.runId,playerKey:p.playerKey,walletAddress:entry.walletAddress,nickname:String(original[0].nickname),score:Number(original[0].score),tieBreak:Number(original[0].wave),createdAt:new Date(String(original[0].created_at)).toISOString()});
+    await recordArcadeResult({game:"mint-invaders",runId:p.runId,playerKey:p.playerKey,walletAddress:entry.walletAddress,nickname:String(original[0].nickname),score:Number(original[0].score),tieBreak:Number(original[0].wave),createdAt:new Date(String(original[0].created_at)).toISOString(),network:entry.network});
     const profile=await readInvadersProfile(db(),deploymentContext(),p.playerKey);
     return Response.json({ saved: true, duplicate: rows.length === 0, profile, newlyUnlocked:rows.length?profile.unlocked.filter(id=>!before.unlocked.includes(id)):[] }, { headers });
   } catch { return Response.json({ error: "The result could not be saved. Check the nickname and verified entry, then retry." }, { status: 400, headers }); }
