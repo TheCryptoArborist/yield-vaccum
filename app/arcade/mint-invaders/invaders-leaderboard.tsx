@@ -5,12 +5,9 @@ import type { InvadersResult } from "../../../lib/mint-invaders-result";
 import type { InvadersProfile } from "../../../db/mint-invaders-profile";
 import { INVADERS_ACHIEVEMENTS, emptyInvadersProgress } from "../../../lib/mint-invaders-achievements";
 import styles from "./invaders-leaderboard.module.css";
+import Badge from "./invaders-badge";
 type Row = { rank:number; nickname:string; score:number; wave:number; network:string; unlocked:string[]; runs:number };
 type Stats = {games:number;pilots:number;record:number;wave:number};
-function Badge({icon}:{icon:string}) {
-  const paths:Record<string,string>={target:"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",shield:"M12 2 4 5v7c0 5 8 10 8 10s8-5 8-10V5ZM8 11l3 3 5-6",fleet:"M3 7h5v5H3ZM16 7h5v5h-5ZM9 14h6v6H9ZM5 3v2m14-2v2m-7 6v2",boss:"m4 9 4-5h8l4 5v6H4Zm4 6v4m8-4v4M8 9h1m6 0h1",orbit:"M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM2 15 22 9M12 2v3m0 14v3",crosshair:"M12 5a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM12 2v6m0 8v6M2 12h6m8 0h6",bolt:"m13 2-8 12h6l-1 8 9-13h-6Z",star:"m12 2 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z",wings:"m12 5 3 7-3 8-3-8ZM3 6l6 4m-6 2 6 2m12-8-6 4m6 2-6 2",crown:"m3 7 5 4 4-8 4 8 5-4-3 13H6ZM7 16h10",medal:"m6 3 2 6m10-6-2 6M12 8a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm0 4v4m-2-2h4",link:"m9 8 3-3a5 5 0 0 1 7 7l-3 3M8 9l-3 3a5 5 0 0 0 7 7l3-3M8 16l8-8"};
-  return <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round"><path d={paths[icon]??paths.star}/></svg>;
-}
 export default function InvadersLeaderboard({result,entry}:{result:InvadersResult|null;entry:PaidArcadeAuthorization|null}) {
   const [rows,setRows]=useState<Row[]>([]),[profile,setProfile]=useState<InvadersProfile|null>(null),[stats,setStats]=useState<Stats|null>(null);
   const [nickname,setNickname]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[saved,setSaved]=useState(""),[refresh,setRefresh]=useState(0),[loaded,setLoaded]=useState(false);
