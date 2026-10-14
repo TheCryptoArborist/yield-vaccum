@@ -38,6 +38,16 @@ export function createTopazIdWallet(api = sdk, arcade = false) {
     },
     prepare,
     disconnect: async () => { await api.disconnectTopazId(provider); clients.clear(); },
+    signMessage: (account: string, chainId: string, message: string) => {
+      clientFor(account, chainId);
+      // Topaz's smart-wallet popup passes this string directly to signMessage.
+      // A personal_sign hex payload would be signed as literal hexadecimal text.
+      // Invoke consent synchronously, before any RPC awaits lose the click gesture.
+      return provider.request({ method: "privy_signSmartWalletMessage", params: [message, account] }).then((signature) => {
+        if (typeof signature !== "string" || !/^0x(?:[0-9a-fA-F]{2})+$/.test(signature)) throw new Error("Topaz ID did not return a valid wallet signature.");
+        return signature;
+      });
+    },
     // Clients are prepared before Pay & Fly, so SDK consent is invoked directly
     // from its click handler without RPC awaits losing the popup gesture.
     sendCalls: (account: string, chainId: string, calls: TopazWalletCall[]) => {

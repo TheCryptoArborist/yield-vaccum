@@ -6,6 +6,9 @@ import { displayNameForWallet } from "@topazdex/id-connect";
 import { createTopazIdWallet } from "../lib/topaz-id-wallet";
 import { createTopazIdClient } from "@topazdex/id-connect/actions";
 import { TopazIdPaymentFailedError } from "../lib/topaz-id-payment-error";
+import { privateKeyToAccount } from "viem/accounts";
+import { stringToHex, verifyMessage } from "viem";
+import { trialMessage } from "../lib/mint-flyer-trial";
 
 const account = "0x1111111111111111111111111111111111111111" as const;
 
@@ -71,6 +74,36 @@ test("Topaz ID uses official consent and revocation, never injected wallet permi
 test("an unavailable public profile falls back to the smart wallet address", async () => {
   const { wallet } = fixture();
   assert.equal(await wallet.label(account), displayNameForWallet(null, account));
+});
+
+test("Topaz ID signs the readable free-flight challenge, not its hexadecimal text", async () => {
+  const { wallet, requests } = fixture(true);
+  await wallet.connect();
+  const signer = privateKeyToAccount(`0x${"11".repeat(32)}`);
+  let consentStarted = false;
+  wallet.provider.request = async (request) => {
+    consentStarted = true;
+    requests.push(request);
+    assert.equal(request.method, "privy_signSmartWalletMessage");
+    assert.equal(request.params?.[1], account);
+    // Mirrors the public Topaz popup: signMessage({ message: params[0] }).
+    return signer.signMessage({ message: request.params?.[0] as string });
+  };
+  for (const network of ["arc", "robinhood"] as const) {
+    const message = trialMessage({ wallet: account, network, playerKey: "signing-test-player", runId: "signing-test-flight", issuedAt: Date.now() }, "yieldvaccum.xyz");
+    consentStarted = false;
+    const pending = wallet.signMessage(account, network === "arc" ? "0x13b2" : "0x1237", message);
+    assert.equal(consentStarted, true); // preserve the click gesture for mobile consent
+    const signature = await pending;
+    assert.equal(requests.at(-1)?.params?.[0], message);
+    assert.equal(await verifyMessage({ address: signer.address, message, signature: signature as `0x${string}` }), true);
+    assert.equal(await verifyMessage({ address: signer.address, message: stringToHex(message), signature: signature as `0x${string}` }), false);
+  }
+  assert.throws(() => wallet.signMessage(account, "0x38", "wrong chain"), /preparing/);
+  assert.throws(() => wallet.signMessage("0x2222222222222222222222222222222222222222", "0x13b2", "wrong account"), /preparing/);
+  const source = readFileSync(new URL("../app/wallet-connect.tsx", import.meta.url), "utf8");
+  assert.match(source, /selectedWallet\.signMessage\(account, chainId, message\)/);
+  assert.match(source, /method: "personal_sign", params: \[stringToHex\(message\), account\]/);
 });
 
 test("Topaz ID is browser-loaded for both games with a separate smart-payment path", () => {
