@@ -39,6 +39,11 @@ test('admin origin checks handle private browsers and production proxies without
   assert.equal(requireSameOrigin(request({origin:'https://yieldvaccum.xyz'},'http://localhost/api/admin/arcade-session')),'https://yieldvaccum.xyz');
   assert.throws(()=>requireSameOrigin(request({origin:'https://evil.example','x-forwarded-host':'evil.example'},'http://localhost/api/admin/arcade-session')));
  }finally{if(prior===undefined)delete process.env.CONTEXT;else process.env.CONTEXT=prior;}
+ const priorSite=process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN;
+ process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN='https://deploy-preview-46--topaz-yield-vacuum.netlify.app';
+ try{
+  assert.equal(requireSameOrigin(request({origin:process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN},'http://localhost/api/admin/arcade-session')),process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN);
+ }finally{if(priorSite===undefined)delete process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN;else process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN=priorSite;}
 });
 
 test('admin sign-in requires a valid one-use challenge and sessions expire or revoke',async()=>{

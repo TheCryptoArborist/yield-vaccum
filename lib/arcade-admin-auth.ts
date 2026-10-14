@@ -16,7 +16,7 @@ export function adminCookie(token:string,maxAge=1800) {return `${ADMIN_COOKIE}=$
 export function requireSameOrigin(request:Request) {
  // Production has one canonical public origin. Do not trust forwarded-host
  // headers or the framework's occasionally rewritten internal request URL.
- const expected=deploymentContext()==='production'?'https://yieldvaccum.xyz':new URL(request.url).origin;
+ const expected=deploymentContext()==='production'?'https://yieldvaccum.xyz':process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN||new URL(request.url).origin;
  const origin=request.headers.get('origin');
  if(origin===expected)return expected;
  // Some privacy settings suppress Origin. Require both browser fetch metadata
