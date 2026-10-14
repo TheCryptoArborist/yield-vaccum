@@ -14,13 +14,14 @@ export default function InvadersLeaderboard({result,entry}:{result:InvadersResul
   const [filter,setFilter]=useState("all"),[newBadges,setNewBadges]=useState<string[]>([]);
   useEffect(()=>{
     const controller=new AbortController();
+    const timer=setTimeout(()=>{try{setNickname(previous=>previous||localStorage.getItem("mss2-arcade-nickname")||localStorage.getItem("yield-vacuum-mint-flyer-nickname")||"");}catch{}},0);
     let key=entry?.playerKey??"";try{key ||= localStorage.getItem("mint-invaders-player-v1")??"";}catch{/* Public rankings need no local storage. */}
     void fetch(`/api/mint-invaders-leaderboard${key?`?playerKey=${encodeURIComponent(key)}`:""}`,{cache:"no-store",signal:controller.signal}).then(async response=>{const data=await response.json();if(!response.ok)throw new Error(data.error);if(!controller.signal.aborted){setRows(data.entries);setStats(data.stats);setProfile(data.profile);setLoaded(true);setMessage("");if(data.profile?.nickname)setNickname(previous=>previous||data.profile.nickname);}}).catch(()=>{if(!controller.signal.aborted)setMessage("Rankings are temporarily unavailable. Your saved results are retained.");});
-    return()=>controller.abort();
+    return()=>{controller.abort();clearTimeout(timer);};
   },[refresh,entry?.playerKey]);
   const save=async()=>{
     if(!result||!entry||busy)return;setBusy(true);
-    try{const response=await fetch("/api/mint-invaders-leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...result,...entry,nickname}),signal:AbortSignal.timeout(20000)});const data=await response.json();if(!response.ok||!data.saved)throw new Error(data.error||"Result not saved.");setSaved(entry.runId);setNewBadges(data.newlyUnlocked??[]);setProfile(data.profile);setMessage("Score saved. Welcome to the sector rankings.");setRefresh(value=>value+1);}catch(e){setMessage(e instanceof Error?e.message:"Result unavailable.");}finally{setBusy(false);}
+    try{const response=await fetch("/api/mint-invaders-leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...result,...entry,nickname}),signal:AbortSignal.timeout(20000)});const data=await response.json();if(!response.ok||!data.saved)throw new Error(data.error||"Result not saved.");try{localStorage.setItem("mss2-arcade-nickname",nickname);}catch{}setSaved(entry.runId);setNewBadges(data.newlyUnlocked??[]);setProfile(data.profile);setMessage("Score saved. Welcome to the sector rankings.");setRefresh(value=>value+1);}catch(e){setMessage(e instanceof Error?e.message:"Result unavailable.");}finally{setBusy(false);}
   };
   const progress=profile??emptyInvadersProgress;
   const unlocked=new Set(profile?.unlocked??[]);
