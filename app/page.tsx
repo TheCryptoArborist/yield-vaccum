@@ -1810,6 +1810,15 @@ export default function YieldVacuumGame() {
                 <span className="splashChoiceNetworks">Robinhood Chain + Arc</span>
                 <em>PLAY MINT FLYER →</em>
               </a>
+              <a className="splashGameChoice splashMss2Choice splashInvadersChoice" href="/arcade/mint-invaders">
+                <span className="splashChoiceBrand"><img src="/mss2-flyer-emblem.png" alt="MSS2" width="40" height="40" /><small>RETRO ARCADE</small></span>
+                <strong>MINT INVADERS</strong>
+                <span className="splashChoiceDescription">Defend the mint. Hold the line.</span>
+                <b>$1 WORTH OF MSS2 PER GAME</b>
+                <span className="splashEntryPurpose"><span><strong>20%</strong> to the dead address</span><span><strong>80%</strong> to community rewards reserve</span></span>
+                <span className="splashChoiceNetworks">Robinhood Chain + Arc</span>
+                <em>PLAY MINT INVADERS →</em>
+              </a>
             </div>
           </div>
         </section>
