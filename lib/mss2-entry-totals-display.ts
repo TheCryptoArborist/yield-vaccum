@@ -8,13 +8,21 @@ export function formatEntryTotal(raw: string) {
 }
 
 export function formatEntryUsdValue(raw: string, priceUsd: string): string | null {
-  if (!/^\d{1,1000}$/.test(raw) || !/^\d{1,36}(\.\d{1,36})?$/.test(priceUsd)) return null;
-  const [whole, fraction = ""] = priceUsd.split(".");
-  const price = BigInt(whole + fraction);
-  if (price <= BigInt(0)) return null;
-  // Multiply unrounded 18-decimal tokens by the exact decimal price before rounding cents.
-  const value = BigInt(raw) * price;
-  const dollarScale = BigInt(10) ** BigInt(18 + fraction.length);
+  return formatCombinedEntryUsdValue([{ raw, priceUsd }]);
+}
+
+export function formatCombinedEntryUsdValue(values: { raw: string; priceUsd: string }[]): string | null {
+  if (!values.length) return null;
+  let value = BigInt(0);
+  for (const { raw, priceUsd } of values) {
+    if (!/^\d{1,1000}$/.test(raw) || !/^\d{1,36}(\.\d{1,36})?$/.test(priceUsd)) return null;
+    const [whole, fraction = ""] = priceUsd.split(".");
+    const price = BigInt(whole + fraction.padEnd(36, "0"));
+    if (price <= BigInt(0)) return null;
+    // Value each network at its own exact price, then round their combined value once.
+    value += BigInt(raw) * price;
+  }
+  const dollarScale = BigInt(10) ** BigInt(54);
   if (value > BigInt(0) && value * BigInt(100) < dollarScale) return "<$0.01";
   const cents = (value * BigInt(100) + dollarScale / BigInt(2)) / dollarScale;
   return `$${(cents / BigInt(100)).toLocaleString("en-US")}.${(cents % BigInt(100)).toString().padStart(2, "0")}`;

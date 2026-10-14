@@ -6,18 +6,62 @@ import Badge from '../mint-invaders/invaders-badge';
 import type { ArcadeStanding } from '../../../lib/arcade-championship';
 import { ensureMintFlyerPlayerKey } from '../../../lib/arcade-player';
 import styles from './lobby.module.css';
-import { formatEntryTotal } from '../../../lib/mss2-entry-totals-display';
+import { formatEntryTotal, formatCombinedEntryUsdValue, formatEntryUsdValue } from '../../../lib/mss2-entry-totals-display';
 type Board={standings:ArcadeStanding[];profile:ArcadeStanding|null;pilots:number;runs:number;weekStart:string|null};
 type Impact={status:string;deadAmountRaw:string|null;communityAmountRaw:string|null};
+type ImpactPrice={chainId:string;priceUsd:string;validUntil:string};
+const networks=['robinhood','arc'] as const;
 export default function Lobby(){
  const [period,setPeriod]=useState('week'),[board,setBoard]=useState<Board|null>(null),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
  const [impact,setImpact]=useState<Record<string,Impact|null>>({}),[name,setName]=useState('');
+ const [prices,setPrices]=useState<Record<string,ImpactPrice|null>>({}),[priceClock,setPriceClock]=useState(0);
  useEffect(()=>{const controller=new AbortController();const params=new URLSearchParams({period});
   try {params.append('playerKey',ensureMintFlyerPlayerKey());const key=localStorage.getItem('mint-invaders-player-v1');if(key)params.append('playerKey',key);}catch{/* Public lobby remains usable. */}
   void fetch(`/api/arcade-lobby?${params}`,{cache:'no-store',signal:controller.signal}).then(async r=>{const data=await r.json();if(!r.ok)throw new Error(data.error);if(!controller.signal.aborted){setBoard(data);setError('');if(data.profile){setName(data.profile.nickname);try{localStorage.setItem('mss2-arcade-nickname',data.profile.nickname);}catch{}}}}).catch(e=>{if(!controller.signal.aborted)setError(e.message);});
   return()=>controller.abort();
  },[period,refresh]);
- useEffect(()=>{const controller=new AbortController();for(const chain of ['robinhood','arc'])void fetch(`/api/arcade-entry-totals?chain=${chain}`,{signal:controller.signal}).then(r=>r.json()).then(data=>{if(!controller.signal.aborted)setImpact(previous=>({...previous,[chain]:data}));}).catch(()=>{if(!controller.signal.aborted)setImpact(previous=>({...previous,[chain]:{status:'unavailable',deadAmountRaw:null,communityAmountRaw:null}}));});return()=>controller.abort();},[refresh]);
+ useEffect(()=>{
+  const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
+  const load=async()=>{
+   let syncing=false;
+   await Promise.all(networks.map(async chain=>{
+    try{
+     const response=await fetch(`/api/arcade-entry-totals?chain=${chain}`,{cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(15000)])});
+     const data=await response.json() as Impact;
+     if(!response.ok||!['ready','syncing','unavailable'].includes(data.status))throw new Error('Totals unavailable');
+     if(data.status==='syncing')syncing=true;
+     if(!controller.signal.aborted)setImpact(previous=>({...previous,[chain]:data}));
+    }catch{if(!controller.signal.aborted)setImpact(previous=>({...previous,[chain]:{status:'unavailable',deadAmountRaw:null,communityAmountRaw:null}}));}
+   }));
+   if(!controller.signal.aborted)timer=setTimeout(()=>void load(),syncing?5000:60000);
+  };
+  void load();return()=>{controller.abort();clearTimeout(timer);};
+ },[refresh]);
+ useEffect(()=>{
+  const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
+  const clock=setInterval(()=>setPriceClock(Date.now()),1000);
+  const load=async()=>{
+   await Promise.all(networks.map(async chain=>{
+    try{
+     const response=await fetch(`/api/mss2-price?chain=${chain}`,{cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(15000)])});
+     const quote=await response.json() as ImpactPrice;
+     if(!response.ok||quote.chainId!==chain||formatEntryUsdValue('0',quote.priceUsd??'')===null||!Number.isFinite(Date.parse(quote.validUntil))||Date.parse(quote.validUntil)<=Date.now())throw new Error('Price unavailable');
+     if(!controller.signal.aborted){setPrices(previous=>({...previous,[chain]:quote}));setPriceClock(Date.now());}
+    }catch{if(!controller.signal.aborted)setPrices(previous=>({...previous,[chain]:null}));}
+   }));
+   if(!controller.signal.aborted)timer=setTimeout(()=>void load(),30000);
+  };
+  void load();return()=>{controller.abort();clearTimeout(timer);clearInterval(clock);};
+ },[refresh]);
+ const usdTotal=(key:'deadAmountRaw'|'communityAmountRaw')=>{
+  const values=[];
+  for(const chain of networks){
+   const raw=impact[chain]?.[key],price=prices[chain];
+   if(impact[chain]?.status!=='ready'||raw==null||!price||Date.parse(price.validUntil)<=priceClock)return null;
+   values.push({raw,priceUsd:price.priceUsd});
+  }
+  return formatCombinedEntryUsdValue(values);
+ };
  const total=(key:'deadAmountRaw'|'communityAmountRaw')=>{
   if(['robinhood','arc'].some(chain=>impact[chain]?.status==='unavailable'))return 'Temporarily unavailable · refresh';
   const values=['robinhood','arc'].map(chain=>impact[chain]?.[key]);
@@ -39,7 +83,7 @@ export default function Lobby(){
  {error?<p role='status'>{error}</p>:!board?<p role='status'>Loading arcade standings…</p>:board.standings.length?<div className={styles.table}><div className={styles.tableHead}><span>PILOT</span><span>FLYER BEST</span><span>INVADERS BEST</span><span>POINTS</span></div>{board.standings.map(row=><article key={row.id}><div><b>{String(row.rank).padStart(2,'0')}</b><strong>{row.nickname}</strong></div><span>{row.flyer?.toLocaleString()??'—'}</span><span>{row.invaders?.toLocaleString()??'—'}</span><strong>{row.points.toLocaleString()}</strong></article>)}</div>:<div className={styles.empty}><Badge icon='crown'/><h3>CLAIM THE FIRST SPOT.</h3><p>Finish a paid game and save your score. Your pilot joins the race automatically.</p></div>}
  <p className={styles.note}>Rank points change as the field grows. Game leaderboards keep their original records. New shared arcade runs join this championship.</p>
  </section>
- <section className={styles.impact}><div><small>EVERY PAID GAME CONTRIBUTES</small><h2>PLAY TOGETHER.<br/><span>BUILD TOGETHER.</span></h2><p>The same 20/80 entry split powers every MSS2 game. These on-chain totals include both networks and all arcade entries.</p></div><div className={styles.impactNumbers}><article><small>20% · SENT TO THE DEAD ADDRESS</small><strong>{total('deadAmountRaw')}</strong></article><article><small>80% · SENT TO COMMUNITY RESERVE</small><strong>{total('communityAmountRaw')}</strong></article><small>Cumulative contributions, rather than current reserve balance. No automatic reward payouts.</small></div></section>
+ <section className={styles.impact}><div><small>EVERY PAID GAME CONTRIBUTES</small><h2>PLAY TOGETHER.<br/><span>BUILD TOGETHER.</span></h2><p>The same 20/80 entry split powers every MSS2 game. These on-chain totals include both networks and all arcade entries.</p><p>Dollar estimates use each network’s current MSS2 price and refresh every 30 seconds.</p></div><div className={styles.impactNumbers}><article><small>20% · SENT TO THE DEAD ADDRESS</small><strong>{usdTotal('deadAmountRaw')??'—'}</strong><span className={styles.usdLabel}>ESTIMATED CURRENT USD VALUE</span><span className={styles.tokenTotal}>{total('deadAmountRaw')}</span></article><article><small>80% · SENT TO COMMUNITY RESERVE</small><strong>{usdTotal('communityAmountRaw')??'—'}</strong><span className={styles.usdLabel}>ESTIMATED CURRENT USD VALUE</span><span className={styles.tokenTotal}>{total('communityAmountRaw')}</span></article>{usdTotal('deadAmountRaw')===null&&<small role='status'>USD estimates will appear when fresh prices and confirmed totals are available for both networks.</small>}<small>Cumulative amounts sent, valued at current prices; this is not the current reserve balance or rewards distributed.</small></div></section>
  <footer>THE CRYPTO ARBORIST · MSS2 ARCADE · MORE CABINETS COMING SOON</footer>
  </div></main>;
 }
