@@ -3,6 +3,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { createBunkers, createInvadersGame, tickInvaders, type InvadersGame } from "../../../lib/mint-invaders";
+import PaidArcadeEntry, { type PaidArcadeAuthorization } from "../shared/paid-arcade-entry";
+import InvadersLeaderboard from "./invaders-leaderboard";
+import type { InvadersResult } from "../../../lib/mint-invaders-result";
 import styles from "./mint-invaders.module.css";
 
 const sprites = [
@@ -101,6 +104,9 @@ export default function MintInvaders() {
   const paused = useRef(false);
   const [phase, setPhase] = useState<"ready" | "playing" | "paused" | "over">("ready");
   const [hud, setHud] = useState({ score: 0, lives: 3, wave: 1, shield: false, double: false, reason: "" });
+  const [entry, setEntry] = useState<PaidArcadeAuthorization | null>(null);
+  const entryStarted = useRef(false);
+  const [finished, setFinished] = useState<InvadersResult | null>(null);
   const [best, setBest] = useState(0);
   const [sound, setSound] = useState(true);
   const soundEnabled = useRef(true);
@@ -131,6 +137,9 @@ export default function MintInvaders() {
     } catch { setAudioBlocked(true); }
   };
   const start = () => {
+    if (!entry || entryStarted.current) return;
+    entryStarted.current = true; setFinished(null);
+    try { localStorage.removeItem("mint-invaders-ready-entry-v1"); } catch { /* Entry remains in this session. */ }
     enableAudio(); musicStep.current = -1;
     game.current = createInvadersGame(); paused.current = false; activePointer.current = null;
     input.current = { left: false, right: false, fire: false, targetX: undefined };
@@ -139,6 +148,12 @@ export default function MintInvaders() {
   const pause = () => { if (game.current?.phase === "playing") { paused.current = !paused.current; input.current.fire = false; activePointer.current = null; input.current.left = false; input.current.right = false; input.current.targetX = undefined; setPhase(paused.current ? "paused" : "playing"); if (!paused.current) { enableAudio(); canvas.current?.focus({ preventScroll: true }); } } };
   useEffect(() => {
     try { const value = Number(localStorage.getItem("mint-invaders-preview-best")); if (Number.isSafeInteger(value) && value >= 0) bestRef.current = value; } catch { /* Local best is optional. */ }
+    const restore = setTimeout(() => {
+      try {
+        const ready = JSON.parse(localStorage.getItem("mint-invaders-ready-entry-v1") ?? "null") as PaidArcadeAuthorization | null;
+        if (ready && [ready.paymentId,ready.runId,ready.playerKey].every(value => typeof value === "string" && /^[a-zA-Z0-9-]{16,80}$/.test(value)) && ["arc","robinhood"].includes(ready.network)) setEntry(ready);
+      } catch { /* Invalid saved entry is ignored; paid scores still require server verification. */ }
+    },0);
     let frame = 0, previous = 0, hudAt = 0;
     const loop = (now: number) => {
       const dt = previous ? (now - previous) / 1000 : 0; previous = now;
@@ -166,6 +181,7 @@ export default function MintInvaders() {
           if (step % 4 === 2) beep(180, .045, .023, "triangle", 95);
         }
         if ((g as InvadersGame).phase === "over") {
+          setFinished({ score: g.score, wave: g.wave, kills: g.kills, bossKills: g.bossKills, pickups: g.pickups, seconds: Math.max(1, Math.ceil(g.time)) });
           setPhase("over"); bestRef.current = Math.max(bestRef.current, g.score);
           try { localStorage.setItem("mint-invaders-preview-best", String(bestRef.current)); } catch { /* Keep session best. */ }
         }
@@ -187,7 +203,7 @@ export default function MintInvaders() {
     const blur = () => { activePointer.current = null; input.current = { left: false, right: false, fire: false, targetX: undefined }; if (game.current?.phase === "playing") { paused.current = true; setPhase("paused"); } };
     const visibility = () => { if (document.hidden) blur(); };
     window.addEventListener("keydown", down); window.addEventListener("keyup", up); window.addEventListener("blur", blur); document.addEventListener("visibilitychange", visibility);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); document.removeEventListener("visibilitychange", visibility); void audio.current?.close(); audio.current = null; };
+    return () => { clearTimeout(restore); cancelAnimationFrame(frame); window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); document.removeEventListener("visibilitychange", visibility); void audio.current?.close(); audio.current = null; };
   }, []);
   const handlePointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     if (phase !== "playing" || activePointer.current !== null || (event.pointerType === "mouse" && event.button !== 0)) return;
@@ -209,13 +225,14 @@ export default function MintInvaders() {
   };
   return <main className={styles.page}>
     <header className={styles.header}><Link href="/">← YIELD VACCUM</Link><span>MSS2 COMMUNITY ARCADE</span><Link href="/arcade">MINT FLYER ↗</Link></header>
-    <section className={styles.title}><Image src="/mss2-flyer-emblem.png" alt="MSS2" width="60" height="60" /><div><small>DEFEND THE MINT. HOLD THE LINE.</small><h1>MINT <span>INVADERS</span></h1></div><b>GAMEPLAY PREVIEW</b></section>
+    <section className={styles.title}><Image src="/mss2-flyer-emblem.png" alt="MSS2" width="60" height="60" /><div><small>DEFEND THE MINT. HOLD THE LINE.</small><h1>MINT <span>INVADERS</span></h1></div><b>PAID ENTRY · MSS2</b></section>
+    {phase === "ready" && !entry && <PaidArcadeEntry onAuthorized={authorized => { setEntry(authorized); entryStarted.current = false; try { localStorage.setItem("mint-invaders-ready-entry-v1", JSON.stringify(authorized)); } catch { /* Keep authorization in session. */ } }} />}
     <div className={styles.layout}>
       <section className={styles.cabinet} aria-label="Mint Invaders game">
         <div className={styles.hud}><span><small>SCORE</small><b>{hud.score.toLocaleString()}</b></span><span><small>WAVE</small><b>{hud.wave % 4 === 0 ? "BOSS " : ""}{hud.wave.toString().padStart(2, "0")}</b></span><span><small>SHIPS</small><b>{"♥ ".repeat(hud.lives) || "0"}</b></span></div>
         <div className={styles.screen}>
           <canvas ref={canvas} tabIndex={0} width="560" height="640" aria-label="Space shooter: move left and right and fire at incoming invaders" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={releasePointer} onPointerCancel={releasePointer} onLostPointerCapture={releasePointer} onContextMenu={e => e.preventDefault()} />
-          {phase !== "playing" && <div className={styles.overlay}><small>{phase === "ready" ? "SECTOR 02 · MSS2" : phase === "paused" ? "TAKE A BREATHER" : "MISSION REPORT"}</small><h2>{phase === "ready" ? <>THE MINT<br />NEEDS YOU.</> : phase === "paused" ? "PAUSED" : "GAME OVER"}</h2><p>{phase === "ready" ? "Three ships. Endless waves. One defense line." : phase === "paused" ? "Your wave is waiting. Resume when ready." : hud.reason}</p>{phase === "over" && <strong>{hud.score.toLocaleString()} POINTS · WAVE {hud.wave}</strong>}<button onClick={phase === "paused" ? pause : start}>{phase === "ready" ? "START PREVIEW" : phase === "paused" ? "RESUME GAME" : "PLAY AGAIN"} →</button><span>No wallet or payment in this preview.</span></div>}
+          {phase !== "playing" && <div className={styles.overlay}><small>{phase === "ready" ? "SECTOR 02 · MSS2" : phase === "paused" ? "TAKE A BREATHER" : "MISSION REPORT"}</small><h2>{phase === "ready" ? <>THE MINT<br />NEEDS YOU.</> : phase === "paused" ? "PAUSED" : "GAME OVER"}</h2><p>{phase === "ready" ? "Three ships. Endless waves. One defense line." : phase === "paused" ? "Your wave is waiting. Resume when ready." : hud.reason}</p>{phase === "over" && <><strong>{hud.score.toLocaleString()} POINTS · WAVE {hud.wave}</strong><a className={styles.saveScoreLink} href="#mint-invaders-leaderboard">SAVE YOUR SCORE ↓</a></>}<button disabled={phase === "ready" && !entry} onClick={phase === "paused" ? pause : phase === "over" ? () => { setPhase("ready"); setEntry(null); setFinished(null); game.current = null; } : start}>{phase === "ready" ? entry ? "START PAID GAME" : "CONNECT & PAY ABOVE" : phase === "paused" ? "RESUME GAME" : "NEW ENTRY · $1 MSS2"} →</button><span>{phase === "ready" && entry ? "Your verified entry is ready. One game per payment." : "Each new game uses $1 worth of MSS2."}</span></div>}
         </div>
         <div className={styles.console}><button className={styles.fireButton} disabled={phase !== "playing"} onPointerDown={event => { if (phase !== "playing" || (event.pointerType === "mouse" && event.button !== 0)) return; event.preventDefault(); input.current.fire = true; canvas.current?.focus({ preventScroll: true }); }} onClick={event => { if (phase === "playing" && event.detail === 0) { input.current.fire = true; canvas.current?.focus({ preventScroll: true }); } }}>FIRE</button><span>{hud.shield ? "◈ SHIELD READY" : hud.double ? "✦ DOUBLE SHOT ACTIVE" : "A/D + CLICK · DRAG + TAP FIRE"}</span><button disabled={phase !== "playing" && phase !== "paused"} onClick={pause}>{phase === "paused" ? "RESUME" : "PAUSE"}</button><button aria-pressed={music} onClick={() => { musicEnabled.current = !music; setMusic(!music); if (!music) enableAudio(); if (phase === "playing") canvas.current?.focus({ preventScroll: true }); }}>{music ? "MUSIC ON" : "MUSIC OFF"}</button><button aria-pressed={sound} onClick={() => { const enabled = audioBlocked || !sound; soundEnabled.current = enabled; setSound(enabled); if (enabled) enableAudio(); if (phase === "playing") canvas.current?.focus({ preventScroll: true }); }}>{audioBlocked ? "ENABLE AUDIO" : sound ? "SOUND ON" : "SOUND OFF"}</button></div>
         {audioBlocked && <p className={styles.audioNotice} role="status">Audio needs another tap to start. Select Enable Audio, and check your device volume.</p>}
@@ -223,9 +240,10 @@ export default function MintInvaders() {
       <aside className={styles.side}>
         <article><small>YOUR NEXT HIGH SCORE</small><h2>CLASSIC ARCADE.<br /><span>MSS2 ENERGY.</span></h2><p>Aliens march sideways in steps, drop toward your ship at the edges, and speed up as you thin their ranks. Shelter beneath four destructible bunkers. A mothership arrives every fourth wave.</p><div className={styles.best}><span>LOCAL BEST</span><b>{best.toLocaleString()}</b></div></article>
         <article><small>FLIGHT MANUAL</small><h3>MOVE. FIRE. SURVIVE.</h3><p><b>Desktop:</b> A/D or ←/→ to move. Click the left mouse button inside the game or press Space for each shot. Holding does not repeat fire.</p><p><b>Mobile:</b> Drag inside the game to move. Tap the Fire button for each shot.</p><p><b>Pause:</b> Use the button below the game. Switching tabs pauses your run.</p><p><b>Audio:</b> Music and effects start when you press Play. Music has its own switch; Sound mutes everything.</p><div className={styles.power}><b>FOUR DEFENSE BUNKERS</b><span>Enemy shots chip them away. Your shots carve firing lanes from below. Descending aliens can crush them.</span><b><svg aria-hidden="true" width="22" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2 3 5v7c0 5 9 10 9 10s9-5 9-10V5Z"/><path d="M12 7v8M8 11h8"/></svg> SHIELD</b><span>Absorbs one enemy hit.</span><b className={styles.doubleLabel}><svg aria-hidden="true" width="22" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 2-3 5v10h6V7Zm12 0-3 5v10h6V7Z"/><path d="M6 19v3m12-3v3"/></svg> DOUBLE SHOT</b><span>Two projectiles per press for eight seconds.</span></div></article>
-        <article className={styles.preview}><small>FIRST PLAYABLE BUILD</small><h3>TRY THE GAMEPLAY</h3><p>This preview records only your local best. Paid entry, public rankings, and community rewards are not active here.</p><p>Planned entry: <b>$1 worth of MSS2</b> on Robinhood Chain or Arc, with 20% to the dead address and 80% to the community rewards reserve.</p></article>
+        <article className={styles.preview}><small>EVERY PAID GAME CONTRIBUTES</small><h3>PLAY. DEFEND. CONTRIBUTE.</h3><p>Entry: <b>$1 worth of MSS2</b> on Robinhood Chain or Arc. The verified router sends <b>20% to the dead address</b> and <b>80% to the community rewards reserve</b>.</p><p>Finish your game, choose a name, and save your score to the public leaderboard. Reward distribution details will be announced.</p></article>
       </aside>
     </div>
-    <footer className={styles.footer}>MINT INVADERS · ORIGINAL MSS2 ARCADE GAME · GAMEPLAY PREVIEW</footer>
+    <InvadersLeaderboard result={finished} entry={entry} />
+    <footer className={styles.footer}>MINT INVADERS · ORIGINAL MSS2 ARCADE GAME · VERIFIED PAID ENTRY</footer>
   </main>;
 }
