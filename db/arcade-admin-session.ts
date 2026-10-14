@@ -25,7 +25,10 @@ export async function consumeAdminChallenge(nonce:string,signature:string,origin
  if(!/^[0-9a-f-]{36}$/.test(nonce)||!/^0x(?:[0-9a-fA-F]{2})+$/.test(signature)||signature.length>20000)throw new Error('Forbidden');
  const context=deploymentContext(),rows=await db.sql`SELECT wallet,network,origin,expires_at FROM arcade_admin_challenges WHERE context=${context} AND nonce=${nonce}::uuid AND consumed_at IS NULL AND expires_at>NOW()`;
  const row=rows[0];if(!row||row.origin!==origin||!isArcadeAdmin(String(row.wallet)))throw new Error('Forbidden');
- const value:Challenge={nonce,wallet:String(row.wallet),network:row.network as Challenge['network'],origin,expiresAt:new Date(String(row.expires_at)).toISOString()};
+ // Date.toString() drops milliseconds. Preserve the timestamp byte-for-byte
+ // because the expiration is part of the wallet's signed message.
+ const expiresAt=row.expires_at instanceof Date?row.expires_at.toISOString():new Date(String(row.expires_at)).toISOString();
+ const value:Challenge={nonce,wallet:String(row.wallet),network:row.network as Challenge['network'],origin,expiresAt};
  if(!await verify(value,signature as `0x${string}`))throw new Error('The admin wallet signature could not be verified.');
  const consumed=await db.sql`UPDATE arcade_admin_challenges SET consumed_at=NOW() WHERE context=${context} AND nonce=${nonce}::uuid AND consumed_at IS NULL AND expires_at>NOW() RETURNING nonce`;
  if(!consumed.length)throw new Error('This sign-in request has expired or already been used.');

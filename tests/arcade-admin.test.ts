@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {getDatabase} from '@netlify/database';
-import {ARCADE_ADMIN_WALLET,isArcadeAdmin,adminCookie,adminToken,adminTokenHash,requireSameOrigin} from '../lib/arcade-admin-auth';
+import {ARCADE_ADMIN_WALLET,isArcadeAdmin,adminCookie,adminToken,adminTokenHash,requireSameOrigin,adminSignInMessage} from '../lib/arcade-admin-auth';
+import {verifyMessage} from 'viem';
+import {generatePrivateKey,privateKeyToAccount} from 'viem/accounts';
 import {createAdminChallenge,consumeAdminChallenge,readAdminSession,deleteAdminSession} from '../db/arcade-admin-session';
 import {recordArcadeResult,readArcadeLobby} from '../db/arcade-lobby';
 import {readAdminRewards} from '../db/arcade-admin-rewards';
@@ -67,6 +69,22 @@ test('admin sign-in requires a valid one-use challenge and sessions expire or re
   const expired=await createAdminChallenge(ARCADE_ADMIN_WALLET,'arc','https://example.com',db);
   await db.sql`UPDATE arcade_admin_challenges SET expires_at=NOW()-INTERVAL '1 second' WHERE nonce=${expired.nonce}::uuid`;
   await assert.rejects(consumeAdminChallenge(expired.nonce,signature,'https://example.com',db,async()=>true));
+ }finally{if(db)await db.pool.end();await local.stop();}
+});
+
+test('database round-trip preserves the exact signed challenge including milliseconds',async()=>{
+ const {NetlifyDB}=await import('@netlify/database-dev');const local=new NetlifyDB();let db:ReturnType<typeof getDatabase>|undefined;
+ const testSigner=privateKeyToAccount(generatePrivateKey());
+ try{
+  db=getDatabase({connectionString:await local.start()});await local.applyMigrations('./netlify/database/migrations');
+  const realNow=Date.now,now=realNow();
+  let challenge:Awaited<ReturnType<typeof createAdminChallenge>>;
+  try{Date.now=()=>Math.floor(now/1000)*1000+123;challenge=await createAdminChallenge(ARCADE_ADMIN_WALLET,'robinhood','https://example.com',db);}finally{Date.now=realNow;}
+  assert.match(challenge.expiresAt,/\.123Z$/);
+  const signature=await testSigner.signMessage({message:challenge.message});
+  // The injected verifier uses a disposable test signer, never the live admin.
+  const token=await consumeAdminChallenge(challenge.nonce,signature,'https://example.com',db,async value=>verifyMessage({address:testSigner.address,message:adminSignInMessage(value),signature}));
+  assert.equal(await readAdminSession(token,db),ARCADE_ADMIN_WALLET.toLowerCase());
  }finally{if(db)await db.pool.end();await local.stop();}
 });
 
