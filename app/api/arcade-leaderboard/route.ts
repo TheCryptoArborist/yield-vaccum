@@ -1,4 +1,5 @@
-import { readMintFlyerLeaderboard, readMintFlyerProfile, saveMintFlyerRun, updateMintFlyerBalanceDisplay } from "../../../db/arcade-leaderboard";
+import { recordArcadeResult } from "../../../db/arcade-lobby";
+import { readSavedMintFlyerRun, readMintFlyerLeaderboard, readMintFlyerProfile, saveMintFlyerRun, updateMintFlyerBalanceDisplay } from "../../../db/arcade-leaderboard";
 import { createWalletChallenge, verifyAndConsumeWalletChallenge } from "../../../db/mss2-wallet-proof";
 import { requirePaymentForScore } from "../../../db/arcade-payments";
 import { MINT_FLYER_ACHIEVEMENTS } from "../../../lib/mint-flyer-achievements";
@@ -63,6 +64,9 @@ export async function POST(request: Request) {
     const displayRewardWallet = payload.displayRewardWallet === true;
     const rewards = resolveRewardWallet(entry, displayRewardWallet);
     const result = await saveMintFlyerRun({ playerKey, runId, nickname, score: score!, distance: distance!, mintsCollected: mintsCollected!, maxCombo: maxCombo!, hits: hits!, lives: lives!, reachedMoon, continued, entryMode: entry.mode, entryNetwork: entry.network, ...rewards });
+    const savedRun=await readSavedMintFlyerRun(playerKey,runId);
+    if (!savedRun) throw new Error("Saved flight not found.");
+    await recordArcadeResult({game:"mint-flyer",runId,playerKey,walletAddress:entry.walletAddress,nickname:savedRun.nickname,score:savedRun.score,tieBreak:savedRun.distance,createdAt:savedRun.createdAt});
     return Response.json({ saved: true, ...result, profile: publicProfile(result.profile) });
   } catch {
     return Response.json({ error: "The flight result could not be saved right now." }, { status: 503 });

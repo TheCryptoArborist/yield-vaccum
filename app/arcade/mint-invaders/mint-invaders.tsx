@@ -224,7 +224,7 @@ export default function MintInvaders() {
     activePointer.current = null; input.current.targetX = undefined;
   };
   return <main className={styles.page}>
-    <header className={styles.header}><Link href="/">← YIELD VACCUM</Link><span>MSS2 COMMUNITY ARCADE</span><Link href="/arcade">MINT FLYER ↗</Link></header>
+    <header className={styles.header}><Link href="/">← YIELD VACCUM</Link><span>MSS2 COMMUNITY ARCADE</span><Link href="/arcade/lobby">ARCADE LOBBY ↗</Link></header>
     <section className={styles.title}><Image src="/mss2-flyer-emblem.png" alt="MSS2" width="60" height="60" /><div><small>DEFEND THE MINT. HOLD THE LINE.</small><h1>MINT <span>INVADERS</span></h1></div><b>PAID ENTRY · MSS2</b></section>
     {phase === "ready" && !entry && <PaidArcadeEntry onAuthorized={authorized => { setEntry(authorized); entryStarted.current = false; try { localStorage.setItem("mint-invaders-ready-entry-v1", JSON.stringify(authorized)); } catch { /* Keep authorization in session. */ } }} />}
     <div className={styles.layout}>

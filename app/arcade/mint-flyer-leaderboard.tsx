@@ -130,7 +130,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
       try {
         key = ensureMintFlyerPlayerKey();
         setPlayerKey(key);
-        const storedNickname = window.localStorage.getItem(NICKNAME_KEY) || "";
+        const storedNickname = window.localStorage.getItem("mss2-arcade-nickname") || window.localStorage.getItem(NICKNAME_KEY) || "";
         setNickname(storedNickname);
         setRememberedNickname(storedNickname);
         setDisplayRewardWallet(window.localStorage.getItem(REWARD_DISPLAY_KEY) === "true");
@@ -160,6 +160,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
       const data = await response.json() as { error?: string; newAchievements?: MintFlyerAchievementId[] };
       if (!response.ok) throw new Error(data.error || "Score could not be saved.");
       window.localStorage.setItem(NICKNAME_KEY, chosenName);
+      window.localStorage.setItem("mss2-arcade-nickname", chosenName);
       window.localStorage.setItem(REWARD_DISPLAY_KEY, String(displayRewardWallet));
       setNickname(chosenName);
       setRememberedNickname(chosenName);

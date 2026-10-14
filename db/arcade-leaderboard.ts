@@ -149,3 +149,5 @@ export async function readMintFlyerLeaderboard() {
       };
     });
 }
+
+export async function readSavedMintFlyerRun(playerKey:string,runId:string) { return await arcadeStore().get(`runs/${playerKey}/${runId}.json`,{type:"json"}) as MintFlyerRun | null; }
