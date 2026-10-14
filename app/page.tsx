@@ -1801,20 +1801,11 @@ export default function YieldVacuumGame() {
                 <b>FREE EDUCATIONAL CAMPAIGN</b>
                 <em>PLAY YIELD VACCUM →</em>
               </button>
-              <a className="splashGameChoice splashMss2Choice" href="/arcade">
-                <span className="splashChoiceBrand"><img src="/mss2-flyer-emblem.png" alt="MSS2" width="40" height="40" /><small>ARCADE GAME</small></span>
-                <strong>MINT FLYER</strong>
-                <span className="splashChoiceDescription">Collect. Combo. Reach the Moon.</span>
-                <b>FIRST FLIGHT FREE · THEN $1 WORTH OF MSS2</b>
-                <span className="splashEntryPurpose"><span><strong>20%</strong> to the dead address</span><span><strong>80%</strong> to community rewards reserve</span></span>
-                <span className="splashChoiceNetworks">Robinhood Chain + Arc</span>
-                <em>PLAY MINT FLYER →</em>
-              </a>
-              <a className="splashGameChoice splashMss2Choice splashInvadersChoice" href="/arcade/lobby">
-                <span className="splashChoiceBrand"><img src="/mss2-flyer-emblem.png" alt="MSS2" width="40" height="40" /><small>RETRO ARCADE</small></span>
-                <strong>MSS2 ARCADE LOBBY</strong>
+              <a className="splashGameChoice splashMss2Choice" href="/arcade/lobby">
+                <span className="splashChoiceBrand"><img src="/mss2-flyer-emblem.png" alt="MSS2" width="40" height="40" /><small>SHARED ARCADE LOBBY</small></span>
+                <strong>MSS2 ARCADE</strong>
                 <span className="splashChoiceDescription">Mint Flyer. Mint Invaders. One championship.</span>
-                <b>$1 WORTH OF MSS2 PER GAME</b>
+                <b>$1 WORTH OF MSS2 PER PAID GAME</b>
                 <span className="splashEntryPurpose"><span><strong>20%</strong> to the dead address</span><span><strong>80%</strong> to community rewards reserve</span></span>
                 <span className="splashChoiceNetworks">Robinhood Chain + Arc</span>
                 <em>ENTER THE ARCADE →</em>
@@ -1847,7 +1838,7 @@ export default function YieldVacuumGame() {
             <span><strong>LEADERBOARD</strong><small>WEEKLY EPOCH RANKINGS</small></span>
             <i aria-hidden="true">›</i>
           </button>
-          <a className="arcadeNavButton" href="/arcade"><span>OPTIONAL MSS2 ARCADE</span><strong>PLAY MINT FLYER</strong><i aria-hidden="true">→</i></a>
+          <a className="arcadeNavButton" href="/arcade/lobby"><span>MSS2 ARCADE</span><strong>OPEN ARCADE LOBBY</strong><i aria-hidden="true">→</i></a>
         </div>
       </header>
 
