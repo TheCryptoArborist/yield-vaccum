@@ -65,3 +65,11 @@
   .overlay button { font-size: 12px; padding: 12px 16px; min-height: 44px; }
   .overlay p { font-size: 13px; }
 }
+
+.marketQuotes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:16px; }
+.marketQuotes > div { padding:14px 16px; border:1px solid #32716e; border-radius:10px; background:linear-gradient(135deg,#0d3036,#112139); min-width:0; }
+.marketQuotes small { display:block; color:#93c3cd; font-size:10px; font-weight:800; letter-spacing:.07em; }
+.marketQuotes strong { display:block; margin:7px 0; color:#b2fff0; font-size:22px; line-height:1.25; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.marketQuotes span { display:block; font-size:11px; color:#9fb8c9; line-height:1.5; }
+@media(max-width:600px) { .marketQuotes > div { padding:12px; } .marketQuotes strong { font-size:17px; } .marketQuotes small { font-size:9px; } }
+@media(max-width:370px) { .marketQuotes { grid-template-columns:1fr; } }
