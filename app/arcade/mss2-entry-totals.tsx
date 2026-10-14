@@ -70,7 +70,7 @@ export default function Mss2EntryTotals({ network, paymentId }: { network: "robi
   const networkLabel = selected === "arc" ? "Arc" : "Robinhood Chain";
   return <section className={styles.panel} id="mss2-entry-totals" aria-label="MSS2 entry contribution totals">
     <header>
-      <span><small>LIVE ON-CHAIN STATS · PAID FLIGHTS</small><h2>MSS2 community impact</h2></span>
+      <span><small>LIVE ON-CHAIN STATS · PAID ARCADE ENTRIES</small><h2>MSS2 community impact</h2></span>
       <div className={styles.networks} aria-label="Contribution network">
         <button type="button" aria-pressed={selected === "robinhood"} onClick={() => setSelected("robinhood")}>Robinhood Chain</button>
         <button type="button" aria-pressed={selected === "arc"} onClick={() => setSelected("arc")}>Arc</button>
@@ -97,7 +97,7 @@ export default function Mss2EntryTotals({ network, paymentId }: { network: "robi
       <button type="button" disabled={busy} onClick={() => setRetry((value) => value + 1)}>{busy ? "Checking…" : "Refresh totals"}</button>
     </footer>
     <p className={styles.priceNote}>{currentPrice ? <>MSS2 price: ${currentPrice.priceUsd} on {networkLabel} · checked {new Date(currentPrice.checkedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. <a href={currentPrice.pairUrl} target="_blank" rel="noreferrer">{currentPrice.source} ↗</a></> : priceUnavailable || price ? "Current MSS2 price is unavailable. USD estimates will resume when a fresh quote is available." : "Loading current MSS2 price…"}</p>
-    <p className={styles.scope}>Lifetime contributions through the Mint Flyer entry router on {networkLabel}, including paid test entries. Figures are rounded to six decimals. USD estimates update with the selected network’s market price and value these contributions, not the reserve’s current wallet balance. Reserve funding does not represent rewards distributed to players.</p>
+    <p className={styles.scope}>Lifetime contributions through the MSS2 arcade entry router on {networkLabel}, including paid test entries. Figures are rounded to six decimals. USD estimates update with the selected network’s market price and value these contributions, not the reserve’s current wallet balance. Reserve funding does not represent rewards distributed to players.</p>
     {totals?.explorerUrl && <a className={styles.proof} href={`${totals.explorerUrl}/address/${totals.routerAddress}`} target="_blank" rel="noreferrer">Verify entry payments on-chain ↗</a>}
   </section>;
 }

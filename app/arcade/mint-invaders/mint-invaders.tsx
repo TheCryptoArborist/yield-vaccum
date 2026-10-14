@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { createBunkers, createInvadersGame, tickInvaders, type InvadersGame } from "../../../lib/mint-invaders";
 import PaidArcadeEntry, { type PaidArcadeAuthorization } from "../shared/paid-arcade-entry";
 import InvadersLeaderboard from "./invaders-leaderboard";
+import Mss2EntryTotals from "../mss2-entry-totals";
 import type { InvadersResult } from "../../../lib/mint-invaders-result";
 import styles from "./mint-invaders.module.css";
 
@@ -245,6 +246,7 @@ export default function MintInvaders() {
     </div>
     <article className={styles.preview}><small>EVERY PAID GAME CONTRIBUTES</small><h3>PLAY. DEFEND. CONTRIBUTE.</h3><p>Entry: <b>$1 worth of MSS2</b> on Robinhood Chain or Arc. The verified router sends <b>20% to the dead address</b> and <b>80% to the community rewards reserve</b>.</p><p>Finish your game, choose a name, and save your score to the public leaderboard. Reward distribution details will be announced.</p></article>
     <InvadersLeaderboard result={finished} entry={entry} />
+    <Mss2EntryTotals network={entry?.network ?? "robinhood"} paymentId={entry?.paymentId ?? ""} />
     <footer className={styles.footer}>MINT INVADERS · ORIGINAL MSS2 ARCADE GAME · VERIFIED PAID ENTRY</footer>
   </main>;
 }
