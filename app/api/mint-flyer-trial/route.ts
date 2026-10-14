@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     validateTrialChallenge(challenge);
     if (typeof signature !== "string" || !/^0x[0-9a-fA-F]+$/.test(signature) || signature.length > 20_000) throw new Error("A wallet signature is required.");
     const config = paymentNetworkConfig(challenge.network);
-    let verificationRpcFailed = false;
+    let verificationCallFailure: { errorType: string; rpcCode?: number } | undefined;
     const rpcTransport = http(config.rpcUrl, { timeout: 12_000, retryCount: 0 });
     const observedTransport: Transport = (options) => {
       const transport = rpcTransport(options);
@@ -40,7 +40,10 @@ export async function POST(request: Request) {
         } catch (error) {
           // viem can translate eth_call errors into a false verification result.
           // Do not log RPC errors: they can contain the authorization signature.
-          if (args.method === "eth_call") verificationRpcFailed = true;
+          if (args.method === "eth_call") {
+            const rpcCode = typeof error === "object" && error !== null && "code" in error && typeof error.code === "number" ? error.code : undefined;
+            verificationCallFailure = { errorType: error instanceof Error ? error.constructor.name : "UnknownError", rpcCode };
+          }
           throw error;
         }
       } };
@@ -58,14 +61,12 @@ export async function POST(request: Request) {
         walletType: code === undefined ? "unknown" : code === "0x" ? "eoa" : "contract",
         signatureBytes: (signature.length - 2) / 2,
         signatureFormat: signature.toLowerCase().endsWith("6492".repeat(16)) ? "erc6492" : "unwrapped",
-        verificationRpcFailed,
+        verificationCallFailure,
       });
       return Response.json({
-        error: verificationRpcFailed
-          ? `The wallet verification service could not validate this signature. Please retry. Support reference: ${reference}`
-          : `We couldn't verify this wallet signature on ${config.name}. Reconnect your wallet and try again. Support reference: ${reference}`,
+        error: `We couldn't verify this wallet signature on ${config.name}. Reconnect your wallet and try again. Support reference: ${reference}`,
         reference,
-      }, { status: verificationRpcFailed ? 503 : 400, headers });
+      }, { status: 400, headers });
     }
     const db = trialDatabase();
     const wallet = challenge.wallet.toLowerCase();
