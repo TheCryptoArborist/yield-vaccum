@@ -26,6 +26,26 @@ test('private rewards API rejects unauthenticated requests before loading wallet
  const text=await response.text();assert.doesNotMatch(text,/wallet|0x/);
 });
 
+test('admin origin checks handle private browsers and production proxies without accepting foreign sites',()=>{
+ const request=(headers:Record<string,string>,url='https://example.com/api/admin/arcade-session')=>new Request(url,{headers});
+ assert.equal(requireSameOrigin(request({'sec-fetch-site':'same-origin',referer:'https://example.com/admin/arcade-rewards'})),'https://example.com');
+ assert.equal(requireSameOrigin(request({origin:'null','sec-fetch-site':'same-origin',referer:'https://example.com/admin/arcade-rewards'})),'https://example.com');
+ assert.throws(()=>requireSameOrigin(request({'sec-fetch-site':'cross-site',referer:'https://example.com/admin/arcade-rewards'})));
+ assert.throws(()=>requireSameOrigin(request({'sec-fetch-site':'same-origin',referer:'https://evil.example/admin'})));
+ assert.throws(()=>requireSameOrigin(request({origin:'https://evil.example','sec-fetch-site':'same-origin',referer:'https://example.com/admin/arcade-rewards'})));
+ assert.throws(()=>requireSameOrigin(request({})));
+ const prior=process.env.CONTEXT;process.env.CONTEXT='production';
+ try{
+  assert.equal(requireSameOrigin(request({origin:'https://yieldvaccum.xyz'},'http://localhost/api/admin/arcade-session')),'https://yieldvaccum.xyz');
+  assert.throws(()=>requireSameOrigin(request({origin:'https://evil.example','x-forwarded-host':'evil.example'},'http://localhost/api/admin/arcade-session')));
+ }finally{if(prior===undefined)delete process.env.CONTEXT;else process.env.CONTEXT=prior;}
+ const priorSite=process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN;
+ process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN='https://deploy-preview-46--topaz-yield-vacuum.netlify.app';
+ try{
+  assert.equal(requireSameOrigin(request({origin:process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN},'http://localhost/api/admin/arcade-session')),process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN);
+ }finally{if(priorSite===undefined)delete process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN;else process.env.NEXT_PUBLIC_NETLIFY_SITE_ORIGIN=priorSite;}
+});
+
 test('admin sign-in requires a valid one-use challenge and sessions expire or revoke',async()=>{
  const {NetlifyDB}=await import('@netlify/database-dev');const local=new NetlifyDB();let db:ReturnType<typeof getDatabase>|undefined;
  try{
