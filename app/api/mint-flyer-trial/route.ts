@@ -1,5 +1,5 @@
 import { getDatabase } from "@netlify/database";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, type Transport } from "viem";
 import { paymentNetworkConfig } from "../../../lib/mss2-payment";
 import { trialMessage, validateTrialChallenge, type TrialChallenge } from "../../../lib/mint-flyer-trial";
 
@@ -30,11 +30,44 @@ export async function POST(request: Request) {
     validateTrialChallenge(challenge);
     if (typeof signature !== "string" || !/^0x[0-9a-fA-F]+$/.test(signature) || signature.length > 20_000) throw new Error("A wallet signature is required.");
     const config = paymentNetworkConfig(challenge.network);
-    const client = createPublicClient({ transport: http(config.rpcUrl, { timeout: 12_000, retryCount: 0 }) });
+    let verificationCallFailure: { errorType: string; rpcCode?: number } | undefined;
+    const rpcTransport = http(config.rpcUrl, { timeout: 12_000, retryCount: 0 });
+    const observedTransport: Transport = (options) => {
+      const transport = rpcTransport(options);
+      return { ...transport, request: async (args, requestOptions) => {
+        try {
+          return await transport.request(args, requestOptions);
+        } catch (error) {
+          // viem can translate eth_call errors into a false verification result.
+          // Do not log RPC errors: they can contain the authorization signature.
+          if (args.method === "eth_call") {
+            const rpcCode = typeof error === "object" && error !== null && "code" in error && typeof error.code === "number" ? error.code : undefined;
+            verificationCallFailure = { errorType: error instanceof Error ? error.constructor.name : "UnknownError", rpcCode };
+          }
+          throw error;
+        }
+      } };
+    };
+    const client = createPublicClient({ transport: observedTransport });
     if (await client.getChainId() !== config.chainId) throw new Error("The wallet verification network is unavailable.");
     // viem verifies EOAs, ERC-1271 smart wallets, and counterfactual ERC-6492 signatures.
     const verified = await client.verifyMessage({ address: challenge.wallet as `0x${string}`, message: trialMessage(challenge, new URL(request.url).host), signature: signature as `0x${string}` });
-    if (!verified) throw new Error("This signature does not belong to the connected wallet.");
+    if (!verified) {
+      const reference = challenge.runId;
+      const code = await client.getCode({ address: challenge.wallet as `0x${string}` }).catch(() => undefined);
+      console.warn("mint_flyer_signature_rejected", {
+        reference, wallet: challenge.wallet.toLowerCase(), network: challenge.network,
+        chainId: config.chainId, host: new URL(request.url).host,
+        walletType: code === undefined ? "unknown" : code === "0x" ? "eoa" : "contract",
+        signatureBytes: (signature.length - 2) / 2,
+        signatureFormat: signature.toLowerCase().endsWith("6492".repeat(16)) ? "erc6492" : "unwrapped",
+        verificationCallFailure,
+      });
+      return Response.json({
+        error: `We couldn't verify this wallet signature on ${config.name}. Reconnect your wallet and try again. Support reference: ${reference}`,
+        reference,
+      }, { status: 400, headers });
+    }
     const db = trialDatabase();
     const wallet = challenge.wallet.toLowerCase();
     const created = await db.sql`INSERT INTO mint_flyer_trials (wallet, player_key, run_id, network) VALUES (${wallet}, ${challenge.playerKey}, ${challenge.runId}, ${challenge.network}) ON CONFLICT (wallet) DO NOTHING RETURNING run_id`;
