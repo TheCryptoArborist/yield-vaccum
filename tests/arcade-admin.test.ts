@@ -97,7 +97,7 @@ test('private rewards reveal verified wallets and networks while public rankings
   await recordArcadeResult({...source,game:'mint-invaders',runId:'second-paid',network:'robinhood'},db);
   for(let i=1;i<=3;i++)await recordArcadeResult({...source,runId:`tie-${i}`,walletAddress:`0x${String(i).repeat(40)}`,nickname:`Pilot ${i}`},db);
   const publicBoard=await readArcadeLobby([],true,db);assert.equal(JSON.stringify(publicBoard).includes(ARCADE_ADMIN_WALLET.toLowerCase()),false);
-  const privateBoard=await readAdminRewards(undefined,db,async()=>null);
+  const privateBoard=await readAdminRewards(undefined,db);
   assert.equal(privateBoard.tieReview,true);assert.equal(privateBoard.rows.length,4);
   assert.equal(privateBoard.rows[0].games,2);assert.deepEqual(privateBoard.rows[0].networks,['arc','robinhood']);
   assert.equal(privateBoard.rows[0].wallet,ARCADE_ADMIN_WALLET.toLowerCase());

@@ -211,7 +211,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
     <section id="mint-flyer-leaderboard" className={styles.board} aria-label="Mint Flyer leaderboard and achievements">
       {finishPanel && finishCard && createPortal(finishCard, finishPanel)}
       <header>
-        <span><small>MSS2 ARCADE · FLIGHT RANKINGS</small><strong><i aria-hidden="true">🏆</i> Mint Flyer leaderboard</strong><em>Public rankings · No wallet connection needed. Every saved flight counts, including crashes.</em></span>
+        <span><small>MSS2 ARCADE · FLIGHT RANKINGS</small><strong><i aria-hidden="true">🏆</i> Mint Flyer leaderboard</strong><em>All-time rankings · Includes earlier practice flights. Weekly rewards use verified paid games in the arcade lobby.</em></span>
         <button className={styles.refreshRankings} disabled={loading} onClick={() => void load(playerKey)}>{loading ? "Loading rankings…" : "Refresh leaderboard"}</button>
       </header>
 
@@ -240,7 +240,7 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
                     <strong>{entry.nickname}</strong>
                     <div className={styles.podiumScore}>{entry.bestScore.toLocaleString()}<em>PTS</em></div>
                     <span>{entry.bestGrade} · {GRADE_LABELS[entry.bestGrade]} · {entry.bestDistance.toLocaleString()}m BEST · {entry.moonClears} MOON {entry.moonClears === 1 ? "CLEAR" : "CLEARS"}</span>
-                    <b className={styles.podiumFlights}>{entry.runs.toLocaleString()} SAVED {entry.runs === 1 ? "FLIGHT" : "FLIGHTS"}</b>
+                    <b className={styles.podiumFlights}>{entry.runs.toLocaleString()} ALL-TIME {entry.runs === 1 ? "FLIGHT" : "FLIGHTS"}</b>
                     <div className={styles.podiumBadges}><AchievementBadges ids={entry.displayedAchievements} /></div>
                     {entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}
                   </> : <>
@@ -258,11 +258,11 @@ export default function MintFlyerLeaderboard({ result, finishPanel }: { result: 
         {!loading && !rankingsError && entries.length === 0 && <div className={styles.firstRunChallenge}><i aria-hidden="true">🚀</i><span><small>THE BOARD IS WIDE OPEN</small><strong>BE THE FIRST RANKED PILOT</strong><em>Finish any flight, save your score, and claim the first seat.</em></span><a href="#mint-flyer">Play a flight ↑</a></div>}
 
         {entries.length > 0 && <div className={styles.table}>
-          <div className={styles.tableHead}><span>RANK</span><span>PILOT + BADGES</span><span className={styles.flightColumn}>FLIGHTS</span><span>BEST DISTANCE</span><span>BEST SCORE</span></div>
+          <div className={styles.tableHead}><span>RANK</span><span>PILOT + BADGES</span><span className={styles.flightColumn}>ALL-TIME FLIGHTS</span><span>BEST DISTANCE</span><span>BEST SCORE</span></div>
           {entries.map((entry, index) => (
             <div className={`${styles.row} ${index < 3 ? styles.podium : ""}`} key={`${entry.nickname}-${entry.updatedAt}`}>
               <span className={styles.rank}><i>{index === 0 ? "👑" : index === 1 ? "★" : index === 2 ? "◆" : ""}</i>{index + 1}</span>
-              <div className={styles.identity}><strong>{entry.nickname}</strong><AchievementBadges ids={entry.displayedAchievements} /><small>{entry.unlocked.length} BADGES · {entry.totalMints} MINT CREDITS<span className={styles.mobileFlights}> · {entry.runs.toLocaleString()} SAVED {entry.runs === 1 ? "FLIGHT" : "FLIGHTS"}</span></small><RewardWallet entry={entry} />{entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}</div>
+              <div className={styles.identity}><strong>{entry.nickname}</strong><AchievementBadges ids={entry.displayedAchievements} /><small>{entry.unlocked.length} BADGES · {entry.totalMints} MINT CREDITS<span className={styles.mobileFlights}> · {entry.runs.toLocaleString()} ALL-TIME {entry.runs === 1 ? "FLIGHT" : "FLIGHTS"}</span></small><RewardWallet entry={entry} />{entry.mss2HeldRounded && <b className={styles.heldBalance}>✓ {entry.mss2HeldRounded} MSS2</b>}</div>
               <span className={styles.flightColumn} title="Saved finished flights, including crashes">{entry.runs.toLocaleString()}</span>
               <span className={styles.clears}><b>{entry.bestDistance.toLocaleString()}m</b><small>{entry.moonClears > 0 ? `${entry.moonClears} MOON ${entry.moonClears === 1 ? "CLEAR" : "CLEARS"}` : "MOON NOT YET REACHED"}</small></span>
               <span className={styles.score}><b>{entry.bestScore.toLocaleString()}</b><small>{entry.bestGrade} · {GRADE_LABELS[entry.bestGrade]}</small></span>
