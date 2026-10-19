@@ -111,3 +111,14 @@ test('CSV does not invent amounts or silently choose a payout network; formula c
  assert.match(csv,/'=HYPERLINK/);assert.match(csv,/CONFIRM PAYOUT NETWORK/);assert.match(csv,/TOP THREE TIE REVIEW/);
  assert.doesNotMatch(rewardsCsv(data,{pilot:'arc'}),/CONFIRM PAYOUT NETWORK/);
 });
+
+test('admin can confirm Arc for a legacy recipient without inventing recorded network history',()=>{
+ const data:AdminRewards={weekStart:'2026-10-12',weekEnd:'2026-10-19',closed:true,tieReview:false,pilots:1,rows:[{id:'legacy',rank:1,nickname:'Legacy pilot',wallet:ARCADE_ADMIN_WALLET,games:1,flyerGames:1,invadersGames:0,networks:[],unknownNetwork:true}]};
+ assert.match(rewardsCsv(data),/CONFIRM PAYOUT NETWORK/);
+ const csv=rewardsCsv(data,{legacy:'arc'});
+ assert.match(csv,/,"","arc","admin-confirmed","NETWORK HISTORY INCOMPLETE"/);
+ assert.doesNotMatch(csv,/CONFIRM PAYOUT NETWORK/);
+ assert.deepEqual(data.rows[0].networks,[]);
+ assert.match(rewardsCsv(data,{legacy:'robinhood'}),/,"robinhood","admin-confirmed",/);
+ assert.match(rewardsCsv(data,{legacy:'unsupported' as 'arc'}),/CONFIRM PAYOUT NETWORK/);
+});
