@@ -6,11 +6,13 @@ function csvField(value:unknown) {
  return `"${text.replaceAll('"','""')}"`;
 }
 export function rewardsCsv(data:AdminRewards,selected:Record<string,RewardNetwork>={}) {
- const header=['Week start UTC','Week end UTC','Rank','Player','Verified paying wallet','Paid games saved','Mint Flyer games','Mint Invaders games','Networks used','Payout network','Review'];
+ const header=['Week start UTC','Week end UTC','Rank','Player','Verified paying wallet','Paid games saved','Mint Flyer games','Mint Invaders games','Networks used','Payout network','Payout network source','Review'];
  const rows=data.rows.map(row=>{
-  const requested=selected[row.id],network=requested&&row.networks.includes(requested)?requested:row.networks.length===1&&!row.unknownNetwork?row.networks[0]:'';
+  const requested=selected[row.id],confirmed=requested==='arc'||requested==='robinhood';
+  const network=confirmed?requested:row.networks.length===1&&!row.unknownNetwork?row.networks[0]:'';
+  const source=confirmed?'admin-confirmed':network?'recorded-history':'';
   const review=[!data.closed?'WEEK IN PROGRESS':'',data.tieReview?'TOP THREE TIE REVIEW':'',row.unknownNetwork?'NETWORK HISTORY INCOMPLETE':'',!network?'CONFIRM PAYOUT NETWORK':''].filter(Boolean).join('; ');
-  return [data.weekStart,data.weekEnd,row.rank,row.nickname,row.wallet,row.games,row.flyerGames,row.invadersGames,row.networks.join(' + '),network,review];
+  return [data.weekStart,data.weekEnd,row.rank,row.nickname,row.wallet,row.games,row.flyerGames,row.invadersGames,row.networks.join(' + '),network,source,review];
  });
  return [header,...rows].map(row=>row.map(csvField).join(',')).join('\r\n');
 }
