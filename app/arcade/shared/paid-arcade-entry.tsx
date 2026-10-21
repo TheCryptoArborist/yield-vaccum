@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import WalletConnect, { type WalletConnection } from "../../wallet-connect";
+import type { ArcadeGame } from "../../../lib/arcade-game";
 import type { ArcadePaymentQuote } from "../../../db/arcade-payments";
 import type { Mss2EntryBalance } from "../../../lib/mss2-entry-balance";
 import type { PaymentReadiness } from "../../../lib/mss2-payment";
@@ -9,8 +10,8 @@ import styles from "../mint-invaders/mint-invaders.module.css";
 export type PaidArcadeAuthorization = { paymentId: string; runId: string; playerKey: string; network: "arc" | "robinhood" };
 type Quote = ArcadePaymentQuote & { approval: { to: string; data: string; value: string }; entry: { to: string; data: string; value: string }; balanceCheck: Mss2EntryBalance; nativeGasBalanceRaw: string };
 type Pending = { quote: Quote; hash: string; operation: boolean; playerKey: string };
-const pendingKey = "mint-invaders-pending-payment-v1";
-export default function PaidArcadeEntry({ onAuthorized }: { onAuthorized: (entry: PaidArcadeAuthorization) => void }) {
+export default function PaidArcadeEntry({ onAuthorized, game = "mint-invaders", compact = false, className = "" }: { onAuthorized: (entry: PaidArcadeAuthorization) => void; game?: ArcadeGame; compact?: boolean; className?: string }) {
+  const pendingKey = `${game}-pending-payment-v1`;
   const [wallet, setWallet] = useState<WalletConnection | null>(null);
   const context = useRef<WalletConnection | null>(null);
   const [playerKey, setPlayerKey] = useState("");
@@ -30,16 +31,16 @@ export default function PaidArcadeEntry({ onAuthorized }: { onAuthorized: (entry
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        let key = localStorage.getItem("mint-invaders-player-v1");
-        if (!key || !/^[a-zA-Z0-9-]{16,80}$/.test(key)) { key = crypto.randomUUID(); localStorage.setItem("mint-invaders-player-v1", key); }
+        let key = localStorage.getItem(`${game}-player-v1`);
+        if (!key || !/^[a-zA-Z0-9-]{16,80}$/.test(key)) { key = crypto.randomUUID(); localStorage.setItem(`${game}-player-v1`, key); }
         setPlayerKey(key);
         const saved = JSON.parse(localStorage.getItem(pendingKey) ?? "null") as Pending | null;
-        if (saved?.quote?.game === "mint-invaders" && saved.playerKey === key && /^0x[0-9a-fA-F]{64}$/.test(saved.hash)) setPending(saved);
+        if (saved?.quote?.game === game && saved.playerKey === key && /^0x[0-9a-fA-F]{64}$/.test(saved.hash)) setPending(saved);
       } catch { setPlayerKey(crypto.randomUUID()); }
     }, 0);
     const interval = setInterval(() => setClock(Date.now()), 1000);
     return () => { clearTimeout(timer); clearInterval(interval); };
-  }, []);
+  }, [game, pendingKey]);
   useEffect(() => {
     if (!wallet || !network) return;
     const controller = new AbortController();
@@ -64,19 +65,19 @@ export default function PaidArcadeEntry({ onAuthorized }: { onAuthorized: (entry
   const retain = (value: Pending | null) => { setPending(value); try { if (value) localStorage.setItem(pendingKey, JSON.stringify(value)); else localStorage.removeItem(pendingKey); } catch { /* Keep in-memory pending payment. */ } };
   const matching = useCallback((q: Quote) => context.current?.account.toLowerCase() === q.walletAddress.toLowerCase() && Number(context.current.chainId) === q.chainId, []);
   const jsonPost = useCallback(async (body: Record<string, unknown>) => {
-    const response = await fetch("/api/arcade-payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, game: "mint-invaders" }), signal: AbortSignal.timeout(20_000) });
+    const response = await fetch("/api/arcade-payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, game }), signal: AbortSignal.timeout(20_000) });
     const data = await response.json(); if (!response.ok) throw new Error(data.error || "Entry request failed."); return { data, response };
-  }, []);
+  }, [game]);
   const prepare = useCallback(async () => {
     if (!wallet || !network || !readiness?.enabled || !playerKey || locked.current || pending) return;
     locked.current = true; setBusy(true); setQuoteFailed(false); setMessage("Checking the current MSS2 quote and wallet balance…");
     try {
       const { data } = await jsonPost({ action: "quote", network, playerKey, walletAddress: wallet.account, runId: crypto.randomUUID() });
-      if (data.game !== "mint-invaders" || data.network !== network || !matching(data)) throw new Error("Wallet or network changed. Request a fresh quote.");
+      if (data.game !== game || data.network !== network || !matching(data)) throw new Error("Wallet or network changed. Request a fresh quote.");
       setQuote(data); setClock(Date.now()); setMessage(data.balanceCheck?.sufficient ? "Quote ready. Pay & authorize opens your wallet." : "Add MSS2 to cover this entry, then refresh the quote.");
     } catch (e) { setQuoteFailed(true); setMessage(e instanceof Error ? e.message : "Quote unavailable."); }
     finally { locked.current = false; setBusy(false); }
-  }, [wallet, network, readiness?.enabled, playerKey, pending, jsonPost, matching]);
+  }, [wallet, network, readiness?.enabled, playerKey, pending, jsonPost, matching, game]);
   useEffect(() => { const timer = setTimeout(() => { void prepare(); }, 0); return () => clearTimeout(timer); }, [prepare, quoteRetry]);
   const pay = async () => {
     const q = pending?.quote ?? quote;
@@ -122,7 +123,7 @@ export default function PaidArcadeEntry({ onAuthorized }: { onAuthorized: (entry
       for (let attempt = 0; attempt < 15; attempt++) {
         setMessage("Verifying the entry receipt and its 20/80 transfers…");
         const { data } = await jsonPost({ action: "verify", paymentId: q.paymentId, playerKey: record.playerKey, walletAddress: q.walletAddress, txHash: record.hash }); assertContext();
-        if (!data.pending && data.status === "verified" && data.game === "mint-invaders" && data.runId === q.runId && data.paymentId === q.paymentId) {
+        if (!data.pending && data.status === "verified" && data.game === game && data.runId === q.runId && data.paymentId === q.paymentId) {
           retain(null); onAuthorized({ paymentId: q.paymentId, runId: q.runId, playerKey: record.playerKey, network: q.network }); setMessage("Payment verified. Start your game below."); return;
         }
         if (!data.pending) throw new Error("The verified payment did not match this game.");
@@ -135,23 +136,23 @@ export default function PaidArcadeEntry({ onAuthorized }: { onAuthorized: (entry
     } finally { locked.current = false; setBusy(false); }
   };
   const expired = Boolean(quote && Date.parse(quote.expiresAt) <= clock);
-  return <section className={styles.entryPanel} aria-label="Mint Invaders paid entry">
+  return <section className={`${styles.entryPanel} ${className}`} aria-label={`${game === "mint-stack" ? "Mint Stack" : "Mint Invaders"} paid entry`}>
     <WalletConnect theme="mss" onConnectionChange={connectionChange} />
-    <div className={styles.marketQuotes} aria-label="Current MSS2 entry quotes">{["robinhood", "arc"].map(chain => {
+    <div className={styles.marketQuotes} data-entry="quotes" aria-label="Current MSS2 entry quotes">{["robinhood", "arc"].map(chain => {
       const market = marketQuotes[chain];
       const fresh = market && Date.parse(market.validUntil) > clock;
-      return <div key={chain}><small>{chain === "arc" ? "ARC" : "ROBINHOOD CHAIN"} · $1 ENTRY</small><strong>{fresh ? `≈ ${market.amount} MSS2` : marketErrors[chain] ? "QUOTE UNAVAILABLE" : "UPDATING QUOTE…"}</strong><span>{fresh ? `$${Number(market.price).toLocaleString(undefined, { maximumSignificantDigits: 6 })} per MSS2` : "Live market price refreshes automatically"}</span></div>;
+      return <div key={chain}><small>{chain === "arc" ? "ARC" : compact ? "ROBINHOOD" : "ROBINHOOD CHAIN"}{!compact && " · $1 ENTRY"}</small><strong>{fresh ? compact ? <><span>≈ {market.amount}</span><small>MSS2</small></> : `≈ ${market.amount} MSS2` : marketErrors[chain] ? "QUOTE UNAVAILABLE" : "UPDATING QUOTE…"}</strong><span>{fresh ? `$${Number(market.price).toLocaleString(undefined, { maximumSignificantDigits: 6 })} per MSS2` : "Live market price refreshes automatically"}</span></div>;
     })}</div>
-    <div className={styles.entrySummary}><p><b>$1 WORTH OF MSS2 PER GAME</b><span>20% to the dead address · 80% to community rewards reserve</span></p><div className={styles.entryActions}>
+    <div className={styles.entrySummary} data-entry="summary"><p><b>{compact ? "YOUR $1 MSS2 ENTRY" : "$1 WORTH OF MSS2 PER GAME"}</b>{!compact && <span>20% to the dead address · 80% to community rewards reserve</span>}</p><div className={styles.entryActions} data-entry="actions">
     {pending ? <button onClick={() => void pay()} disabled={busy || !wallet}>RECHECK SUBMITTED PAYMENT</button> : <>
       {(quoteFailed || expired) && <button onClick={() => setQuoteRetry(value => value + 1)} disabled={busy || !readiness?.enabled}>REFRESH QUOTE</button>}
-      <button onClick={() => void pay()} disabled={busy || !quote || expired || !quote.balanceCheck?.sufficient || !readiness?.enabled}>{busy ? "CHECKING ENTRY…" : !wallet ? "CONNECT WALLET ABOVE" : "PAY & AUTHORIZE GAME"}</button>
+      <button onClick={() => void pay()} disabled={busy || !quote || expired || !quote.balanceCheck?.sufficient || !readiness?.enabled}>{busy ? "CHECKING ENTRY…" : !wallet ? "CONNECT WALLET ABOVE" : compact ? "PAY & UNLOCK GAME" : "PAY & AUTHORIZE GAME"}</button>
     </>}
     </div></div>
     {wallet && !network && <p className={styles.entryStatus}>Select Robinhood Chain or Arc in the wallet bar.</p>}
     {network && readiness && !readiness.enabled && <p className={styles.entryStatus}>{readiness.reason}</p>}
     {quote && <p className={styles.entryStatus}><b>{quote.displayAmount} MSS2</b> on {quote.network === "arc" ? "Arc" : "Robinhood Chain"}. {expired ? "Quote expired. Refresh before paying." : "Exact payment amount, checked for your wallet."}</p>}
     <p className={styles.entryStatus} role="status">{busy ? "Please keep this page open. " : ""}{message}</p>
-    <small>Market quotes are estimates. Your exact payment quote loads after connecting. Each game requires a new verified entry. No automatic reward payouts. Pending payments are retained for rechecking.</small>
+    <small>{compact ? "Exact quote after connecting. Network gas is separate. Pending payments are kept so you can recheck without paying again." : "Market quotes are estimates. Your exact payment quote loads after connecting. Each game requires a new verified entry. No automatic reward payouts. Pending payments are retained for rechecking."}</small>
   </section>;
 }

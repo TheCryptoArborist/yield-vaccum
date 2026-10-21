@@ -40,11 +40,11 @@ export function mergeArcadeHistory(primary:ArcadeHistoryResult[],legacy:ArcadeHi
  return [...result.values()];
 }
 export function groupArcadeHistory(results:ArcadeHistoryResult[]){
- const groups=new Map<string,{id:string;wallet:string;nickname:string;runs:number;flyer:number|null;invaders:number|null;flyerGames:number;invadersGames:number;history:ArcadeHistoryResult[]}>();
+ const groups=new Map<string,{id:string;wallet:string;nickname:string;runs:number;flyer:number|null;invaders:number|null;stack:number|null;flyerGames:number;invadersGames:number;stackGames:number;history:ArcadeHistoryResult[]}>();
  for(const row of [...results].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.runId.localeCompare(b.runId))){
-  const key=row.walletAddress.toLowerCase();const group=groups.get(key)??{id:row.pilotId!,wallet:key,nickname:row.nickname,runs:0,flyer:null,invaders:null,flyerGames:0,invadersGames:0,history:[]};groups.set(key,group);
+  const key=row.walletAddress.toLowerCase();const group=groups.get(key)??{id:row.pilotId!,wallet:key,nickname:row.nickname,runs:0,flyer:null,invaders:null,stack:null,flyerGames:0,invadersGames:0,stackGames:0,history:[]};groups.set(key,group);
   group.nickname=row.nickname;group.runs++;group.history.push(row);
-  if(row.game==='mint-flyer'){group.flyer=Math.max(group.flyer??0,row.score);group.flyerGames++;}else{group.invaders=Math.max(group.invaders??0,row.score);group.invadersGames++;}
+  if(row.game==='mint-flyer'){group.flyer=Math.max(group.flyer??0,row.score);group.flyerGames++;}else if(row.game==='mint-invaders'){group.invaders=Math.max(group.invaders??0,row.score);group.invadersGames++;}else if(row.game==='mint-stack'){group.stack=Math.max(group.stack??0,row.score);group.stackGames++;}
  }
  return [...groups.values()];
 }

@@ -3,7 +3,7 @@ import { arcadeWeekWindow } from '../../../lib/arcade-championship';
 export const dynamic='force-dynamic';
 export async function GET(request:Request) {
  const url=new URL(request.url);
- const keys=url.searchParams.getAll('playerKey').filter(key=>/^[a-zA-Z0-9-]{16,80}$/.test(key)).slice(0,2);
+ const keys=url.searchParams.getAll('playerKey').filter(key=>/^[a-zA-Z0-9-]{16,80}$/.test(key)).slice(0,3);
  const week=url.searchParams.get('week')??undefined;
  const page=Number(url.searchParams.get('page')??1);
  if(!Number.isInteger(page)||page<1||page>100000)return Response.json({error:'Choose a valid leaderboard page.'},{status:400,headers:{'Cache-Control':'no-store'}});

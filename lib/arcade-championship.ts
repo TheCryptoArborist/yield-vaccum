@@ -1,8 +1,8 @@
-export type ArcadeStanding = { id:string; nickname:string; flyer:number|null; invaders:number|null; runs:number; points:number; rank:number };
+export type ArcadeStanding = { id:string; nickname:string; flyer:number|null; invaders:number|null; stack?:number|null; runs:number; points:number; rank:number };
 export function championship(rows:Omit<ArcadeStanding,'points'|'rank'>[]):ArcadeStanding[] {
  const points = new Map(rows.map(row=>[row.id,0]));
- for(const game of ['flyer','invaders'] as const) {
-  const competitors=rows.filter(row=>row[game]!==null).sort((a,b)=>b[game]!-a[game]!);
+ for(const game of ['flyer','invaders','stack'] as const) {
+  const competitors=rows.filter(row=>row[game]!=null).sort((a,b)=>b[game]!-a[game]!);
   let higher=0;
   competitors.forEach((row,index)=>{ if(index===0||row[game]!==competitors[index-1][game])higher=index;
    const award=competitors.length===1?1000:Math.round(100+900*(competitors.length-1-higher)/(competitors.length-1));
