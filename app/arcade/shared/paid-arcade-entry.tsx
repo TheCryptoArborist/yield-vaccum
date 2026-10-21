@@ -10,7 +10,7 @@ import styles from "../mint-invaders/mint-invaders.module.css";
 export type PaidArcadeAuthorization = { paymentId: string; runId: string; playerKey: string; network: "arc" | "robinhood" };
 type Quote = ArcadePaymentQuote & { approval: { to: string; data: string; value: string }; entry: { to: string; data: string; value: string }; balanceCheck: Mss2EntryBalance; nativeGasBalanceRaw: string };
 type Pending = { quote: Quote; hash: string; operation: boolean; playerKey: string };
-export default function PaidArcadeEntry({ onAuthorized, game = "mint-invaders" }: { onAuthorized: (entry: PaidArcadeAuthorization) => void; game?: ArcadeGame }) {
+export default function PaidArcadeEntry({ onAuthorized, game = "mint-invaders", compact = false, className = "" }: { onAuthorized: (entry: PaidArcadeAuthorization) => void; game?: ArcadeGame; compact?: boolean; className?: string }) {
   const pendingKey = `${game}-pending-payment-v1`;
   const [wallet, setWallet] = useState<WalletConnection | null>(null);
   const context = useRef<WalletConnection | null>(null);
@@ -136,23 +136,23 @@ export default function PaidArcadeEntry({ onAuthorized, game = "mint-invaders" }
     } finally { locked.current = false; setBusy(false); }
   };
   const expired = Boolean(quote && Date.parse(quote.expiresAt) <= clock);
-  return <section className={styles.entryPanel} aria-label={`${game === "mint-stack" ? "Mint Stack" : "Mint Invaders"} paid entry`}>
+  return <section className={`${styles.entryPanel} ${className}`} aria-label={`${game === "mint-stack" ? "Mint Stack" : "Mint Invaders"} paid entry`}>
     <WalletConnect theme="mss" onConnectionChange={connectionChange} />
-    <div className={styles.marketQuotes} aria-label="Current MSS2 entry quotes">{["robinhood", "arc"].map(chain => {
+    <div className={styles.marketQuotes} data-entry="quotes" aria-label="Current MSS2 entry quotes">{["robinhood", "arc"].map(chain => {
       const market = marketQuotes[chain];
       const fresh = market && Date.parse(market.validUntil) > clock;
-      return <div key={chain}><small>{chain === "arc" ? "ARC" : "ROBINHOOD CHAIN"} · $1 ENTRY</small><strong>{fresh ? `≈ ${market.amount} MSS2` : marketErrors[chain] ? "QUOTE UNAVAILABLE" : "UPDATING QUOTE…"}</strong><span>{fresh ? `$${Number(market.price).toLocaleString(undefined, { maximumSignificantDigits: 6 })} per MSS2` : "Live market price refreshes automatically"}</span></div>;
+      return <div key={chain}><small>{chain === "arc" ? "ARC" : compact ? "ROBINHOOD" : "ROBINHOOD CHAIN"}{!compact && " · $1 ENTRY"}</small><strong>{fresh ? compact ? <><span>≈ {market.amount}</span><small>MSS2</small></> : `≈ ${market.amount} MSS2` : marketErrors[chain] ? "QUOTE UNAVAILABLE" : "UPDATING QUOTE…"}</strong><span>{fresh ? `$${Number(market.price).toLocaleString(undefined, { maximumSignificantDigits: 6 })} per MSS2` : "Live market price refreshes automatically"}</span></div>;
     })}</div>
-    <div className={styles.entrySummary}><p><b>$1 WORTH OF MSS2 PER GAME</b><span>20% to the dead address · 80% to community rewards reserve</span></p><div className={styles.entryActions}>
+    <div className={styles.entrySummary} data-entry="summary"><p><b>{compact ? "YOUR $1 MSS2 ENTRY" : "$1 WORTH OF MSS2 PER GAME"}</b>{!compact && <span>20% to the dead address · 80% to community rewards reserve</span>}</p><div className={styles.entryActions} data-entry="actions">
     {pending ? <button onClick={() => void pay()} disabled={busy || !wallet}>RECHECK SUBMITTED PAYMENT</button> : <>
       {(quoteFailed || expired) && <button onClick={() => setQuoteRetry(value => value + 1)} disabled={busy || !readiness?.enabled}>REFRESH QUOTE</button>}
-      <button onClick={() => void pay()} disabled={busy || !quote || expired || !quote.balanceCheck?.sufficient || !readiness?.enabled}>{busy ? "CHECKING ENTRY…" : !wallet ? "CONNECT WALLET ABOVE" : "PAY & AUTHORIZE GAME"}</button>
+      <button onClick={() => void pay()} disabled={busy || !quote || expired || !quote.balanceCheck?.sufficient || !readiness?.enabled}>{busy ? "CHECKING ENTRY…" : !wallet ? "CONNECT WALLET ABOVE" : compact ? "PAY & UNLOCK GAME" : "PAY & AUTHORIZE GAME"}</button>
     </>}
     </div></div>
     {wallet && !network && <p className={styles.entryStatus}>Select Robinhood Chain or Arc in the wallet bar.</p>}
     {network && readiness && !readiness.enabled && <p className={styles.entryStatus}>{readiness.reason}</p>}
     {quote && <p className={styles.entryStatus}><b>{quote.displayAmount} MSS2</b> on {quote.network === "arc" ? "Arc" : "Robinhood Chain"}. {expired ? "Quote expired. Refresh before paying." : "Exact payment amount, checked for your wallet."}</p>}
     <p className={styles.entryStatus} role="status">{busy ? "Please keep this page open. " : ""}{message}</p>
-    <small>Market quotes are estimates. Your exact payment quote loads after connecting. Each game requires a new verified entry. No automatic reward payouts. Pending payments are retained for rechecking.</small>
+    <small>{compact ? "Exact quote after connecting. Network gas is separate. Pending payments are kept so you can recheck without paying again." : "Market quotes are estimates. Your exact payment quote loads after connecting. Each game requires a new verified entry. No automatic reward payouts. Pending payments are retained for rechecking."}</small>
   </section>;
 }
