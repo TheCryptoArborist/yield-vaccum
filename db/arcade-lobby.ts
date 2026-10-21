@@ -17,7 +17,7 @@ export async function readArcadeLobby(keys:string[],weekly:boolean,database=db()
  const history=await readArcadeResultHistory(database,options.readLegacy);
  const groups=groupArcadeHistory(history.results.filter(row=>Date.parse(row.createdAt)>=start.getTime()&&Date.parse(row.createdAt)<end.getTime()));
  const ranking=options.ranking??'games';
- const standings=(ranking==='games'?gamesPlayedStandings:championship)(groups.map(row=>({id:row.id,nickname:row.nickname,flyer:row.flyer,invaders:row.invaders,runs:row.runs})));
+ const standings=(ranking==='games'?gamesPlayedStandings:championship)(groups.map(row=>({id:row.id,nickname:row.nickname,flyer:row.flyer,invaders:row.invaders,stack:row.stack,runs:row.runs})));
  const owned=new Set(history.results.filter(row=>keys.includes(row.playerKey)).map(row=>row.pilotId));
  const totalPages=Math.max(1,Math.ceil(standings.length/100)),page=Math.min(Math.max(1,options.page??1),totalPages);
  return {page,totalPages,standings:standings.slice((page-1)*100,page*100),profile:standings.find(row=>owned.has(row.id))??null,pilots:standings.length,runs:standings.reduce((sum,row)=>sum+row.runs,0),ranking,weekStart:weekly?start.toISOString():null,weekEnd:weekly?end.toISOString():null,historyAudit:history.audit};
