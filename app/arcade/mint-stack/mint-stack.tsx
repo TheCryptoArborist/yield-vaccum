@@ -7,6 +7,8 @@ import { createStackGame, ghostY, replayStack, SHAPES, STACK_COLORS, stepStack, 
 import { StackHeldControls, stackKeyAction, beginStackGesture, moveStackGesture, endStackGesture, type StackGesture } from '../../../lib/mint-stack-controls';
 import Mss2EntryTotals from '../mss2-entry-totals';
 import styles from './mint-stack.module.css';
+import StackAchievements from './stack-achievements';
+import type { StackProfile } from '../../../lib/mint-stack-achievements';
 type Row={nickname:string;rank:number;score:number;lines:number;level:number;network:string};
 type ClearEffect={id:number;rows:number[];points:number};
 type Session={entry:PaidArcadeAuthorization;events:StackEvent[];ticks:number;started:boolean};
@@ -25,6 +27,7 @@ export default function MintStack(){
   const [game,setGame]=useState<StackGame|null>(null),[entry,setEntry]=useState<PaidArcadeAuthorization|null>(null),[isPaused,setPaused]=useState(false);
   const [rows,setRows]=useState<Row[]>([]),[stats,setStats]=useState<{games:number;pilots:number;record:number}|null>(null),[loaded,setLoaded]=useState(false);
   const [nickname,setNickname]=useState(''),[message,setMessage]=useState(''),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false),[refresh,setRefresh]=useState(0);
+  const [profile,setProfile]=useState<StackProfile|null>(null),[newlyUnlocked,setNewlyUnlocked]=useState<string[]>([]);
   const [sound,setSound]=useState(true),soundOn=useRef(true),audio=useRef<AudioContext|null>(null);
   const board=useRef<HTMLDivElement>(null),held=useRef(new StackHeldControls());
   const gesture=useRef<StackGesture|null>(null),buttonPointer=useRef<number|null>(null);
@@ -91,12 +94,14 @@ export default function MintStack(){
   },[command,resetControls]);
   useEffect(()=>{
     const controller=new AbortController();
-    void fetch('/api/mint-stack-leaderboard',{cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error);if(!controller.signal.aborted){setRows(d.entries);setStats(d.stats);setLoaded(true);}}).catch(()=>{if(!controller.signal.aborted)setMessage('Rankings are temporarily unavailable. You can retry saving or refresh the board.');});
+    let playerKey=entry?.playerKey;
+    try{playerKey??=localStorage.getItem('mint-stack-player-v1')??undefined;}catch{/* Public rankings remain available when storage is blocked. */}
+    void fetch('/api/mint-stack-leaderboard'+(playerKey?'?playerKey='+encodeURIComponent(playerKey):''),{cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error);if(!controller.signal.aborted){setRows(d.entries);setStats(d.stats);setProfile(d.profile??null);setLoaded(true);}}).catch(()=>{if(!controller.signal.aborted)setMessage('Rankings are temporarily unavailable. You can retry saving or refresh the board.');});
     return()=>controller.abort();
-  },[refresh]);
+  },[refresh,entry?.playerKey]);
   const save=async()=>{
     if(!entry||!game?.over||saving)return;setSaving(true);
-    try{const response=await fetch('/api/mint-stack-leaderboard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...entry,nickname,events:events.current,ticks:game.ticks}),signal:AbortSignal.timeout(30000)});const data=await response.json();if(!response.ok||!data.saved)throw new Error(data.error??'Save failed.');setSaved(true);setMessage('Score saved. This game counts toward your weekly arcade participation.');setRefresh(v=>v+1);try{localStorage.setItem('mss2-arcade-nickname',nickname);localStorage.removeItem(sessionKey);}catch{}}catch(e){setMessage(e instanceof Error?e.message:'Save failed. Retry with the same entry.');}finally{setSaving(false);}
+    try{const response=await fetch('/api/mint-stack-leaderboard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...entry,nickname,events:events.current,ticks:game.ticks}),signal:AbortSignal.timeout(30000)});const data=await response.json();if(!response.ok||!data.saved)throw new Error(data.error??'Save failed.');setProfile(data.profile??null);setNewlyUnlocked(data.newlyUnlocked??[]);setSaved(true);setMessage('Score saved. This game counts toward your weekly arcade participation.');setRefresh(v=>v+1);try{localStorage.setItem('mss2-arcade-nickname',nickname);localStorage.removeItem(sessionKey);}catch{}}catch(e){setMessage(e instanceof Error?e.message:'Save failed. Retry with the same entry.');}finally{setSaving(false);}
   };
   const nextGame=()=>{if(!saved&&!window.confirm('Your score has not been saved. Start a new paid entry anyway?'))return;authorization.current=null;started.current=false;engine.current=null;events.current=[];queued.current=[];setEntry(null);setGame(null);setSaved(false);try{localStorage.removeItem(sessionKey);}catch{}};
   const cells=game?.board.map(row=>[...row])??Array.from({length:20},()=>Array(10).fill(0));
@@ -104,7 +109,7 @@ export default function MintStack(){
   if(game&&!game.over){const y=ghostY(game);game.matrix.forEach((row,dy)=>row.forEach((cell,dx)=>{if(cell&&y+dy>=0)ghosts.add((y+dy)*10+game.x+dx);if(cell&&game.y+dy>=0)cells[game.y+dy][game.x+dx]=game.piece+1;}));}
   return <main className={styles.page}><div className={styles.shell}>
     <header className={styles.nav}><Link href='/arcade/lobby'>← ARCADE LOBBY</Link><span>MSS2 ARCADE / CABINET 03</span><Image src='/mss2-flyer-emblem.png' alt='MSS2' width={38} height={38}/></header>
-    <section className={styles.hero}><div><small>FIND YOUR FLOW. CLEAR YOUR NEXT LINE.</small><h1>MINT <span>STACK</span></h1><p>A little planning. A quick rotation. One perfect fit.</p></div><nav className={styles.heroLinks} aria-label='Mint Stack sections'><a href='#mint-stack-game'>PLAYFIELD ↓</a><a href='#stack-board'>RANKINGS ↓</a></nav></section>
+    <section className={styles.hero}><div><small>FIND YOUR FLOW. CLEAR YOUR NEXT LINE.</small><h1>MINT <span>STACK</span></h1><p>A little planning. A quick rotation. One perfect fit.</p></div><nav className={styles.heroLinks} aria-label='Mint Stack sections'><a href='#mint-stack-game'>PLAYFIELD ↓</a><a href='#stack-board'>RANKINGS ↓</a><a href='#stack-achievements'>BADGES ↓</a></nav></section>
     <div className={styles.utility}><b>$1 WORTH OF MSS2 / GAME</b><span><strong>20%</strong> to the dead address</span><span><strong>80%</strong> to community rewards reserve</span></div>
     <div className={styles.workspace}>
     <section className={styles.entryDock} aria-label='Your Mint Stack entry'>
@@ -172,6 +177,7 @@ export default function MintStack(){
       {rows.length>0&&<div className={styles.table} role='region' aria-label='Mint Stack high scores' tabIndex={0}><div><span>RANK / PILOT</span><span>LINES</span><span>SCORE</span></div>{rows.map((row,index)=><article key={index}><div><b>{String(row.rank).padStart(2,'0')}</b><span><strong>{row.nickname}</strong><small>{row.network==='arc'?'ARC':'ROBINHOOD CHAIN'} · LEVEL {row.level}</small></span></div><span>{row.lines}</span><strong>{row.score.toLocaleString()}</strong></article>)}</div>}
     </section>
     </div>
+    <StackAchievements profile={profile} newlyUnlocked={newlyUnlocked}/>
     <details className={styles.rules}><summary>HOW TO PLAY + SCORING</summary><p>Fill a complete horizontal row to clear it. Clear 1 / 2 / 3 / 4 rows together for 100 / 300 / 500 / 800 points × your current level. Soft drops add 1 point per cell; hard drops add 2. Every 10 cleared rows increases your level and the falling speed. Hold one piece for later; hold becomes available again after the next piece locks. The outlined ghost shows where your piece will land.</p><p>The run ends when blocks reach the top. Each new game requires a new verified $1 MSS2 payment. Network gas is separate. Scores are replayed on the server before saving. Use the same paying wallet across games to join your weekly participation totals.</p></details>
     <div className={styles.impactDock}><Mss2EntryTotals network={entry?.network??'robinhood'} paymentId={entry?.paymentId??''}/></div>
     <footer>THE CRYPTO ARBORIST · MSS2 COMMUNITY ARCADE · <Link href='/arcade/lobby'>BACK TO THE LOBBY</Link></footer>

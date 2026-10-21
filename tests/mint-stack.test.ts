@@ -68,3 +68,32 @@ test('Stack joins both older games without relabeling counts; a payment creates 
     assert.match(rewardsCsv(admin),/Mint Stack games/);
   }finally{if(db)await db.pool.end();await local.stop();}
 });
+
+test('Stack achievements distinguish lifetime totals from single-run milestones',async()=>{
+  const {stackAchievements,emptyStackProgress,STACK_ACHIEVEMENTS}=await import('../lib/mint-stack-achievements');
+  assert.deepEqual(stackAchievements(emptyStackProgress),[]);
+  const earned=stackAchievements({...emptyStackProgress,runs:10,lines:100,bestLines:9,level:2,score:4999,pieces:250,fours:1,networks:2});
+  assert.ok(earned.includes('first-drop'));assert.ok(earned.includes('line-miner'));assert.ok(earned.includes('mint-quad'));assert.ok(earned.includes('chain-hopper'));
+  assert.ok(!earned.includes('double-digits'));assert.ok(!earned.includes('five-k'));assert.ok(!earned.includes('rising-stack'));
+  assert.equal(stackAchievements({runs:10,lines:100,bestLines:40,level:5,score:20000,pieces:250,fours:1,networks:2}).length,STACK_ACHIEVEMENTS.length);
+});
+
+test('Stack badges include historical runs across browsers for one wallet and isolate shared browsers and contexts',async()=>{
+  const {readStackProfile}=await import('../db/mint-stack-profile');
+  const {NetlifyDB}=await import('@netlify/database-dev');const local=new NetlifyDB();let db:ReturnType<typeof getDatabase>|undefined;
+  try{
+    db=getDatabase({connectionString:await local.start()});await local.applyMigrations('./netlify/database/migrations');
+    const add=async(context:string,id:string,key:string,wallet:string,network:string,lines:number,date:string)=>db!.sql`INSERT INTO mint_stack_runs(context,run_id,payment_id,player_key,wallet_address,nickname,network,score,lines,level,pieces,fours,ticks,created_at) VALUES(${context},${id},${id},${key},${wallet},'Player',${network},5000,${lines},2,150,1,100,${date})`;
+    await add('local','a','old-browser','wallet-a','arc',6,'2026-10-20T01:00:00Z');
+    await add('local','b','shared-browser','wallet-a','robinhood',6,'2026-10-20T02:00:00Z');
+    let profile=await readStackProfile(db,'local','shared-browser');
+    assert.equal(profile.runs,2);assert.equal(profile.lines,12);assert.equal(profile.bestLines,6);assert.equal(profile.pieces,300);assert.equal(profile.networks,2);
+    assert.ok(profile.unlocked.includes('chain-hopper'));assert.ok(profile.unlocked.includes('block-builder'));assert.ok(!profile.unlocked.includes('double-digits'));
+    assert.ok(!JSON.stringify(profile).includes('wallet-a'));
+    await add('local','c','shared-browser','wallet-b','arc',1,'2026-10-20T03:00:00Z');
+    await add('production','d','shared-browser','wallet-b','robinhood',99,'2026-10-20T04:00:00Z');
+    profile=await readStackProfile(db,'local','shared-browser');assert.equal(profile.runs,1);assert.equal(profile.lines,1);assert.equal(profile.networks,1);
+    assert.equal((await readStackProfile(db,'local','unknown')).unlocked.length,0);
+    assert.equal((await readStackProfile(db,'local','old-browser')).runs,2);
+  }finally{if(db)await db.pool.end();await local.stop();}
+});
