@@ -1,13 +1,14 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import PaidArcadeEntry, { type PaidArcadeAuthorization } from '../shared/paid-arcade-entry';
 import { createStackGame, ghostY, replayStack, SHAPES, STACK_COLORS, stepStack, type StackAction, type StackEvent, type StackGame } from '../../../lib/mint-stack';
 import { StackHeldControls, stackKeyAction, beginStackGesture, moveStackGesture, endStackGesture, type StackGesture } from '../../../lib/mint-stack-controls';
 import Mss2EntryTotals from '../mss2-entry-totals';
 import styles from './mint-stack.module.css';
 type Row={nickname:string;rank:number;score:number;lines:number;level:number;network:string};
+type ClearEffect={id:number;rows:number[];points:number};
 type Session={entry:PaidArcadeAuthorization;events:StackEvent[];ticks:number;started:boolean};
 const sessionKey='mint-stack-session-v1';
 const validEntry=(entry:PaidArcadeAuthorization)=>entry&&[entry.paymentId,entry.runId,entry.playerKey].every(value=>typeof value==='string'&&/^[a-zA-Z0-9-]{16,80}$/.test(value))&&['arc','robinhood'].includes(entry.network);
@@ -20,6 +21,7 @@ function Piece({piece}:{piece:number|null}) {
 export default function MintStack(){
   const engine=useRef<StackGame|null>(null), events=useRef<StackEvent[]>([]), queued=useRef<StackAction[]>([]);
   const authorization=useRef<PaidArcadeAuthorization|null>(null), paused=useRef(false), started=useRef(false);
+  const [clearEffect,setClearEffect]=useState<ClearEffect|null>(null),clearId=useRef(0);
   const [game,setGame]=useState<StackGame|null>(null),[entry,setEntry]=useState<PaidArcadeAuthorization|null>(null),[isPaused,setPaused]=useState(false);
   const [rows,setRows]=useState<Row[]>([]),[stats,setStats]=useState<{games:number;pilots:number;record:number}|null>(null),[loaded,setLoaded]=useState(false);
   const [nickname,setNickname]=useState(''),[message,setMessage]=useState(''),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false),[refresh,setRefresh]=useState(0);
@@ -40,10 +42,14 @@ export default function MintStack(){
   const pause=()=>{if(!engine.current||engine.current.over)return;paused.current=!paused.current;setPaused(paused.current);resetControls();persist();if(!paused.current){enableAudio();board.current?.focus({preventScroll:true});}};
   const start=()=>{
     if(!authorization.current||started.current)return;
-    started.current=true;engine.current=createStackGame(authorization.current.paymentId);events.current=[];resetControls();paused.current=false;setPaused(false);setSaved(false);setMessage('');enableAudio();paint();persist();board.current?.focus({preventScroll:true});
+    setClearEffect(null);started.current=true;engine.current=createStackGame(authorization.current.paymentId);events.current=[];resetControls();paused.current=false;setPaused(false);setSaved(false);setMessage('');enableAudio();paint();persist();board.current?.focus({preventScroll:true});
   };
   const authorized=(value:PaidArcadeAuthorization)=>{if(!validEntry(value))return;authorization.current=value;started.current=false;events.current=[];engine.current=null;setGame(null);setEntry(value);persist();};
   useEffect(()=>{pauseToggle.current=pause;});
+  useEffect(()=>{
+    if(!clearEffect)return;
+    const timer=setTimeout(()=>setClearEffect(null),700);return()=>clearTimeout(timer);
+  },[clearEffect]);
   useEffect(()=>{
     const restore=setTimeout(()=>{
       try{
@@ -61,7 +67,10 @@ export default function MintStack(){
       for(const action of held.current.poll(performance.now()))command(action);
       const batch=queued.current.splice(0,10);for(const a of batch)events.current.push({t:g.ticks,a});
       const oldLines=g.lines,oldPieces=g.pieces;stepStack(g,batch);
-      if(g.lines>oldLines)beep(g.lastClear===4?880:660,.2);else if(g.pieces>oldPieces)beep(180);else if(batch.includes('rotate'))beep(420,.035);
+      if(g.lines>oldLines){
+        setClearEffect({id:++clearId.current,rows:[...g.clearRows],points:g.clearPoints});
+        beep(g.clearRows.length===4?880:660,.2);
+      }else if(g.pieces>oldPieces)beep(180);else if(batch.includes('rotate'))beep(420,.035);
       if(g.over)resetControls();
       paint();if(g.ticks%20===0||g.over)persist();
     },50);
@@ -119,6 +128,15 @@ export default function MintStack(){
             onLostPointerCapture={e=>{if(gesture.current?.id===e.pointerId)gesture.current=null;}}
           >
             {cells.flat().map((cell,index)=><i key={index} className={`${styles.cell} ${cell?styles.filled:''} ${!cell&&ghosts.has(index)?styles.ghost:''}`} style={cell?{background:STACK_COLORS[cell],color:STACK_COLORS[cell]}:undefined}/>)}
+            {clearEffect&&<div key={clearEffect.id} className={`${styles.clearEffect} ${clearEffect.rows.length===4?styles.fourClear:''}`} aria-hidden='true' data-line-clear={clearEffect.rows.length}>
+              {clearEffect.rows.map(row=><div key={row} className={styles.clearRow} style={{top:`${row*5}%`}}>
+                <span className={styles.clearBeam}/>
+                {Array.from({length:10},(_,i)=><i key={i} className={styles.clearParticle} style={{left:`${5+i*10}%`,'--dx':`${(i-4.5)*12}px`,'--dy':`${-24-(i%3)*14}px`,'--delay':`${i%3*15}ms`} as CSSProperties}/>)}
+              </div>)}
+              <div className={styles.clearBadge} style={{top:`${Math.min(84,Math.max(12,clearEffect.rows[0]*5-8))}%`}}>
+                <b>{['','LINE CLEAR','DOUBLE CLEAR','TRIPLE CLEAR','FOUR-LINE CLEAR'][clearEffect.rows.length]}</b><span>+{clearEffect.points.toLocaleString()} POINTS</span>
+              </div>
+            </div>}
             {(!game||isPaused||game.over)&&<div className={styles.overlay}><small>{game?.over?'RUN COMPLETE':isPaused?'TAKE A BREATHER':'YOUR NEXT HIGH SCORE STARTS HERE'}</small><h2>{game?.over?'STACK FULL':isPaused?'PAUSED':'MAKE IT FIT.'}</h2><p>{game?.over?`${game.score.toLocaleString()} points · ${game.lines} lines · Level ${game.level}`:isPaused?'Your game is waiting right here.':'Stack the blocks. Clear complete rows. Stay below the skyline.'}</p>{!game?<button disabled={!entry} onClick={start}>{entry?'START PAID GAME':'CONNECT & PAY ABOVE'}</button>:isPaused?<button onClick={pause}>RESUME GAME</button>:<a href='#stack-board'>SAVE YOUR SCORE ↓</a>}</div>}
           </div>
         </div>

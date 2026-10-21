@@ -21,6 +21,7 @@ test('hard drops land at the ghost, clear four rows and increase speed after ten
   g.piece=0;g.matrix=[[1],[1],[1],[1]];g.x=9;g.y=0;g.lines=6;
   assert.equal(ghostY(g),16);stepStack(g,['drop']);
   assert.equal(g.lines,10);assert.equal(g.level,2);assert.equal(g.fours,1);assert.equal(g.score,832);
+  assert.deepEqual(g.clearRows,[16,17,18,19]);assert.equal(g.clearPoints,800);
   assert.ok(g.board.every(row=>row.every(cell=>cell===0)));
 });
 test('pieces cannot cross walls and gravity, lock delay and top-out advance deterministically',()=>{

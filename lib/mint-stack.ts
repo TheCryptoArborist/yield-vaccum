@@ -14,7 +14,7 @@ export type StackGame = {
   queue: number[]; held: number|null; canHold: boolean; rng: number;
   score: number; lines: number; level: number; pieces: number; fours: number;
   ticks: number; gravity: number; lock: number; resets: number; over: boolean;
-  lastClear: number; clearAt: number;
+  lastClear: number; clearAt: number; clearRows: number[]; clearPoints: number;
 };
 function random(g: StackGame) { let n = g.rng; n ^= n << 13; n ^= n >>> 17; n ^= n << 5; g.rng = n >>> 0; return g.rng / 4294967296; }
 function refill(g: StackGame) {
@@ -34,7 +34,7 @@ function spawn(g: StackGame, piece?: number) {
 }
 export function createStackGame(seed: string): StackGame {
   let rng=2166136261;for(const c of seed) rng=Math.imul(rng^c.charCodeAt(0),16777619);
-  const g:StackGame={board:Array.from({length:20},()=>Array(10).fill(0)),piece:0,matrix:[],x:3,y:0,queue:[],held:null,canHold:true,rng:(rng>>>0)||1,score:0,lines:0,level:1,pieces:0,fours:0,ticks:0,gravity:0,lock:0,resets:0,over:false,lastClear:0,clearAt:-100};
+  const g:StackGame={board:Array.from({length:20},()=>Array(10).fill(0)),piece:0,matrix:[],x:3,y:0,queue:[],held:null,canHold:true,rng:(rng>>>0)||1,score:0,lines:0,level:1,pieces:0,fours:0,ticks:0,gravity:0,lock:0,resets:0,over:false,lastClear:0,clearAt:-100,clearRows:[],clearPoints:0};
   spawn(g);return g;
 }
 export function ghostY(g: StackGame) { let y=g.y;while(!collides(g,g.x,y+1))y++;return y; }
@@ -42,9 +42,10 @@ function settle(g: StackGame) {
   let above=false;
   g.matrix.forEach((row,dy)=>row.forEach((cell,dx)=>{if(cell){if(g.y+dy<0)above=true;else g.board[g.y+dy][g.x+dx]=g.piece+1;}}));
   if(above){g.over=true;return;}
-  const remaining=g.board.filter(row=>row.some(cell=>cell===0)),cleared=20-remaining.length;
+  const clearRows=g.board.flatMap((row,index)=>row.every(cell=>cell!==0)?[index]:[]);
+  const remaining=g.board.filter(row=>row.some(cell=>cell===0)),cleared=clearRows.length;
   g.lastClear=cleared;g.clearAt=g.ticks;
-  if(cleared){g.board=[...Array.from({length:cleared},()=>Array(10).fill(0)),...remaining];g.score+=[0,100,300,500,800][cleared]*g.level;g.lines+=cleared;if(cleared===4)g.fours++;g.level=1+Math.floor(g.lines/10);}
+  if(cleared){g.clearRows=clearRows;g.clearPoints=[0,100,300,500,800][cleared]*g.level;g.board=[...Array.from({length:cleared},()=>Array(10).fill(0)),...remaining];g.score+=g.clearPoints;g.lines+=cleared;if(cleared===4)g.fours++;g.level=1+Math.floor(g.lines/10);}
   g.pieces++;g.canHold=true;spawn(g);
 }
 function act(g: StackGame, action: StackAction) {
