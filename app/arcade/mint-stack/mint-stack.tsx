@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import PaidArcadeEntry, { type PaidArcadeAuthorization } from '../shared/paid-arcade-entry';
 import { createStackGame, ghostY, replayStack, SHAPES, STACK_COLORS, stepStack, type StackAction, type StackEvent, type StackGame } from '../../../lib/mint-stack';
+import { StackHeldControls, stackKeyAction, beginStackGesture, moveStackGesture, endStackGesture, type StackGesture } from '../../../lib/mint-stack-controls';
 import Mss2EntryTotals from '../mss2-entry-totals';
 import styles from './mint-stack.module.css';
 type Row={nickname:string;rank:number;score:number;lines:number;level:number;network:string};
@@ -23,7 +24,9 @@ export default function MintStack(){
   const [rows,setRows]=useState<Row[]>([]),[stats,setStats]=useState<{games:number;pilots:number;record:number}|null>(null),[loaded,setLoaded]=useState(false);
   const [nickname,setNickname]=useState(''),[message,setMessage]=useState(''),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false),[refresh,setRefresh]=useState(0);
   const [sound,setSound]=useState(true),soundOn=useRef(true),audio=useRef<AudioContext|null>(null);
-  const board=useRef<HTMLDivElement>(null),repeat=useRef<ReturnType<typeof setInterval>|null>(null);
+  const board=useRef<HTMLDivElement>(null),held=useRef(new StackHeldControls());
+  const gesture=useRef<StackGesture|null>(null),buttonPointer=useRef<number|null>(null);
+  const pauseToggle=useRef<()=>void>(()=>{});
   const paint=()=>{if(engine.current)setGame({...engine.current,board:engine.current.board.map(row=>[...row])});};
   const persist=()=>{if(authorization.current)try{localStorage.setItem(sessionKey,JSON.stringify({entry:authorization.current,events:events.current,ticks:engine.current?.ticks??0,started:started.current}));}catch{/* The current session remains available. */}};
   const beep=(frequency:number,duration=.07)=>{
@@ -33,13 +36,14 @@ export default function MintStack(){
   };
   const enableAudio=()=>{try{audio.current??=new AudioContext();void audio.current.resume().catch(()=>{});}catch{/* Sound is optional. */}};
   const command=useCallback((a:StackAction)=>{if(!engine.current||engine.current.over||paused.current||queued.current.length>=10||events.current.length+queued.current.length>=12000)return;queued.current.push(a);},[]);
-  const stopRepeat=useCallback(()=>{if(repeat.current)clearInterval(repeat.current);repeat.current=null;},[]);
-  const pause=()=>{if(!engine.current||engine.current.over)return;paused.current=!paused.current;setPaused(paused.current);queued.current=[];stopRepeat();persist();if(!paused.current){enableAudio();board.current?.focus({preventScroll:true});}};
+  const resetControls=useCallback(()=>{held.current.clear();gesture.current=null;buttonPointer.current=null;queued.current=[];},[]);
+  const pause=()=>{if(!engine.current||engine.current.over)return;paused.current=!paused.current;setPaused(paused.current);resetControls();persist();if(!paused.current){enableAudio();board.current?.focus({preventScroll:true});}};
   const start=()=>{
     if(!authorization.current||started.current)return;
-    started.current=true;engine.current=createStackGame(authorization.current.paymentId);events.current=[];queued.current=[];paused.current=false;setPaused(false);setSaved(false);setMessage('');enableAudio();paint();persist();board.current?.focus({preventScroll:true});
+    started.current=true;engine.current=createStackGame(authorization.current.paymentId);events.current=[];resetControls();paused.current=false;setPaused(false);setSaved(false);setMessage('');enableAudio();paint();persist();board.current?.focus({preventScroll:true});
   };
   const authorized=(value:PaidArcadeAuthorization)=>{if(!validEntry(value))return;authorization.current=value;started.current=false;events.current=[];engine.current=null;setGame(null);setEntry(value);persist();};
+  useEffect(()=>{pauseToggle.current=pause;});
   useEffect(()=>{
     const restore=setTimeout(()=>{
       try{
@@ -54,23 +58,28 @@ export default function MintStack(){
     },0);
     const timer=setInterval(()=>{
       const g=engine.current;if(!g||g.over||paused.current)return;
+      for(const action of held.current.poll(performance.now()))command(action);
       const batch=queued.current.splice(0,10);for(const a of batch)events.current.push({t:g.ticks,a});
       const oldLines=g.lines,oldPieces=g.pieces;stepStack(g,batch);
       if(g.lines>oldLines)beep(g.lastClear===4?880:660,.2);else if(g.pieces>oldPieces)beep(180);else if(batch.includes('rotate'))beep(420,.035);
+      if(g.over)resetControls();
       paint();if(g.ticks%20===0||g.over)persist();
     },50);
     const key=(event:KeyboardEvent)=>{
-      if(!(event.target instanceof Element)||event.target.closest('input,textarea,select,button,a')||!engine.current||engine.current.over)return;
-      const keys:Record<string,StackAction>={ArrowLeft:'left',ArrowRight:'right',ArrowDown:'soft',ArrowUp:'rotate',' ':'drop',z:'counter',Z:'counter',x:'rotate',X:'rotate',c:'hold',C:'hold',Shift:'hold'};
-      const action=keys[event.key];if(!action)return;event.preventDefault();
-      if(event.repeat&&['rotate','counter','drop','hold'].includes(action))return;command(action);
+      if(!(event.target instanceof Element)||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||!engine.current||engine.current.over)return;
+      const action=stackKeyAction(event.code,event.key);if(!action)return;
+      if(action==='pause'){event.preventDefault();if(!event.repeat)pauseToggle.current();return;}
+      if(event.target.closest('button,a')||paused.current)return;
+      event.preventDefault();if(event.repeat)return;
+      for(const a of held.current.press(`key:${event.code||event.key}`,action,performance.now()))command(a);
     };
-    const blur=()=>{if(engine.current&&!engine.current.over){paused.current=true;setPaused(true);queued.current=[];stopRepeat();persist();}};
+    const keyUp=(event:KeyboardEvent)=>held.current.release(`key:${event.code||event.key}`,performance.now());
+    const blur=()=>{if(engine.current&&!engine.current.over){paused.current=true;setPaused(true);resetControls();persist();}};
     const hidden=()=>{if(document.hidden)blur();};
-    window.addEventListener('keydown',key);window.addEventListener('blur',blur);document.addEventListener('visibilitychange',hidden);
-    return()=>{clearTimeout(restore);clearInterval(timer);stopRepeat();persist();window.removeEventListener('keydown',key);window.removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);void audio.current?.close();};
+    window.addEventListener('keydown',key);window.addEventListener('keyup',keyUp);window.addEventListener('blur',blur);document.addEventListener('visibilitychange',hidden);
+    return()=>{clearTimeout(restore);clearInterval(timer);resetControls();persist();window.removeEventListener('keydown',key);window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);void audio.current?.close();};
     // These callbacks read session refs; the engine loop stays mounted once.
-  },[command,stopRepeat]);
+  },[command,resetControls]);
   useEffect(()=>{
     const controller=new AbortController();
     void fetch('/api/mint-stack-leaderboard',{cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error);if(!controller.signal.aborted){setRows(d.entries);setStats(d.stats);setLoaded(true);}}).catch(()=>{if(!controller.signal.aborted)setMessage('Rankings are temporarily unavailable. You can retry saving or refresh the board.');});
@@ -94,15 +103,43 @@ export default function MintStack(){
       <div className={styles.hud}><div><small>SCORE</small><strong>{(game?.score??0).toLocaleString()}</strong></div><div><small>LINES</small><strong>{game?.lines??0}</strong></div><div><small>LEVEL</small><strong>{String(game?.level??1).padStart(2,'0')}</strong></div><div><small>BEST</small><strong>{stats?.record.toLocaleString()??'—'}</strong></div></div>
       <div className={styles.playArea}>
         <div className={styles.boardWrap}>
-          <div className={styles.board} ref={board} tabIndex={0} role='application' aria-label={`Mint Stack playfield. ${game?.score??0} points, ${game?.lines??0} lines. Arrow keys move, up rotates, space drops, C holds.`}>
+          <div className={`${styles.board} ${game&&!game.over&&!isPaused?styles.interactive:''}`} ref={board} tabIndex={0} role='application' aria-describedby='stack-control-guide' aria-label={`Mint Stack playfield. ${game?.score??0} points, ${game?.lines??0} lines.`}
+            onPointerDown={e=>{
+              if(!engine.current||engine.current.over||paused.current||gesture.current||buttonPointer.current!==null||!e.isPrimary||e.button!==0||(e.target as Element).closest('button,a'))return;
+              e.preventDefault();e.currentTarget.focus({preventScroll:true});e.currentTarget.setPointerCapture(e.pointerId);
+              gesture.current=beginStackGesture(e.pointerId,e.clientX,e.clientY,e.currentTarget.clientWidth,performance.now());
+            }}
+            onPointerMove={e=>{const g=gesture.current;if(!g||g.id!==e.pointerId)return;e.preventDefault();for(const a of moveStackGesture(g,e.pointerId,e.clientX,e.clientY))command(a);}}
+            onPointerUp={e=>{
+              const g=gesture.current;if(!g||g.id!==e.pointerId)return;
+              gesture.current=null;for(const a of endStackGesture(g,e.pointerId,e.clientX,e.clientY,performance.now()))command(a);
+              if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+            }}
+            onPointerCancel={e=>{if(gesture.current?.id===e.pointerId)gesture.current=null;}}
+            onLostPointerCapture={e=>{if(gesture.current?.id===e.pointerId)gesture.current=null;}}
+          >
             {cells.flat().map((cell,index)=><i key={index} className={`${styles.cell} ${cell?styles.filled:''} ${!cell&&ghosts.has(index)?styles.ghost:''}`} style={cell?{background:STACK_COLORS[cell],color:STACK_COLORS[cell]}:undefined}/>)}
             {(!game||isPaused||game.over)&&<div className={styles.overlay}><small>{game?.over?'RUN COMPLETE':isPaused?'TAKE A BREATHER':'YOUR NEXT HIGH SCORE STARTS HERE'}</small><h2>{game?.over?'STACK FULL':isPaused?'PAUSED':'MAKE IT FIT.'}</h2><p>{game?.over?`${game.score.toLocaleString()} points · ${game.lines} lines · Level ${game.level}`:isPaused?'Your game is waiting right here.':'Stack the blocks. Clear complete rows. Stay below the skyline.'}</p>{!game?<button disabled={!entry} onClick={start}>{entry?'START PAID GAME':'CONNECT & PAY ABOVE'}</button>:isPaused?<button onClick={pause}>RESUME GAME</button>:<a href='#stack-board'>SAVE YOUR SCORE ↓</a>}</div>}
           </div>
         </div>
-        <aside className={styles.side}><div><small>HOLD · C</small><Piece piece={game?.held??null}/></div><div><small>NEXT UP</small>{[0,1,2].map(index=><Piece key={index} piece={game?.queue[index]??index}/>)}</div><div className={styles.tip}><b>THE BIG CLEAR</b><span>Clear 4 rows together for 800 × level points.</span></div></aside>
+        <aside className={styles.side}><div><small>HOLD · C</small><Piece piece={game?.held??null}/></div><div><small>NEXT UP</small>{[0,1,2].map(index=><Piece key={index} piece={game?.queue[index]??index}/>)}</div><div className={styles.tip}><b>QUICK CONTROLS</b><span className={styles.desktopTip}>Tap: rotate<br/>Drag: move<br/>↓ / S: lower<br/>SPACE: drop<br/>C: hold<br/>P / ESC: pause</span><span className={styles.touchTip}>Tap ↷<br/>Drag ↔<br/>Down ↓</span></div></aside>
       </div>
-      <div className={styles.controls} aria-label='Touch controls'>{([['left','←','Move left'],['right','→','Move right'],['counter','↶','Rotate left'],['rotate','↷','Rotate right'],['soft','↓','Soft drop'],['hold','HOLD','Hold piece'],['drop','DROP ↓','Hard drop']] as const).map(([action,label,description])=><button key={action} disabled={!game||game.over||isPaused} aria-label={description} onPointerDown={e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);stopRepeat();command(action);if(['left','right','soft'].includes(action)){let repeats=0;repeat.current=setInterval(()=>{if(++repeats>2)command(action);},75);}}} onPointerUp={stopRepeat} onPointerCancel={stopRepeat} onLostPointerCapture={stopRepeat} onClick={e=>{if(e.detail===0)command(action);}}>{label}</button>)}</div>
-      <p className={styles.instructions}>← → move · ↑ / X rotate · Z reverse rotate · ↓ soft drop · SPACE hard drop · C / SHIFT hold</p>
+      <div className={styles.controls} aria-label='On-screen game controls'>{([['left','←','Move left'],['right','→','Move right'],['counter','↶','Rotate left'],['rotate','↷','Rotate right'],['soft','↓','Soft drop'],['hold','HOLD','Hold piece'],['drop','DROP ↓','Hard drop']] as const).map(([action,label,description])=><button key={action} disabled={!game||game.over||isPaused} aria-label={description}
+        onPointerDown={e=>{
+          if(buttonPointer.current!==null||gesture.current||!e.isPrimary||e.button!==0)return;
+          e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);buttonPointer.current=e.pointerId;
+          for(const a of held.current.press(`pointer:${e.pointerId}`,action,performance.now()))command(a);
+          board.current?.focus({preventScroll:true});
+        }}
+        onPointerUp={e=>{held.current.release(`pointer:${e.pointerId}`,performance.now());if(buttonPointer.current===e.pointerId)buttonPointer.current=null;}}
+        onPointerCancel={e=>{held.current.release(`pointer:${e.pointerId}`,performance.now());if(buttonPointer.current===e.pointerId)buttonPointer.current=null;}}
+        onLostPointerCapture={e=>{held.current.release(`pointer:${e.pointerId}`,performance.now());if(buttonPointer.current===e.pointerId)buttonPointer.current=null;}}
+        onClick={e=>{if(e.detail===0)command(action);}}
+      >{label}</button>)}</div>
+      <div className={styles.controlGuide} id='stack-control-guide'>
+        <p><b>TOUCH / MOUSE</b><span>Tap or click to rotate · Drag sideways to move · Drag down to lower · Use DROP for an instant landing</span></p>
+        <p><b>KEYBOARD</b><span>← → / A D move · ↑ / W / X rotate · Z reverse · ↓ / S lower · SPACE drop · C / SHIFT hold · P / ESC pause</span></p>
+      </div>
     </section>
     <section className={styles.rankings} id='stack-board'><header><div><small>ONE GOOD RUN CAN CHANGE EVERYTHING.</small><h2>STACK <span>RANKINGS</span></h2><p>Public high scores. Every saved paid run also counts in the weekly arcade lobby.</p></div><button onClick={()=>setRefresh(v=>v+1)}>↻ REFRESH</button></header>
       {game?.over&&entry&&<div className={styles.result}><div><small>YOUR RUN</small><strong>{game.score.toLocaleString()} POINTS</strong><span>{game.lines} lines · {game.fours} four-line clears</span></div>{!saved?<form onSubmit={e=>{e.preventDefault();void save();}}><label htmlFor='stack-nickname'>PILOT NAME</label><div><input id='stack-nickname' value={nickname} onChange={e=>setNickname(e.target.value)} minLength={2} maxLength={22} required placeholder='Your arcade name'/><button disabled={saving}>{saving?'SAVING…':'SAVE SCORE'}</button></div></form>:<b>✓ SCORE SAVED</b>}<button onClick={nextGame} disabled={saving}>NEW PAID GAME</button></div>}
