@@ -13,7 +13,12 @@ export function readArcadeWeeklyEntryTotals(network:Mss2PaymentNetwork,start:Dat
   let cache:ReturnType<typeof getStore>|null=null;
   try{cache=getStore(`mint-flyer-entry-totals-${context}`,{consistency:'strong'});}catch{/* Local reads use memory only. */}
   let previous=memory.get(key)??null;
-  if(!previous&&cache)try{previous=await cache.get(blobKey,{type:'json'}) as WeeklySnapshot|null;}catch{/* Confirmed RPC reads remain authoritative. */}
+  // Lambda instances may hold older memory than another instance's checkpoint.
+  // Prefer the furthest shared scan; the scanner revalidates its chain anchor.
+  if(cache)try{
+   const shared=await cache.get(blobKey,{type:'json'}) as WeeklySnapshot|null;
+   if(shared&&(!previous||(shared.totals.throughBlock??-1)>(previous.totals.throughBlock??-1)||((shared.totals.throughBlock??-1)===(previous.totals.throughBlock??-1)&&Date.parse(shared.totals.checkedAt??'')>Date.parse(previous.totals.checkedAt??''))))previous=shared;
+  }catch{/* Confirmed RPC reads remain authoritative. */}
   if(previous&&Date.now()-Date.parse(previous.totals.checkedAt??'')<(previous.totals.status==='ready'?30000:3000))return previous.totals;
   const next=await scanWeeklyEntryTotals(network,entryTotalsRpc(network),start,end,previous);
   memory.set(key,next);if(memory.size>64)memory.delete(memory.keys().next().value!);
