@@ -1,7 +1,7 @@
 import type {HistoryAudit} from './arcade-result-history';
 export type RewardNetwork='arc'|'robinhood';
 export type AdminRewardRow={id:string;rank:number;nickname:string;wallet:string;games:number;networks:RewardNetwork[];unknownNetwork:boolean;flyerGames:number;invadersGames:number;stackGames?:number};
-export type AdminRewards={rows:AdminRewardRow[];weekStart:string;weekEnd:string;closed:boolean;tieReview:boolean;pilots:number;historyAudit?:HistoryAudit};
+export type AdminRewards={rows:AdminRewardRow[];weekStart:string;weekEnd:string;closed:boolean;tieReview:boolean;pilots:number;excludedPlayers?:number;eligiblePilots?:number;historyAudit?:HistoryAudit};
 function csvField(value:unknown) {
  let text=String(value);if(/^[=+\-@\t\r]/.test(text))text=`'${text}`;
  return `"${text.replaceAll('"','""')}"`;
