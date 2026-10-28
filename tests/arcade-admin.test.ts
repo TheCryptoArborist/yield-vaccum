@@ -92,15 +92,17 @@ test('private rewards reveal verified wallets and networks while public rankings
  const {NetlifyDB}=await import('@netlify/database-dev');const local=new NetlifyDB();let db:ReturnType<typeof getDatabase>|undefined;
  try{
   db=getDatabase({connectionString:await local.start()});await local.applyMigrations('./netlify/database/migrations');
-  const source={game:'mint-flyer' as const,runId:'first-paid',playerKey:'admin-test-player-1234',walletAddress:ARCADE_ADMIN_WALLET,nickname:'Pilot',score:10,tieBreak:0,createdAt:new Date().toISOString(),network:'arc' as const};
+  const source={game:'mint-flyer' as const,runId:'first-paid',playerKey:'admin-test-player-1234',walletAddress:'0x9999999999999999999999999999999999999999',nickname:'Pilot',score:10,tieBreak:0,createdAt:new Date().toISOString(),network:'arc' as const};
   await recordArcadeResult(source,db);await recordArcadeResult({...source,network:'robinhood',score:99999},db);
   await recordArcadeResult({...source,game:'mint-invaders',runId:'second-paid',network:'robinhood'},db);
   for(let i=1;i<=3;i++)await recordArcadeResult({...source,runId:`tie-${i}`,walletAddress:`0x${String(i).repeat(40)}`,nickname:`Pilot ${i}`},db);
+  for(let i=0;i<5;i++)await recordArcadeResult({...source,runId:`founder-${i}`,walletAddress:ARCADE_ADMIN_WALLET,nickname:'Renamed founder'},db);
   const publicBoard=await readArcadeLobby([],true,db);assert.equal(JSON.stringify(publicBoard).includes(ARCADE_ADMIN_WALLET.toLowerCase()),false);
   const privateBoard=await readAdminRewards(undefined,db);
   assert.equal(privateBoard.tieReview,true);assert.equal(privateBoard.rows.length,4);
   assert.equal(privateBoard.rows[0].games,2);assert.deepEqual(privateBoard.rows[0].networks,['arc','robinhood']);
-  assert.equal(privateBoard.rows[0].wallet,ARCADE_ADMIN_WALLET.toLowerCase());
+  assert.equal(privateBoard.rows[0].wallet,'0x9999999999999999999999999999999999999999');
+  assert.equal(privateBoard.excludedPlayers,1);assert.equal(privateBoard.eligiblePilots,4);
   assert.equal(privateBoard.rows[0].unknownNetwork,false);
  }finally{if(db)await db.pool.end();await local.stop();}
 });
