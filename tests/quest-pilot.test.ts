@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { getDatabase } from '@netlify/database';
 import { verifyMessage } from 'viem';
 import { parseSiweMessage } from 'viem/siwe';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { ARCADE_ADMIN_WALLET } from '../lib/arcade-admin-auth';
 import { QuestError, questAnswers, questCampaignInput, questId, questNetwork, QUEST_PILOT_TERMS } from '../lib/quest-pilot-shared';
-import { QUEST_BIND_COOKIE, QUEST_SESSION_COOKIE, createQuestChallenge, consumeQuestChallenge, questBody, questCookie, questCsrf, questDatabase, questHash, questRate, questScope, questToken, readQuestCookie, readQuestSession, requireQuestCsrf, requireQuestOrigin, revokeQuestSession, type QuestScope, type QuestSession } from '../lib/quest-pilot-auth';
+import { QUEST_SESSION_COOKIE, createQuestChallenge, consumeQuestChallenge, questBody, questCookie, questCsrf, questDatabase, questHash, questRate, questScope, questToken, readQuestCookie, readQuestSession, requireQuestCsrf, requireQuestOrigin, revokeQuestSession, type QuestScope, type QuestSession } from '../lib/quest-pilot-auth';
 import { questApi } from '../lib/quest-pilot-api';
 import { changeQuestCampaign, createQuestCampaign, joinQuestCampaign, listQuestCampaigns, readQuestAdministration, readQuestProgress, reviewQuestContribution, submitQuestContribution, submitQuestQuiz } from '../db/quest-pilot';
+import { startQuestTestDatabase } from './quest-test-database';
 const origin = 'https://quests.example';
 const scope = (): QuestScope => ({ origin, key: `test-${randomUUID()}` });
 const actor = (digit: string, network: 'arc' | 'robinhood' = 'arc'): QuestSession => ({ wallet: `0x${digit.repeat(40)}`, network, expiresAt: new Date(Date.now() + 900000).toISOString() });
@@ -22,6 +22,10 @@ function environment(values: Record<string, string | undefined>) {
   const saved = Object.fromEntries(Object.keys(values).map(key => [key, process.env[key]]));
   for (const [key, value] of Object.entries(values)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
   return () => { for (const [key, value] of Object.entries(saved)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } };
+}
+async function allSuccessful(promises: Promise<unknown>[]) {
+  const results = await Promise.allSettled(promises);
+  for (const result of results) if (result.status === 'rejected') throw result.reason;
 }
 test('pilot input rejects token budgets, bad IDs, unknown chains, malformed answers and impossible windows', () => {
   assert.equal(questCampaignInput(input()).network, 'arc');
@@ -83,22 +87,20 @@ test('pilot client has no token transfer path and binds actions to the current s
   assert.match(code, /wallet\.signMessage\(challenge\.message\)/);
   assert.match(code, /expectedWallet: signed\.wallet/); assert.match(code, /expectedNetwork: signed\.network/);
   assert.match(code, /onConnectionChange=\{changed\}/); assert.match(code, /signInAbort\.current\?\.abort\(\)/);
-  const shared = readFileSync('lib/quest-pilot-shared.ts', 'utf8');
-  assert.doesNotMatch(shared, /\[1, 2, 0\]/);
+  assert.match(code, /await revocation\.current/);
+  assert.doesNotMatch(readFileSync('lib/quest-pilot-shared.ts', 'utf8'), /\[1, 2, 0\]/);
 });
 test('quest pilot PostgreSQL authentication, lifecycle, points and API authorization', async t => {
-  const { NetlifyDB } = await import('@netlify/database-dev');
-  const local = new NetlifyDB(); let db: ReturnType<typeof getDatabase> | undefined;
+  const harness = await startQuestTestDatabase();
+  const database = harness.db, connectionString = harness.connectionString;
   let apiPoolUsed = false; let restore = () => {};
+  t.diagnostic(harness.concurrentTransactions ? 'Full PostgreSQL: concurrent pooled connections.' : 'Local single-backend fallback: serialized connections; not concurrency validation.');
   try {
-    const connectionString = await local.start(); db = getDatabase({ connectionString });
-    await local.applyMigrations('./netlify/database/migrations');
-    const database = db;
     const published = async (s: QuestScope, extra: Record<string, unknown> = {}) => {
       const created = await createQuestCampaign(s, admin, input(extra), database);
       await changeQuestCampaign(s, admin, created.campaign.id, 'publish', database); return created.campaign.id;
     };
-    await t.test('real EOA signature verifies an exact SIWE challenge, only in its bound browser and scope', async () => {
+    await t.test('real EOA signature verifies exact SIWE, browser binding, scope and one-use consumption', async () => {
       const s = scope(), signer = privateKeyToAccount(generatePrivateKey()), binding = questToken();
       const challenge = await createQuestChallenge(s, signer.address, 'arc', binding, database);
       const parsed = parseSiweMessage(challenge.message);
@@ -115,7 +117,7 @@ test('quest pilot PostgreSQL authentication, lifecycle, points and API authoriza
       assert.equal(await readQuestSession(scope(), token, database), null);
       await revokeQuestSession(s, token, database); assert.equal(await readQuestSession(s, token, database), null);
     });
-    await t.test('bad signatures consume the nonce, expired challenges fail, and session expiry is enforced', async () => {
+    await t.test('bad signatures consume the nonce; challenge and session expiry are enforced', async () => {
       const s = scope(), binding = questToken(), signature = `0x${'ab'.repeat(65)}`;
       const challenge = await createQuestChallenge(s, alice.wallet, 'arc', binding, database);
       await assert.rejects(consumeQuestChallenge(s, challenge.nonce, signature, binding, database, async () => false));
@@ -133,7 +135,7 @@ test('quest pilot PostgreSQL authentication, lifecycle, points and API authoriza
       const results = await Promise.allSettled(Array.from({ length: 10 }, () => questRate(database, s, 'test', 3)));
       assert.equal(results.filter(item => item.status === 'fulfilled').length, 3);
     });
-    await t.test('only admin creates drafts; creation is idempotent and published terms cannot be edited', async () => {
+    await t.test('admin-only drafts are private and idempotent; published terms are immutable', async () => {
       const s = scope(), data = input();
       await assert.rejects(createQuestCampaign(s, alice, data, database));
       const first = await createQuestCampaign(s, admin, data, database);
@@ -141,6 +143,7 @@ test('quest pilot PostgreSQL authentication, lifecycle, points and API authoriza
       assert.equal(first.campaign.id, retry.campaign.id);
       await assert.rejects(createQuestCampaign(s, admin, { ...data, title: 'Different content' }, database));
       assert.equal((await listQuestCampaigns(s, database)).campaigns.length, 0);
+      await assert.rejects(changeQuestCampaign(s, admin, first.campaign.id, 'close', database));
       await assert.rejects(joinQuestCampaign(s, alice, first.campaign.id, 1, database));
       await changeQuestCampaign(s, admin, first.campaign.id, 'publish', database);
       assert.equal((await listQuestCampaigns(s, database)).campaigns.length, 1);
@@ -148,7 +151,7 @@ test('quest pilot PostgreSQL authentication, lifecycle, points and API authoriza
       await assert.rejects(database.pool.query('UPDATE quest_campaigns SET participant_cap=999 WHERE scope=$1 AND id=$2', [s.key, first.campaign.id]));
       await assert.rejects(changeQuestCampaign(s, alice, first.campaign.id, 'close', database));
     });
-    await t.test('joining requires the right network and terms, deduplicates wallets and never exceeds the cap', async () => {
+    await t.test('network and terms are required; simultaneous enrollment cannot exceed the cap', async () => {
       const s = scope(), id = await published(s, { participantCap: 2 });
       await assert.rejects(joinQuestCampaign(s, alice, id, 0, database));
       await assert.rejects(joinQuestCampaign(s, { ...alice, network: 'robinhood' }, id, 1, database));
@@ -160,21 +163,21 @@ test('quest pilot PostgreSQL authentication, lifecycle, points and API authoriza
       assert.equal((await listQuestCampaigns(s, database)).campaigns[0].participants, 2);
       await assert.rejects(joinQuestCampaign(scope(), alice, id, 1, database));
     });
-    await t.test('quiz attempts are bounded and concurrent correct submissions award exactly 50 points', async () => {
+    await t.test('concurrent correct quizzes award exactly once and progress remains network/private', async () => {
       const s = scope(), id = await published(s);
       await assert.rejects(submitQuestQuiz(s, alice, id, [1, 2, 0], database));
       await joinQuestCampaign(s, alice, id, 1, database);
-      const wrong = await submitQuestQuiz(s, alice, id, [0, 0, 0], database); assert.equal(wrong.passed, false);
+      assert.equal((await submitQuestQuiz(s, alice, id, [0, 0, 0], database)).passed, false);
       await assert.rejects(submitQuestQuiz(s, alice, id, [1, 2, 0], database));
       await database.pool.query("UPDATE quest_members SET quiz_last_at=NOW()-INTERVAL '31 seconds' WHERE scope=$1", [s.key]);
-      await Promise.all([0, 1, 2].map(() => submitQuestQuiz(s, alice, id, [1, 2, 0], database)));
+      await allSuccessful([0, 1, 2].map(() => submitQuestQuiz(s, alice, id, [1, 2, 0], database)));
       assert.equal((await readQuestProgress(s, alice, database)).totalPoints, 50);
       assert.equal((await readQuestProgress(s, bob, database)).totalPoints, 0);
       assert.equal((await readQuestProgress(s, { ...alice, network: 'robinhood' }, database)).totalPoints, 0);
       const ledger = await database.pool.query('SELECT COUNT(*)::int AS count FROM quest_points WHERE scope=$1', [s.key]); assert.equal(ledger.rows[0].count, 1);
       await assert.rejects(database.pool.query('UPDATE quest_points SET points=999 WHERE scope=$1', [s.key]));
     });
-    await t.test('five incorrect attempts cannot be reset by rejoining or a sixth submission', async () => {
+    await t.test('five incorrect attempts cannot be reset by rejoining', async () => {
       const s = scope(), id = await published(s); await joinQuestCampaign(s, alice, id, 1, database);
       for (let i = 0; i < 5; i++) {
         await database.pool.query("UPDATE quest_members SET quiz_last_at=NOW()-INTERVAL '31 seconds' WHERE scope=$1", [s.key]);
@@ -185,21 +188,21 @@ test('quest pilot PostgreSQL authentication, lifecycle, points and API authoriza
       assert.equal((await readQuestProgress(s, alice, database)).progress[0].quizAttempts, 5);
       assert.equal((await readQuestProgress(s, alice, database)).totalPoints, 0);
     });
-    await t.test('contribution is a single reviewed submission; duplicate approval cannot duplicate points', async () => {
+    await t.test('single contribution and concurrent approval cannot duplicate points or audit decisions', async () => {
       const s = scope(), id = await published(s); await joinQuestCampaign(s, alice, id, 1, database);
       await assert.rejects(submitQuestContribution(s, alice, id, 'too short', database));
-      await Promise.all([0, 1].map(() => submitQuestContribution(s, alice, id, contribution, database)));
+      await allSuccessful([0, 1].map(() => submitQuestContribution(s, alice, id, contribution, database)));
       await assert.rejects(submitQuestContribution(s, alice, id, `${contribution} New version.`, database));
       assert.equal((await readQuestProgress(s, alice, database)).totalPoints, 0);
       await assert.rejects(reviewQuestContribution(s, bob, id, alice.wallet, 'approved', 'Useful and relevant contribution.', database));
       await assert.rejects(reviewQuestContribution(s, admin, id, admin.wallet, 'approved', 'Reviewing my own work.', database));
-      await Promise.all([0, 1].map(() => reviewQuestContribution(s, admin, id, alice.wallet, 'approved', 'Original, relevant and useful improvement.', database)));
+      await allSuccessful([0, 1].map(() => reviewQuestContribution(s, admin, id, alice.wallet, 'approved', 'Original, relevant and useful improvement.', database)));
       assert.equal((await readQuestProgress(s, alice, database)).totalPoints, 100);
       await assert.rejects(reviewQuestContribution(s, admin, id, alice.wallet, 'rejected', 'Changed my decision.', database));
       assert.equal((await readQuestAdministration(s, admin, database)).submissions.length, 0);
       const audit = await database.pool.query("SELECT COUNT(*)::int AS count FROM quest_audit WHERE scope=$1 AND action='contribution_approved'", [s.key]); assert.equal(audit.rows[0].count, 1);
     });
-    await t.test('rejection preserves the reason and awards nothing; non-admin cannot inspect submissions', async () => {
+    await t.test('rejection retains the reason and awards nothing; private review data requires admin', async () => {
       const s = scope(), id = await published(s); await joinQuestCampaign(s, bob, id, 1, database);
       await submitQuestContribution(s, bob, id, contribution, database);
       await assert.rejects(readQuestAdministration(s, alice, database));
@@ -207,7 +210,7 @@ test('quest pilot PostgreSQL authentication, lifecycle, points and API authoriza
       const progress = await readQuestProgress(s, bob, database);
       assert.equal(progress.totalPoints, 0); assert.equal(progress.progress[0].tasks[0].status, 'rejected'); assert.match(progress.progress[0].tasks[0].reason, /duplicates/);
     });
-    await t.test('early closure stops entries and tasks without deleting history or blocking timely reviews', async () => {
+    await t.test('closure stops entries/tasks without deleting history or blocking timely reviews', async () => {
       const s = scope(), id = await published(s); await joinQuestCampaign(s, alice, id, 1, database);
       await submitQuestContribution(s, alice, id, contribution, database);
       await changeQuestCampaign(s, admin, id, 'close', database);
@@ -217,20 +220,20 @@ test('quest pilot PostgreSQL authentication, lifecycle, points and API authoriza
       await reviewQuestContribution(s, admin, id, alice.wallet, 'approved', 'Meets the stated contribution criteria.', database);
       assert.equal((await readQuestProgress(s, alice, database)).totalPoints, 100);
     });
-    await t.test('future campaigns cannot accept tasks; past campaigns cannot be published or reviewed late', async () => {
+    await t.test('future campaigns reject participation and expired deadlines cannot be bypassed', async () => {
       const s = scope();
       const future = await published(s, { startsAt: new Date(Date.now() + 3600000).toISOString(), endsAt: new Date(Date.now() + 7200000).toISOString() });
       await assert.rejects(joinQuestCampaign(s, alice, future, 1, database));
       const past = await createQuestCampaign(s, admin, input({ startsAt: '2020-01-01T00:00:00Z', endsAt: '2020-01-02T00:00:00Z', reviewEndsAt: '2020-01-03T00:00:00Z' }), database);
       await assert.rejects(changeQuestCampaign(s, admin, past.campaign.id, 'publish', database));
-      // Historical fixture, not an application path: a pending review whose deadline elapsed.
+      // Historical fixture in the disposable test schema, not a runtime code path.
       await database.pool.query("UPDATE quest_campaigns SET status='closed' WHERE scope=$1 AND id=$2", [s.key, past.campaign.id]);
       await database.pool.query('INSERT INTO quest_members(scope,campaign_id,wallet,accepted_terms) VALUES($1,$2,$3,1)', [s.key, past.campaign.id, alice.wallet]);
       await database.pool.query("INSERT INTO quest_submissions(scope,campaign_id,wallet,task,status,content) VALUES($1,$2,$3,'contribution','pending',$4)", [s.key, past.campaign.id, alice.wallet, contribution]);
       await assert.rejects(reviewQuestContribution(s, admin, past.campaign.id, alice.wallet, 'approved', 'Too late to approve.', database));
       assert.equal((await readQuestProgress(s, alice, database)).totalPoints, 0);
     });
-    await t.test('real route guards reject forged roles, CSRF, stale wallet/network and arcade cookies', async () => {
+    await t.test('HTTP guards reject forged roles, CSRF, stale wallet/network and arcade cookies', async () => {
       restore = environment({ NETLIFY_DB_URL: connectionString, MSS2_QUESTS_ENABLED: 'true', MSS2_QUESTS_ORIGIN: origin, CONTEXT: 'dev' });
       const s = questScope()!, token = questToken();
       await database.pool.query("INSERT INTO quest_sessions(scope,token_hash,wallet,network,expires_at) VALUES($1,$2,$3,'arc',NOW()+INTERVAL '10 minutes')", [s.key, questHash(token), alice.wallet]);
@@ -242,14 +245,14 @@ test('quest pilot PostgreSQL authentication, lifecycle, points and API authoriza
       assert.equal((await questApi(request({ action: 'join', campaignId: id, acceptedTerms: 1, expectedWallet: bob.wallet }), 'actions')).status, 409);
       assert.equal((await questApi(request({ action: 'join', campaignId: id, acceptedTerms: 1, expectedNetwork: 'robinhood' }), 'actions')).status, 409);
       assert.equal((await questApi(request({ action: 'join', campaignId: id, acceptedTerms: 1 }, { cookie: `__Secure-mss2-arcade-admin=${token}` }), 'actions')).status, 401);
-      const joined = await questApi(request({ action: 'join', campaignId: id, acceptedTerms: 1 }), 'actions'); assert.equal(joined.status, 200);
+      assert.equal((await questApi(request({ action: 'join', campaignId: id, acceptedTerms: 1 }), 'actions')).status, 200);
       const own = await questApi(new Request(`${origin}/api/quests/profile`, { headers: { cookie: `${QUEST_SESSION_COOKIE}=${token}` } }), 'profile');
       assert.equal(own.headers.get('Cache-Control'), 'private, no-store'); assert.equal((await own.json()).progress.length, 1);
       const publicResponse = await questApi(new Request(`${origin}/api/quests`), 'directory'); const publicText = await publicResponse.text();
       assert.doesNotMatch(publicText, new RegExp(alice.wallet)); assert.doesNotMatch(publicText, /binding_hash|token_hash|correctAnswer/);
     });
   } finally {
-    if (apiPoolUsed && db && questDatabase().pool !== db.pool) await questDatabase().pool.end();
-    restore(); if (db) await db.pool.end(); await local.stop();
+    if (apiPoolUsed && questDatabase().pool !== database.pool) await questDatabase().pool.end();
+    restore(); await harness.stop();
   }
 });

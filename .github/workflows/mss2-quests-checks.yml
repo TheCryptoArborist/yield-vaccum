@@ -17,6 +17,22 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: quest-test-only
+          POSTGRES_DB: quest_pilot_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      MSS2_QUEST_TEST_DB_URL: postgresql://postgres:quest-test-only@127.0.0.1:5432/quest_pilot_test
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,7 +49,7 @@ jobs:
       - name: Quest catalog tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: node --import tsx --test tests/quests.test.ts
-      - name: Verified participation and database tests
+      - name: Verified participation against PostgreSQL 17
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: node --import tsx --test tests/quest-pilot.test.ts
       - name: Full regression tests

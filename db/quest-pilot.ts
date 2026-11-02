@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { isArcadeAdmin } from '../lib/arcade-admin-auth';
 import { questDatabase, questWallet, type QuestDatabase, type QuestScope, type QuestSession } from '../lib/quest-pilot-auth';
-import { QuestError, QUEST_POINTS, questAnswers, questCampaignInput, questId, questText, type QuestCampaign, type QuestProgress } from '../lib/quest-pilot-shared';
+import { QuestError, QUEST_POINTS, questAnswers, questCampaignInput, questId, questNetwork, questText, type QuestCampaign, type QuestProgress } from '../lib/quest-pilot-shared';
 type Row = Record<string, unknown>;
 type Sql = { query: (text: string, values?: unknown[]) => Promise<{ rows: Row[] }> };
 const iso = (value: unknown) => value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
@@ -24,12 +24,12 @@ async function audit(sql: Sql, scope: QuestScope, campaign: string, actor: strin
   await sql.query('INSERT INTO quest_audit(scope,id,campaign_id,actor,action,details) VALUES($1,$2,$3,$4,$5,$6::jsonb)', [scope.key, randomUUID(), campaign, actor, action, JSON.stringify(details)]);
 }
 function campaign(row: Row): QuestCampaign {
-  return { id: String(row.id), title: String(row.title), summary: String(row.summary), network: row.network as QuestCampaign['network'], status: row.status as QuestCampaign['status'], startsAt: iso(row.starts_at), endsAt: iso(row.ends_at), reviewEndsAt: iso(row.review_ends_at), participantCap: Number(row.participant_cap), participants: Number(row.participants ?? 0), canParticipate: row.can_participate === true, termsVersion: 1, rewardKind: 'points_only' };
+  return { id: String(row.id), title: String(row.title), summary: String(row.summary), network: questNetwork(row.network), status: row.status as QuestCampaign['status'], startsAt: iso(row.starts_at), endsAt: iso(row.ends_at), reviewEndsAt: iso(row.review_ends_at), participantCap: Number(row.participant_cap), participants: Number(row.participants ?? 0), canParticipate: row.can_participate === true, termsVersion: 1, rewardKind: 'points_only' };
 }
 async function lockedCampaign(sql: Sql, scope: QuestScope, id: string) {
   const result = await sql.query('SELECT * FROM quest_campaigns WHERE scope=$1 AND id=$2 FOR UPDATE', [scope.key, id]);
   if (!result.rows[0]) throw new QuestError('Campaign not found.', 404);
-  // Sample the clock after any lock wait, not at transaction start.
+  // Read the clock after any lock wait, not at transaction start.
   const time = await sql.query('SELECT clock_timestamp() AS now');
   return { row: result.rows[0], now: Date.parse(iso(time.rows[0].now)) };
 }
@@ -68,8 +68,9 @@ export async function changeQuestCampaign(scope: QuestScope, actor: QuestSession
   administrator(actor); const id = questId(idInput);
   return transaction(db, async sql => {
     const { row, now } = await lockedCampaign(sql, scope, id);
-    if (action === 'publish' && row.status === 'open' || action === 'close' && row.status === 'closed') return { changed: false };
+    if ((action === 'publish' && row.status === 'open') || (action === 'close' && row.status === 'closed')) return { changed: false };
     if (action === 'publish' && (row.status !== 'draft' || now >= Date.parse(iso(row.ends_at)))) throw new QuestError('Only a draft whose end time is still ahead can be published.', 409);
+    if (action === 'close' && row.status !== 'open') throw new QuestError('Only a published campaign can be closed. Private drafts remain private.', 409);
     await sql.query('UPDATE quest_campaigns SET status=$3 WHERE scope=$1 AND id=$2', [scope.key, id, action === 'publish' ? 'open' : 'closed']);
     await audit(sql, scope, id, actor.wallet, action === 'publish' ? 'campaign_published' : 'campaign_closed');
     return { changed: true };
@@ -101,7 +102,7 @@ export async function submitQuestQuiz(scope: QuestScope, actor: QuestSession, id
     const attempts = Number(participation.quiz_attempts);
     if (attempts >= 5) throw new QuestError('All five quiz attempts have been used.', 409);
     if (participation.quiz_last_at && now - Date.parse(iso(participation.quiz_last_at)) < 30000) throw new QuestError('Wait 30 seconds before another quiz attempt.', 429);
-    // Answer key stays in this server-only database module, never in browser props.
+    // This answer key is never supplied to browser components.
     const passed = answers.every((answer, i) => answer === [1, 2, 0][i]);
     await sql.query('UPDATE quest_members SET quiz_attempts=quiz_attempts+1,quiz_last_at=clock_timestamp() WHERE scope=$1 AND campaign_id=$2 AND wallet=$3', [scope.key, id, actor.wallet]);
     if (passed) {
@@ -151,7 +152,7 @@ export async function readQuestProgress(scope: QuestScope, actor: QuestSession, 
     COALESCE((SELECT jsonb_agg(jsonb_build_object('task',s.task,'status',s.status,'reason',s.reason,'submittedAt',s.submitted_at) ORDER BY s.task) FROM quest_submissions s WHERE s.scope=m.scope AND s.campaign_id=m.campaign_id AND s.wallet=m.wallet),'[]'::jsonb) AS tasks
     FROM quest_members m JOIN quest_campaigns c ON c.scope=m.scope AND c.id=m.campaign_id WHERE m.scope=$1 AND m.wallet=$2 AND c.network=$3 ORDER BY m.joined_at DESC LIMIT 101`, [scope.key, actor.wallet, actor.network]);
   const total = await db.pool.query('SELECT COALESCE(SUM(p.points),0)::int AS points FROM quest_points p JOIN quest_campaigns c ON c.scope=p.scope AND c.id=p.campaign_id WHERE p.scope=$1 AND p.wallet=$2 AND c.network=$3', [scope.key, actor.wallet, actor.network]);
-  const progress: QuestProgress[] = result.rows.slice(0, 100).map(row => ({ campaignId: String(row.campaign_id), title: String(row.title), network: row.network, joinedAt: iso(row.joined_at), quizAttempts: Number(row.quiz_attempts), points: Number(row.points), tasks: row.tasks }));
+  const progress: QuestProgress[] = result.rows.slice(0, 100).map((row: Row): QuestProgress => ({ campaignId: String(row.campaign_id), title: String(row.title), network: questNetwork(row.network), joinedAt: iso(row.joined_at), quizAttempts: Number(row.quiz_attempts), points: Number(row.points), tasks: row.tasks as QuestProgress['tasks'] }));
   return { progress, totalPoints: Number(total.rows[0].points), hasMore: result.rows.length > 100 };
 }
 export async function readQuestAdministration(scope: QuestScope, actor: QuestSession, db = questDatabase()) {
@@ -161,5 +162,5 @@ export async function readQuestAdministration(scope: QuestScope, actor: QuestSes
     FROM quest_submissions s JOIN quest_campaigns c ON c.scope=s.scope AND c.id=s.campaign_id
     WHERE s.scope=$1 AND s.task='contribution' AND s.status='pending'
     ORDER BY (c.review_ends_at>clock_timestamp()) DESC,s.submitted_at ASC LIMIT 101`, [scope.key]);
-  return { ...directory, submissions: result.rows.slice(0, 100).map(row => ({ campaignId: row.campaign_id, wallet: row.wallet, content: row.content, submittedAt: iso(row.submitted_at), title: row.title, network: row.network, reviewEndsAt: iso(row.review_ends_at), reviewable: row.reviewable })), moreSubmissions: result.rows.length > 100 };
+  return { ...directory, submissions: result.rows.slice(0, 100).map((row: Row) => ({ campaignId: String(row.campaign_id), wallet: String(row.wallet), content: String(row.content), submittedAt: iso(row.submitted_at), title: String(row.title), network: questNetwork(row.network), reviewEndsAt: iso(row.review_ends_at), reviewable: row.reviewable === true })), moreSubmissions: result.rows.length > 100 };
 }

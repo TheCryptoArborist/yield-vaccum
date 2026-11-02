@@ -41,6 +41,7 @@ export default function QuestPilotPanel({ adminMode = false }: { adminMode?: boo
   const revision = useRef(0);
   const draftRequestId = useRef('');
   const signInAbort = useRef<AbortController | null>(null);
+  const revocation = useRef<Promise<void>>(Promise.resolve());
   const clearPrivate = useCallback(() => { identityRef.current = null; setIdentity(null); setProfile(null); setAdministration(null); setAccepted(false); setAnswers([-1, -1, -1]); setContent(''); }, []);
   const refresh = useCallback(async (signal?: AbortSignal) => {
     const version = revision.current;
@@ -60,7 +61,8 @@ export default function QuestPilotPanel({ adminMode = false }: { adminMode?: boo
   }, [adminMode, clearPrivate]);
   useEffect(() => {
     const controller = new AbortController();
-    void refresh(controller.signal).catch(e => { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Quests could not load.'); });
+    // Publish fetched state asynchronously; cleanup cancels an obsolete load.
+    void Promise.resolve().then(() => { if (!controller.signal.aborted) return refresh(controller.signal); }).catch(e => { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Quests could not load.'); });
     return () => { controller.abort(); signInAbort.current?.abort(); };
   }, [refresh]);
   const changed = useCallback((next: WalletConnection | null) => {
@@ -71,7 +73,11 @@ export default function QuestPilotPanel({ adminMode = false }: { adminMode?: boo
     if (changedAccount || mismatch) {
       revision.current++; signInAbort.current?.abort(); clearPrivate();
       setMessage('Wallet or network changed. Sign in again before submitting.');
-      if (signed) void json('/api/quests/session', 'DELETE', undefined, signed.csrf).catch(() => setError('The previous session could not be revoked. It expires within 15 minutes; reconnect and sign out to revoke it sooner.'));
+      if (signed) {
+        // A delayed DELETE response must not clear a newly issued sign-in cookie.
+        revocation.current = revocation.current.then(() => json('/api/quests/session', 'DELETE', undefined, signed.csrf)).then(() => undefined);
+        void revocation.current.catch(() => setError('The previous session could not be revoked. Reload, then sign out before continuing. It expires within 15 minutes.'));
+      }
     }
   }, [clearPrivate]);
   const signIn = async () => {
@@ -81,6 +87,8 @@ export default function QuestPilotPanel({ adminMode = false }: { adminMode?: boo
     setBusy(true); setError(''); setMessage('');
     const version = revision.current, controller = new AbortController(); signInAbort.current = controller;
     try {
+      await revocation.current;
+      if (version !== revision.current || controller.signal.aborted) throw new Error('Wallet changed. Start sign-in again.');
       const challenge = await json<{ nonce: string; message: string }>('/api/quests/session', 'POST', { action: 'challenge', wallet: wallet.account, network: network.id }, undefined, controller.signal);
       if (version !== revision.current) throw new Error('Wallet changed. Start sign-in again.');
       const signature = await wallet.signMessage(challenge.message);

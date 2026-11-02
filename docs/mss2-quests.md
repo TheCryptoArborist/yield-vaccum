@@ -1,55 +1,51 @@
-# MSS2 Quests: first reviewable release
+# MSS2 Quests implementation index
 
-## Scope
+## Current review scope
 
-An additive, browse-only Quests section for Yield Vaccum. It is not yet a live campaign service.
+PR #52 on `feature/mss2-quests-foundation` contains the homepage/arcade integration, clearly labeled concept previews, and a gated **points-only participation pilot**. It remains a draft. No production merge, token transfer, reward funding, or live campaign activation has been performed.
 
-- `/quests`: searchable campaign directory with network and status filters.
-- `/quests/mss2-first-steps` and `/quests/arcade-explorer`: explicitly labeled preview campaigns.
-- `/quests/profile`: honest not-enabled state; no invented balances or connected identity.
-- Home: third destination, revised heading, and Home / Arcade / Quests navigation.
-- Arcade lobby: navigation plus a Quests banner outside the game cabinets.
-- Existing gameplay, payment routes, contract addresses, score logic, reward reserves, and wallets are unchanged.
+Read `docs/mss2-quests-pilot.md` for authentication, campaign rules, storage, operations, preview activation, and release gates. The original browse-only phase is no longer the entire implementation: private wallet progress and administrator-operated campaigns now have a separate implemented path, disabled by default.
 
-All catalog entries are previews, not funded, and unscheduled. Preview activity creates no eligibility, points, tokens, or wallet records. Do not turn these sample records into live campaigns by changing a label.
+## Routes
+
+- `/quests`: published pilot campaigns, availability/sign-in, and a separately labeled concept-preview directory.
+- `/quests/profile`: private wallet progress on the signed-in network.
+- `/admin/quests`: private draft creation, publication, early closure, and contribution review.
+- `/quests/mss2-first-steps` and `/quests/arcade-explorer`: concept previews only, not funded or open, with no points or eligibility.
+- Homepage: third destination and revised headline; Home / Arcade / Quests navigation.
+- Arcade lobby: navigation plus a banner outside the existing game cabinets. Existing game logic, payment routes, contract addresses, rankings and reserve accounting are unchanged.
+
+## Activation boundary
+
+Both server variables, `MSS2_QUESTS_ENABLED=true` and the exact HTTPS `MSS2_QUESTS_ORIGIN`, are required for participation. Without them the service reports a disabled state, not a live campaign. No sample campaign is automatically created or published. Only a separately reviewed, isolated deploy preview should be activated next; production must remain disabled.
+
+The pilot records non-transferable participation points, not MSS2 balances or payout obligations. Token/stake rewards, funding verification, payout reconciliation, game/social/referral verification, sponsorship fees/burns and public campaign creation are not implemented.
 
 ## Source integration
 
-The homepage, arcade lobby, and root-layout integration is committed on `feature/mss2-quests-foundation`. The temporary integration and navigation-repair workflows completed and were removed. Only the read-only PR validation workflow remains. The Quests navigation uses Next Link, with regression tests covering initial integration and upgrade from the original plain-anchor version.
-
-The idempotent `node scripts/integrate-mss2-quests.mjs` command remains for traceability and application to an unmodified base checkout. It checks exact anchors and calculates all edits before writing. It is not part of application startup or build, and it does not need to run again on the integrated review branch. Its fixture tests are not substitutes for a full application build.
+The homepage, lobby and root layout are already integrated. Temporary write-capable integration/repair workflows were removed. The retained `scripts/integrate-mss2-quests.mjs` is a guarded, idempotent traceability tool for the original base checkout, not part of startup or build; it need not be rerun on this branch.
 
 ## Verification
 
-Run the existing project checks after `npm ci`:
+The foundation at d0328e2 passed tests, lint, build and TypeScript before the participation phase. Current phase results are recorded in the PR checks; do not infer new-code success from the historical foundation run.
 
 ```sh
+npm ci
 node --test tests/quests-integration.test.mjs
 node --import tsx --test tests/quests.test.ts
+node --import tsx --test tests/quest-pilot.test.ts
 npm test
 npm run lint
 npm run build
 npx tsc --noEmit
 ```
 
-There are nine catalog tests and ten source-integration fixture tests. Fixture tests do not replace an application build, regression tests, or browser review. The catalog tests use the repository's existing tsx runner and are invoked explicitly in CI so they do not depend on recursive shell-glob behavior. Current build and check status is recorded in PR #52.
+CI supplies a disposable PostgreSQL 17 service, restricted to a loopback database named `quest_pilot_test`. Tests create isolated random schemas, apply committed migrations, and clean up only those schemas. This validates multi-connection row-lock behavior rather than relying on PGlite's single database backend. The NetlifyDB fallback is for local sequential development with a single pool connection, not proof of concurrency safety. CI refuses to silently fall back.
 
-Manual review before merging: check the three homepage cards at 360px, 768px, and desktop widths; make sure mobile splash content can scroll; verify the original educational launch and all game links; test search, both network filters, the Live empty state, unknown campaign URLs, browser back/forward navigation, keyboard focus, and the campaign external-documentation link. No browser visual review has been claimed by this change.
+There are nine catalog tests and ten source-integration fixtures, plus participation/database/API tests and the existing regression suite. No test substitutes for browser review, real-wallet/device testing, or a security audit.
 
-Dependency review is also required before production: the first CI install reported 27 dependency vulnerabilities (1 low, 16 moderate, 9 high, 1 critical). No dependencies or lockfile entries were changed by this feature. These are package-audit findings, not a determination of exploitability in the application; inspect the full audit and remediate deliberately rather than applying a forced breaking upgrade.
+## Release gates
 
-## Next stage: one real administrator-operated campaign
+Before publication, require the latest automated checks, real browser-wallet and Topaz ID sign-in testing, account/network-change and session-expiry testing, 360px/768px/desktop review, navigation and original game-launch checks, preview database isolation, edge abuse controls, and a published retention/contact process.
 
-Reuse the existing application stack and chain configuration. Do not add another database vendor or wallet provider without first evaluating the existing implementation.
-
-1. Add server-verified wallet ownership using a one-time nonce, expected domain and URI, expiry, and a secure session. A connected account string or browser-local player key is not sufficient authentication. Invalidate or refresh identity when accounts change.
-2. Store campaigns, task definitions, submissions, verifications, and reward obligations in a separate quest namespace. Enforce administrator roles on the server. Keep secrets out of client bundles. Lock campaign terms when participation opens and audit all changes.
-3. Start with a server-checked quiz and an administrator-reviewed contribution. Add game tasks only when trusted result records can be matched to the authenticated wallet, campaign window, chain, game, and unique activity. Client-reported completion and page visits are not proof.
-4. Record chain-aware evidence. Require uniqueness for each wallet/campaign/task completion and prevent accidental reuse of the same transaction or game result. Rate-limit attempts. One wallet must not be presented as proof of one person.
-5. Keep verification, eligibility, and payout as different states. Use server time for windows and never invent a deadline. Define participant caps, allocation rules, review deadlines, rejection reasons, and remaining-funds handling before opening a campaign.
-6. For any token reward, verify funded assets and reserve obligations before displaying a funded budget. Record the token contract, chain, amount, custody model, funding evidence, and timestamp. A wallet balance alone is not escrow. Stop new obligations if backing is insufficient.
-7. Keep all quest funds and accounting separate from the arcade reserve. Do not alter the existing arcade split, entry fees, ranking rules, or prize allocations.
-8. Publish reward format before entry. A permanent-stake reward is not a withdrawable-token payment. Verify the current MSS2 contract interface and recipient capacity before using gifting functionality. Do not guess addresses or automatically request token approvals.
-9. Require operator approval for the first payout batches and validate receipt, recipient, chain, amount, and finality before marking a reward sent. Use an idempotent payout ledger to prevent duplicate distributions. No private keys or automatic transfers belong in this frontend release.
-
-Public campaign creation, fees, burns, referral incentives, X follow/repost verification, and automated token distribution are out of scope for this release.
+Dependency review remains outstanding: the first install reported 27 package-audit findings (1 low, 16 moderate, 9 high, 1 critical). This feature does not change dependencies or the lockfile, and no application-exploitability conclusion has been made. Do not apply forced breaking upgrades without review.
