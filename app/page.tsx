@@ -5,7 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ACHIEVEMENTS, achievementById, missionGrade, nextGradeRequirement, type AchievementId } from "../lib/achievements";
 import TopazLivePanel from "./topaz-live";
 import TopazXPanel from "./topaz-x";
+import Link from "next/link";
 import WalletConnect from "./wallet-connect";
+import { QuestHomeCard, QuestSiteNav } from "./quests/quest-links";
 import { TOPAZ_DOCS_CHECKED_AT, TOPAZ_FEATURE_MISSIONS, featureMission, featureBaseScore } from "../lib/topaz-feature-missions";
 
 type Phase = "splash" | "briefing" | "playing" | "results";
@@ -1791,8 +1793,9 @@ export default function YieldVacuumGame() {
           </div>
           </div>
           <h1 className="splashTitle"><span>YIELD</span><strong>VACCUM</strong></h1>
-          <p className="splashNetwork">TWO WORLDS. CHOOSE YOUR GAME.</p>
-          <div className="splashGameMenu" aria-label="Choose a Yield Vaccum game">
+          <p className="splashNetwork">PLAY. LEARN. TAKE ON QUESTS.</p>
+          <div className="splashGameMenu" aria-label="Choose a Yield Vaccum experience">
+            <div className="splashSectionNav"><QuestSiteNav current="home" /></div>
             <div className="splashActions">
               <button className="splashGameChoice splashTopazChoice" onClick={() => prepareBriefing()}>
                 <span className="splashChoiceBrand"><img src="/topaz-mark.png" alt="Topaz" width="40" height="40" /><small>EDUCATIONAL CAMPAIGN</small></span>
@@ -1810,6 +1813,7 @@ export default function YieldVacuumGame() {
                 <span className="splashChoiceNetworks">Robinhood Chain + Arc</span>
                 <em>ENTER THE ARCADE →</em>
               </a>
+              <QuestHomeCard />
             </div>
           </div>
         </section>
@@ -1839,6 +1843,7 @@ export default function YieldVacuumGame() {
             <i aria-hidden="true">›</i>
           </button>
           <a className="arcadeNavButton" href="/arcade/lobby"><span>MSS2 ARCADE</span><strong>OPEN ARCADE LOBBY</strong><i aria-hidden="true">→</i></a>
+          <Link className="arcadeNavButton" href="/quests"><span>MSS2 QUESTS</span><strong>EXPLORE QUESTS</strong><i aria-hidden="true">→</i></Link>
         </div>
       </header>
 

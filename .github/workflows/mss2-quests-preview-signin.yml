@@ -1,0 +1,50 @@
+name: MSS2 Quests enabled preview checks
+on:
+  push:
+    branches: [feature/mss2-quests-foundation]
+    paths:
+      - scripts/review-quests-signin.mjs
+      - .github/workflows/mss2-quests-preview-signin.yml
+permissions:
+  contents: read
+jobs:
+  preview:
+    if: github.ref == 'refs/heads/feature/mss2-quests-foundation'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - id: install
+        run: |
+          npm ci
+          npm install --prefix "$RUNNER_TEMP/quest-browser" --no-save --no-package-lock --ignore-scripts --no-audit playwright@1.56.1
+          "$RUNNER_TEMP/quest-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Read-only responsive and navigation review
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          QUEST_BROWSER_MODULES: ${{ runner.temp }}/quest-browser
+        run: node scripts/review-quests-browser.mjs
+      - name: Hosted signature, cancellation, private API, and logout checks
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          QUEST_BROWSER_MODULES: ${{ runner.temp }}/quest-browser
+        run: node scripts/review-quests-signin.mjs
+      - name: Record runtime audit for the tested revision
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          mkdir -p quest-review
+          npm audit --omit=dev --json > quest-review/audit-runtime.json || test "$?" = 1
+          git rev-parse HEAD > quest-review/tested-source-commit.txt
+      - name: Retain evidence without signatures, credentials, or session cookies
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mss2-quests-enabled-preview-review
+          path: quest-review/
+          retention-days: 7
