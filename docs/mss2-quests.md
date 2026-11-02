@@ -2,32 +2,32 @@
 
 ## Current review scope
 
-PR #52 on `feature/mss2-quests-foundation` contains the homepage/arcade integration, clearly labeled concept previews, and a gated **points-only participation pilot**. It remains a draft. No production merge, token transfer, reward funding, or live campaign activation has been performed.
+Draft PR #52 on `feature/mss2-quests-foundation` contains the homepage/arcade integration, labeled concept previews, and a **points-only participation pilot**. It is not merged into production. No campaign, token reward, token approval, payment, or payout was created by this work.
 
-Read `docs/mss2-quests-pilot.md` for authentication, campaign rules, storage, operations, preview activation, and release gates. The original browse-only phase is no longer the entire implementation: private wallet progress and administrator-operated campaigns now have a separate implemented path, disabled by default.
+An isolated Netlify deploy preview is now deployed and its participation flag is enabled. Production remains unchanged and its quest flag remains unset. Read `docs/mss2-quests-preview-operator.md` for the current environment boundary, public-preview privacy warning, administrator handoff, and suggested small test campaign. `docs/mss2-quests-pilot.md` describes the authentication and data model; its original pre-activation notes are historical where superseded by the operator guide.
 
 ## Routes
 
-- `/quests`: published pilot campaigns, availability/sign-in, and a separately labeled concept-preview directory.
+- `/quests`: published pilot campaigns, sign-in, and a separately labeled concept-preview directory.
 - `/quests/profile`: private wallet progress on the signed-in network.
-- `/admin/quests`: private draft creation, publication, early closure, and contribution review.
-- `/quests/mss2-first-steps` and `/quests/arcade-explorer`: concept previews only, not funded or open, with no points or eligibility.
-- Homepage: third destination and revised headline; Home / Arcade / Quests navigation.
-- Arcade lobby: navigation plus a banner outside the existing game cabinets. Existing game logic, payment routes, contract addresses, rankings and reserve accounting are unchanged.
+- `/admin/quests`: administrator-authorized draft creation, publication, closure, and contribution review.
+- `/quests/mss2-first-steps` and `/quests/arcade-explorer`: concepts only, not funded or open.
+- Homepage: third destination and revised headline, with Home / Arcade / Quests navigation.
+- Arcade lobby: navigation and a banner outside the game cabinets. Game logic, payment routes, contract addresses, rankings and reserve accounting are unchanged.
 
 ## Activation boundary
 
-Both server variables, `MSS2_QUESTS_ENABLED=true` and the exact HTTPS `MSS2_QUESTS_ORIGIN`, are required for participation. Without them the service reports a disabled state, not a live campaign. No sample campaign is automatically created or published. Only a separately reviewed, isolated deploy preview should be activated next; production must remain disabled.
+Both server variables, `MSS2_QUESTS_ENABLED=true` and the exact HTTPS `MSS2_QUESTS_ORIGIN`, are required. They are configured in Netlify's **deploy-preview functions context only**. This is not a production activation. No sample campaign is automatically created or published; an authenticated administrator must create a private draft and explicitly publish it.
 
-The pilot records non-transferable participation points, not MSS2 balances or payout obligations. Token/stake rewards, funding verification, payout reconciliation, game/social/referral verification, sponsorship fees/burns and public campaign creation are not implemented.
+The pilot records non-transferable participation points, not MSS2 balances or payout obligations. Token/stake rewards, funding verification, payout reconciliation, game/social/referral verification, sponsorship fees/burns and public campaign creation remain unimplemented.
 
 ## Source integration
 
-The homepage, lobby and root layout are already integrated. Temporary write-capable integration/repair workflows were removed. The retained `scripts/integrate-mss2-quests.mjs` is a guarded, idempotent traceability tool for the original base checkout, not part of startup or build; it need not be rerun on this branch.
+The homepage, lobby and layout are integrated. Temporary write-capable integration and dependency-preparation workflows were removed after their feature-branch commits. The retained `scripts/integrate-mss2-quests.mjs` is a guarded traceability tool for the original checkout, not application startup; do not rerun it as part of a deploy.
 
-## Verification
+## Validation
 
-The foundation at d0328e2 passed tests, lint, build and TypeScript before the participation phase. Current phase results are recorded in the PR checks; do not infer new-code success from the historical foundation run.
+The full application at 8dc51c3a8f9c31ca04b463f19c599aaf498df57c passed regression, PostgreSQL 17 participation, catalog/integration, lint, build and TypeScript checks in run 41388923087. Subsequent changes to review scripts and documentation do not change application behavior. Use the current PR checks and retained browser reports for exact tested revisions and outcomes rather than assuming a newer commit passed because an earlier one did.
 
 ```sh
 npm ci
@@ -40,12 +40,14 @@ npm run build
 npx tsc --noEmit
 ```
 
-CI supplies a disposable PostgreSQL 17 service, restricted to a loopback database named `quest_pilot_test`. Tests create isolated random schemas, apply committed migrations, and clean up only those schemas. This validates multi-connection row-lock behavior rather than relying on PGlite's single database backend. The NetlifyDB fallback is for local sequential development with a single pool connection, not proof of concurrency safety. CI refuses to silently fall back.
+CI uses disposable PostgreSQL 17, loopback access, isolated random schemas, and committed migrations. It validates concurrent pooled connections. The single-backend NetlifyDB fallback is only for sequential local development; CI refuses to silently fall back. No production database credentials are used by tests.
 
-There are nine catalog tests and ten source-integration fixtures, plus participation/database/API tests and the existing regression suite. No test substitutes for browser review, real-wallet/device testing, or a security audit.
+Hosted browser review covers 360px, 768px and 1440px layouts, navigation, search, concept filters, game-route availability and anonymous guards. Hosted sign-in tests use an instrumented EIP-1193 provider and genuine signatures from disposable unfunded accounts. This is not an actual wallet-extension/device or Topaz ID smart-account end-to-end test. Browser test tools do not publish campaigns, submit contributions, play paid games, or transfer tokens.
 
-## Release gates
+## Dependency review
 
-Before publication, require the latest automated checks, real browser-wallet and Topaz ID sign-in testing, account/network-change and session-expiry testing, 360px/768px/desktop review, navigation and original game-launch checks, preview database isolation, edge abuse controls, and a published retention/contact process.
+Targeted preview-branch updates pin Next.js and eslint-config-next to 16.4.3, React/react-dom to 19.2.9, and ethers to 6.17.0, with compatible source-map-js and zod lockfile updates. Recorded runtime-only npm audit findings dropped from seven to zero. The development-inclusive audit still reports 21 findings: one low, sixteen moderate, four high. This is not an independent security audit or proof of application safety. No forced major downgrades or Solidity compiler changes were applied. These dependency patches are not yet on production.
 
-Dependency review remains outstanding: the first install reported 27 package-audit findings (1 low, 16 moderate, 9 high, 1 critical). This feature does not change dependencies or the lockfile, and no application-exploitability conclusion has been made. Do not apply forced breaking upgrades without review.
+## Remaining public-release gates
+
+Finish the administrator-signed test campaign and real browser-wallet/Topaz ID/device testing, account/network changes, expiry and cross-tab UX checks. Review outstanding development dependency findings and define edge abuse controls, retention/contact policy and operational cleanup. Preview data may be copied from production even though its database branch is isolated; never assume an unlisted preview URL is private. Keep this PR in draft and do not merge or publish a public campaign solely because automated checks pass.
