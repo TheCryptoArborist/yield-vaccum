@@ -15,7 +15,7 @@ All catalog entries are previews, not funded, and unscheduled. Preview activity 
 
 ## Source integration
 
-The homepage, arcade lobby, and root-layout integration is committed on `feature/mss2-quests-foundation`. The temporary branch-preparation workflow ran successfully and has been removed. Only the read-only PR validation workflow remains.
+The homepage, arcade lobby, and root-layout integration is committed on `feature/mss2-quests-foundation`. The temporary integration and navigation-repair workflows completed and were removed. Only the read-only PR validation workflow remains. The Quests navigation uses Next Link, with regression tests covering initial integration and upgrade from the original plain-anchor version.
 
 The idempotent `node scripts/integrate-mss2-quests.mjs` command remains for traceability and application to an unmodified base checkout. It checks exact anchors and calculates all edits before writing. It is not part of application startup or build, and it does not need to run again on the integrated review branch. Its fixture tests are not substitutes for a full application build.
 
@@ -32,9 +32,11 @@ npm run build
 npx tsc --noEmit
 ```
 
-There are nine catalog tests and eight source-integration fixture tests. Fixture tests do not replace an application build, regression tests, or browser review. The catalog tests use the repository's existing tsx runner and are invoked explicitly in CI so they do not depend on recursive shell-glob behavior.
+There are nine catalog tests and ten source-integration fixture tests. Fixture tests do not replace an application build, regression tests, or browser review. The catalog tests use the repository's existing tsx runner and are invoked explicitly in CI so they do not depend on recursive shell-glob behavior. Current build and check status is recorded in PR #52.
 
 Manual review before merging: check the three homepage cards at 360px, 768px, and desktop widths; make sure mobile splash content can scroll; verify the original educational launch and all game links; test search, both network filters, the Live empty state, unknown campaign URLs, browser back/forward navigation, keyboard focus, and the campaign external-documentation link. No browser visual review has been claimed by this change.
+
+Dependency review is also required before production: the first CI install reported 27 dependency vulnerabilities (1 low, 16 moderate, 9 high, 1 critical). No dependencies or lockfile entries were changed by this feature. These are package-audit findings, not a determination of exploitability in the application; inspect the full audit and remediate deliberately rather than applying a forced breaking upgrade.
 
 ## Next stage: one real administrator-operated campaign
 
