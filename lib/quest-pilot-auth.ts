@@ -44,7 +44,7 @@ export function questWallet(value: unknown) {
   return getAddress(value.toLowerCase()).toLowerCase();
 }
 export async function questRate(db: QuestDatabase, scope: QuestScope, key: string, limit: number) {
-  const result = await db.pool.query('INSERT INTO quest_rate_limits(scope,key,window,hits) VALUES($1,$2,date_trunc(\'minute\',NOW()),1) ON CONFLICT(scope,key,window) DO UPDATE SET hits=quest_rate_limits.hits+1 RETURNING hits', [scope.key, key]);
+  const result = await db.pool.query('INSERT INTO quest_rate_limits(scope,key,window_start,hits) VALUES($1,$2,date_trunc(\'minute\',NOW()),1) ON CONFLICT(scope,key,window_start) DO UPDATE SET hits=quest_rate_limits.hits+1 RETURNING hits', [scope.key, key]);
   if (Number(result.rows[0].hits) > limit) throw new QuestError('Too many requests. Retry in a minute.', 429);
 }
 export async function createQuestChallenge(scope: QuestScope, walletInput: unknown, networkInput: unknown, binding: string, db = questDatabase()) {
@@ -68,7 +68,6 @@ export async function verifyQuestSignature(value: QuestChallengeEvidence, signat
 export async function consumeQuestChallenge(scope: QuestScope, nonce: unknown, signature: unknown, binding: string, db = questDatabase(), verify = verifyQuestSignature) {
   if (typeof nonce !== 'string' || !/^[0-9a-f]{32}$/.test(nonce) || typeof signature !== 'string' || !/^0x(?:[0-9a-fA-F]{2})+$/.test(signature) || signature.length > 16000 || !/^[A-Za-z0-9_-]{43}$/.test(binding)) throw new QuestError('Invalid sign-in response.', 403);
   await questRate(db, scope, 'verify:global', 120);
-  // Claim once BEFORE an RPC call. Invalid signatures also consume the challenge.
   const result = await db.pool.query('UPDATE quest_challenges SET consumed_at=NOW() WHERE scope=$1 AND nonce=$2 AND origin=$3 AND binding_hash=$4 AND consumed_at IS NULL AND expires_at>NOW() RETURNING wallet,network,message', [scope.key, nonce, scope.origin, questHash(binding)]);
   const row = result.rows[0];
   if (!row) throw new QuestError('Sign-in expired or was already used. Request a new signature.', 403);

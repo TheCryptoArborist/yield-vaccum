@@ -1,9 +1,9 @@
 -- Additive, isolated quest storage. No arcade tables or token accounting change.
 CREATE TABLE quest_rate_limits (
-  scope text NOT NULL, key text NOT NULL, window timestamptz NOT NULL, hits integer NOT NULL CHECK(hits > 0),
-  PRIMARY KEY(scope,key,window)
+  scope text NOT NULL, key text NOT NULL, window_start timestamptz NOT NULL, hits integer NOT NULL CHECK(hits > 0),
+  PRIMARY KEY(scope,key,window_start)
 );
-CREATE INDEX quest_rate_expiry ON quest_rate_limits(window);
+CREATE INDEX quest_rate_expiry ON quest_rate_limits(window_start);
 CREATE TABLE quest_challenges (
   scope text NOT NULL, nonce text NOT NULL, wallet text NOT NULL CHECK(wallet ~ '^0x[0-9a-f]{40}$'),
   network text NOT NULL CHECK(network IN ('arc','robinhood')), origin text NOT NULL,
