@@ -24,7 +24,10 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: node --test tests/quests-integration.test.mjs
+      - name: Quest source integration tests
+        run: node --test tests/quests-integration.test.mjs
+      - name: Quest catalog tests
+        run: node --import tsx --test tests/quests.test.ts
       - run: npm test
       - run: npm run lint
       - run: npm run build
