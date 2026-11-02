@@ -1,0 +1,53 @@
+name: MSS2 Quests hosted preview review
+on:
+  push:
+    branches: [feature/mss2-quests-foundation]
+    paths:
+      - scripts/review-quests-browser.mjs
+      - .github/workflows/mss2-quests-browser-review.yml
+permissions:
+  contents: read
+jobs:
+  review:
+    if: github.ref == 'refs/heads/feature/mss2-quests-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Collect dependency evidence without automatic upgrades
+        run: |
+          mkdir -p quest-review
+          npm audit --json > quest-review/audit-all.json || test "$?" = 1
+          npm audit --omit=dev --json > quest-review/audit-runtime.json || test "$?" = 1
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for (const kind of ['all','runtime']) {
+            const audit=JSON.parse(fs.readFileSync(`quest-review/audit-${kind}.json`,'utf8'));
+            if(audit.error)throw new Error('Audit service failed: '+audit.error.code);
+            const items=Object.values(audit.vulnerabilities??{}).map(v=>({name:v.name,severity:v.severity,direct:v.isDirect,range:v.range,fix:v.fixAvailable,via:v.via.map(x=>typeof x==='string'?x:{name:x.name,title:x.title,url:x.url,range:x.range})}));
+            console.log('AUDIT_'+kind.toUpperCase(),JSON.stringify({counts:audit.metadata?.vulnerabilities,items}));
+            fs.writeFileSync(`quest-review/audit-${kind}-summary.json`,JSON.stringify(items,null,2));
+          }
+          NODE
+      - name: Install isolated browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/quest-browser" --no-save --no-package-lock --ignore-scripts --no-audit playwright@1.56.1
+          "$RUNNER_TEMP/quest-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Check hosted preview at mobile, tablet, and desktop widths
+        env:
+          QUEST_BROWSER_MODULES: ${{ runner.temp }}/quest-browser
+        run: node scripts/review-quests-browser.mjs
+      - name: Retain review evidence (no signed-in sessions or secrets)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mss2-quests-browser-review
+          path: quest-review/
+          retention-days: 7
