@@ -54,15 +54,17 @@ try {
     if (width === 1440) {
       await check('Quest concept search, filters, and reset', async () => {
         await page.goto(target + '/quests', { waitUntil: 'domcontentloaded' });
-        const search = page.getByRole('searchbox');
+        const directory = page.locator('section[aria-labelledby="campaign-heading"]');
+        const search = directory.getByRole('searchbox');
         await search.fill('zz-no-such-quest-zz');
-        await page.getByRole('heading', { name: 'No campaigns match these filters.' }).waitFor();
-        await page.getByRole('button', { name: /Show campaign previews/ }).click();
-        await page.getByRole('button', { name: 'Live', exact: true }).click();
-        await page.getByRole('heading', { name: 'The first live campaign is still ahead.' }).waitFor();
-        await page.getByRole('button', { name: /Show campaign previews/ }).click();
-        await page.getByLabel('Network', { exact: true }).selectOption('arc');
-        assert.ok(await page.getByRole('link', { name: /Preview campaign/ }).count() > 0);
+        await directory.getByRole('heading', { name: 'No campaigns match these filters.' }).waitFor();
+        await directory.getByRole('button', { name: /Show campaign previews/ }).click();
+        await directory.getByRole('button', { name: 'Live', exact: true }).click();
+        await directory.getByRole('heading', { name: 'The first live campaign is still ahead.' }).waitFor();
+        await directory.getByRole('button', { name: /Show campaign previews/ }).click();
+        await directory.locator('select').selectOption('arc');
+        await directory.getByRole('link', { name: /Preview campaign/ }).first().waitFor();
+        assert.ok(await directory.getByRole('link', { name: /Preview campaign/ }).count() > 0);
         return { search: true, liveEmptyState: true, reset: true, networkFilter: true };
       });
       await check('Homepage educational launch and Quests entry remain usable', async () => {
