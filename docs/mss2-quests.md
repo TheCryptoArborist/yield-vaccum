@@ -15,7 +15,9 @@ All catalog entries are previews, not funded, and unscheduled. Preview activity 
 
 ## Source integration
 
-The idempotent `node scripts/integrate-mss2-quests.mjs` command inserts the entry components into the existing large game files without rewriting gameplay. It checks exact anchors and calculates all edits before writing. The preparation workflow is limited to `feature/mss2-quests-foundation`; it never writes `main`. Remove the temporary preparation workflow once integration is confirmed. The source-integration script and fixture tests may remain for traceability; it is not part of application startup or build.
+The homepage, arcade lobby, and root-layout integration is committed on `feature/mss2-quests-foundation`. The temporary branch-preparation workflow ran successfully and has been removed. Only the read-only PR validation workflow remains.
+
+The idempotent `node scripts/integrate-mss2-quests.mjs` command remains for traceability and application to an unmodified base checkout. It checks exact anchors and calculates all edits before writing. It is not part of application startup or build, and it does not need to run again on the integrated review branch. Its fixture tests are not substitutes for a full application build.
 
 ## Verification
 
@@ -23,13 +25,14 @@ Run the existing project checks after `npm ci`:
 
 ```sh
 node --test tests/quests-integration.test.mjs
+node --import tsx --test tests/quests.test.ts
 npm test
 npm run lint
 npm run build
 npx tsc --noEmit
 ```
 
-There are nine catalog tests and eight source-integration fixture tests. Fixture tests do not replace an application build, regression tests, or browser review. The catalog tests run with the repository's existing tsx test runner.
+There are nine catalog tests and eight source-integration fixture tests. Fixture tests do not replace an application build, regression tests, or browser review. The catalog tests use the repository's existing tsx runner and are invoked explicitly in CI so they do not depend on recursive shell-glob behavior.
 
 Manual review before merging: check the three homepage cards at 360px, 768px, and desktop widths; make sure mobile splash content can scroll; verify the original educational launch and all game links; test search, both network filters, the Live empty state, unknown campaign URLs, browser back/forward navigation, keyboard focus, and the campaign external-documentation link. No browser visual review has been claimed by this change.
 
