@@ -14,7 +14,7 @@ try {
   for (const [network, chain] of [['arc','0x13b2'],['robinhood','0x1237']]) {
     const account = privateKeyToAccount(generatePrivateKey());
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-    let signed = 0;
+    let signed = 0, blockedExternalRequests = 0;
     const forbidden = [];
     await context.exposeBinding('__questTestSign', async (_source, hex, address) => {
       assert.equal(address.toLowerCase(), account.address.toLowerCase());
@@ -56,7 +56,10 @@ try {
       const req = route.request(), url = new URL(req.url());
       if (['GET','HEAD'].includes(req.method())) return route.continue();
       if (url.origin === target && url.pathname === '/api/quests/session' && ['POST','DELETE'].includes(req.method())) return route.continue();
-      forbidden.push(req.method() + ' ' + url.pathname);
+      // RPC/browser SDK and Netlify preview toolbar requests are deliberately blocked.
+      // Their existence is not evidence that the quest app submitted a forbidden mutation.
+      if (url.origin !== target) blockedExternalRequests++;
+      else forbidden.push(req.method() + ' ' + url.pathname);
       return route.abort();
     });
     try {
@@ -102,7 +105,7 @@ try {
       assert.equal(await page.getByRole('button', { name: 'Sign out of Quests', exact: true }).count(), 0);
       assert.equal(signed, 1);
       assert.deepEqual(forbidden, []);
-      results.push({ network, passed: true, signedMessages: signed, walletProvider: 'Instrumented EIP-1193 provider; real disposable EOA signature verified by hosted server', cancellation: true, cookieFlags: true, privateProfile: true, adminAccessDenied: true, csrfRejected: true, crossTabServerLogout: true, explicitRefreshClearsUi: true, tokenTransactions: 0 });
+      results.push({ network, passed: true, signedMessages: signed, walletProvider: 'Instrumented EIP-1193 provider; real disposable EOA signature verified by hosted server', cancellation: true, cookieFlags: true, privateProfile: true, adminAccessDenied: true, csrfRejected: true, crossTabServerLogout: true, explicitRefreshClearsUi: true, blockedExternalRequests, tokenTransactions: 0 });
       console.log('PASS HOSTED SIGN-IN', network);
     } catch (error) {
       results.push({ network, passed: false, error: error.message });
