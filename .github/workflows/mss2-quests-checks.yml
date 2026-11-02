@@ -1,0 +1,31 @@
+name: MSS2 Quests review checks
+on:
+  pull_request:
+    paths:
+      - app/**
+      - lib/**
+      - tests/**
+      - scripts/integrate-mss2-quests.mjs
+      - package.json
+      - package-lock.json
+      - .github/workflows/mss2-quests-checks.yml
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node --test tests/quests-integration.test.mjs
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+      - run: npx tsc --noEmit

@@ -1,0 +1,13 @@
+/* Additive homepage integration. Loaded after the existing splash and polish styles. */
+.splashGameMenu{width:min(1100px,100%)}
+.splashActions{grid-template-columns:repeat(3,minmax(0,1fr))}
+.splashQuestChoice{border:1px solid #78639e;border-radius:14px;background:linear-gradient(145deg,#251c38,#10232d)}
+.splashQuestChoice:hover{border-color:#b49dd9;box-shadow:0 0 28px rgba(149,104,220,.18)}
+.splashQuestChoice>strong{color:#e1d0ff}
+.splashQuestChoice b{color:#d8c9ed}
+.splashQuestChoice em{color:#9df4e4;font-style:normal}
+.splashQuestChoice:focus-visible{outline:3px solid #e1bdff;outline-offset:4px}
+.splashScreen{justify-content:safe center}
+.splashSectionNav{margin:0 0 16px}
+@media(max-width:760px){.splashActions{grid-template-columns:1fr}.splashScreen{justify-content:flex-start;padding:24px 18px}.splashGameChoice{min-height:190px}}
+@media(prefers-reduced-motion:reduce){.splashQuestChoice{transition:none}}
