@@ -4,8 +4,10 @@ on:
     paths:
       - app/**
       - lib/**
+      - db/**
+      - netlify/database/migrations/**
       - tests/**
-      - scripts/integrate-mss2-quests.mjs
+      - scripts/**
       - package.json
       - package-lock.json
       - .github/workflows/mss2-quests-checks.yml
@@ -28,6 +30,8 @@ jobs:
         run: node --test tests/quests-integration.test.mjs
       - name: Quest catalog tests
         run: node --import tsx --test tests/quests.test.ts
+      - name: Verified participation and database tests
+        run: node --import tsx --test tests/quest-pilot.test.ts
       - run: npm test
       - run: npm run lint
       - run: npm run build
