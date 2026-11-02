@@ -12,6 +12,22 @@ jobs:
     timeout-minutes: 12
     permissions:
       contents: write
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: quest-test-only
+          POSTGRES_DB: quest_pilot_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      MSS2_QUEST_TEST_DB_URL: postgresql://postgres:quest-test-only@127.0.0.1:5432/quest_pilot_test
     steps:
       - uses: actions/checkout@v6
         with:
