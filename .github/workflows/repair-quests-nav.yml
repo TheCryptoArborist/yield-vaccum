@@ -1,0 +1,29 @@
+name: Correct Quests navigation on review branch
+on:
+  push:
+    branches: [feature/mss2-quests-foundation]
+    paths: [.github/workflows/repair-quests-nav.yml]
+permissions:
+  contents: read
+jobs:
+  repair:
+    if: github.ref == 'refs/heads/feature/mss2-quests-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mss2-quests-foundation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/quests-integration.test.mjs
+      - run: node scripts/integrate-mss2-quests.mjs
+      - name: Commit the guarded correction and remove this temporary workflow
+        run: |
+          git add app/page.tsx
+          git rm .github/workflows/repair-quests-nav.yml
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Use Next Link for Quests navigation and remove temporary repair workflow'
+          git push origin HEAD:refs/heads/feature/mss2-quests-foundation

@@ -34,3 +34,15 @@ test("arcade retains games, next cabinet, rankings and reserve", () => {
 test("arcade integration is idempotent", () => { const once = integrateLobby(lobby); assert.equal(integrateLobby(once), once); });
 test("layout loads additive styles and updates social wording", () => { const result = integrateLayout(layout); assert.ok(result.includes('import "./quests-entry.css"')); assert.ok(!result.includes("Two worlds.")); assert.equal(integrateLayout(result), result); });
 test("partially installed home fails closed", () => { assert.throws(() => integrateHome("<QuestHomeCard />")); });
+
+test("quest navigation uses Next Link instead of a plain internal anchor", () => {
+  const output = integrateHome(home);
+  assert.ok(output.includes('import Link from "next/link";'));
+  assert.ok(output.includes('<Link className="arcadeNavButton" href="/quests">'));
+  assert.ok(!output.includes('<a className="arcadeNavButton" href="/quests">'));
+});
+test("an existing preview integration is upgraded to Next Link once", () => {
+  const correct = integrateHome(home);
+  const legacy = correct.replace('import Link from "next/link";\n', '').replace('<Link className="arcadeNavButton" href="/quests">', '<a className="arcadeNavButton" href="/quests">').replace('</i></Link>', '</i></a>');
+  assert.equal(integrateHome(legacy), correct);
+});

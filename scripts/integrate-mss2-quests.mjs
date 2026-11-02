@@ -7,10 +7,20 @@ function replaceOnce(source, before, after, label) {
   if (count !== 1) throw new Error(`${label}: expected one integration anchor, found ${count}. No files were written.`);
   return source.replace(before, after);
 }
+function normalizeQuestNavigation(source) {
+  const oldLink = '<a className="arcadeNavButton" href="/quests"><span>MSS2 QUESTS</span><strong>EXPLORE QUESTS</strong><i aria-hidden="true">→</i></a>';
+  const newLink = '<Link className="arcadeNavButton" href="/quests"><span>MSS2 QUESTS</span><strong>EXPLORE QUESTS</strong><i aria-hidden="true">→</i></Link>';
+  let result = source.includes(oldLink) ? replaceOnce(source, oldLink, newLink, "Quest navigation Link") : source;
+  if (!result.includes(newLink)) throw new Error("Quest navigation link is missing; no files were written.");
+  if (!result.includes('import Link from "next/link";')) {
+    result = replaceOnce(result, 'import WalletConnect from "./wallet-connect";', 'import Link from "next/link";\nimport WalletConnect from "./wallet-connect";', "Next Link import");
+  }
+  return result;
+}
 export function integrateHome(source) {
   if (source.includes("<QuestHomeCard />")) {
     if (!source.includes("PLAY. LEARN. TAKE ON QUESTS.") || !source.includes('from "./quests/quest-links"')) throw new Error("Homepage is partially integrated; review it manually.");
-    return source;
+    return normalizeQuestNavigation(source);
   }
   let result = replaceOnce(source, 'import WalletConnect from "./wallet-connect";', 'import WalletConnect from "./wallet-connect";\nimport { QuestHomeCard, QuestSiteNav } from "./quests/quest-links";', "Home import");
   result = replaceOnce(result, "TWO WORLDS. CHOOSE YOUR GAME.", "PLAY. LEARN. TAKE ON QUESTS.", "Home heading");
@@ -18,7 +28,7 @@ export function integrateHome(source) {
   result = replaceOnce(result, '<em>ENTER THE ARCADE →</em>\n              </a>', '<em>ENTER THE ARCADE →</em>\n              </a>\n              <QuestHomeCard />', "Third homepage card");
   result = replaceOnce(result, 'aria-label="Choose a Yield Vaccum game"', 'aria-label="Choose a Yield Vaccum experience"', "Home accessibility label");
   result = replaceOnce(result, '<a className="arcadeNavButton" href="/arcade/lobby"><span>MSS2 ARCADE</span><strong>OPEN ARCADE LOBBY</strong><i aria-hidden="true">→</i></a>', '<a className="arcadeNavButton" href="/arcade/lobby"><span>MSS2 ARCADE</span><strong>OPEN ARCADE LOBBY</strong><i aria-hidden="true">→</i></a>\n          <a className="arcadeNavButton" href="/quests"><span>MSS2 QUESTS</span><strong>EXPLORE QUESTS</strong><i aria-hidden="true">→</i></a>', "Game navigation");
-  return result;
+  return normalizeQuestNavigation(result);
 }
 export function integrateLobby(source) {
   if (source.includes("<QuestArcadeBanner />")) {
