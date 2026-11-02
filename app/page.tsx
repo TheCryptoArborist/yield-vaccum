@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ACHIEVEMENTS, achievementById, missionGrade, nextGradeRequirement, type AchievementId } from "../lib/achievements";
 import TopazLivePanel from "./topaz-live";
 import TopazXPanel from "./topaz-x";
+import Link from "next/link";
 import WalletConnect from "./wallet-connect";
 import { QuestHomeCard, QuestSiteNav } from "./quests/quest-links";
 import { TOPAZ_DOCS_CHECKED_AT, TOPAZ_FEATURE_MISSIONS, featureMission, featureBaseScore } from "../lib/topaz-feature-missions";
@@ -1842,7 +1843,7 @@ export default function YieldVacuumGame() {
             <i aria-hidden="true">›</i>
           </button>
           <a className="arcadeNavButton" href="/arcade/lobby"><span>MSS2 ARCADE</span><strong>OPEN ARCADE LOBBY</strong><i aria-hidden="true">→</i></a>
-          <a className="arcadeNavButton" href="/quests"><span>MSS2 QUESTS</span><strong>EXPLORE QUESTS</strong><i aria-hidden="true">→</i></a>
+          <Link className="arcadeNavButton" href="/quests"><span>MSS2 QUESTS</span><strong>EXPLORE QUESTS</strong><i aria-hidden="true">→</i></Link>
         </div>
       </header>
 
