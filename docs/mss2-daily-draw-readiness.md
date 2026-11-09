@@ -4,86 +4,73 @@ Updated 2026-11-09 UTC. Tracker: TheCryptoArborist/yield-vaccum #53. Draft revie
 Research branch: `research/mss2-daily-draw-readiness`.
 Application/main baseline: `c94d6a0f8a7884d818c907b86749eda1ff068237`.
 
-**Latest completed milestone: the separate operating-fee budget/refund-credit component passed 35 scenario categories with each provider-source implementation, for 70 local executions, in run 42614410076. It is not yet connected to the original DailyDrawPrototype or website. Next: combined draw/fee integration and segregated per-round fund accounting. Task 3, provider acceptance and public release remain open; paid entries remain disabled.**
+**Latest completed milestone: the new integrated local controller links paid fixture-ticket records, per-round allocations, measured fixture prize purchases, the capped fee module and immutable winner selection. Run 42617426146 passed 43 integrated categories and 35 unchanged fee regressions in EACH local provider-code mode. That is 86 integrated executions plus 70 regressions, not live-network tests or a complete paid utility. The website, real-router integration and actual staking-payout reconciliation remain unconnected. Task 3 and production/provider approval remain open.**
 
-This index distinguishes completed research from application readiness. Detailed reports retain source revisions, failed runs, assumptions and simulation limitations. The earlier full purchase/staking snapshot is preserved at [commit 0a4d782](https://github.com/TheCryptoArborist/yield-vaccum/blob/0a4d782abb95241e92163fadb520ac1862d319d9/docs/mss2-daily-draw-readiness.md).
+Start with [the integrated-ledger report](mss2-daily-draw-integrated-ledger.md) and [normalized evidence](evidence/daily-draw-integrated-2026-11-09.json). The prior fee-component index remains preserved at commit `392fbec8946c7f8d72ea615df223409b269cf903`; the earlier full purchase/staking snapshot is at commit `0a4d782abb95241e92163fadb520ac1862d319d9`. Detailed reports retain their failures, source revisions and limitations.
 
 ## Confirmed product direction
 
-- Work is confined to Yield Vacuum, not the MintStakeShare GitHub repository. Intended host: `www.yieldvaccum.com`; domain/TLS/deployment mapping is still a release check.
-- Separate daily chain-local rounds, tickets and prizes; one winner per participating chain and equal chance per purchased ticket. No referral/streak/stake-size odds multipliers in the approved first-version direction.
-- Participants pay USDG on Robinhood and USDC on Arc. A published allocation buys liquid MSS2 through ordinary Buy; Buy & Stake is not the funding action. A separate allocation is developer revenue.
-- The selected winner receives MSS2 directly into their stake, with operator-signed delivery from `0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7`. The existing administrator sign-in ending 8789 is separate from spending authority.
-- Ticket ownership is locked before requesting randomness. One accepted request binds one result; no manual winner override, reopening entries or reroll after a failure. Prize delivery is separate from winner selection.
-- Existing arcade allocation, funds, appearance and application behavior remain unchanged. A shared wallet ledger is not escrow or permission to spend existing arcade rewards.
+- Work stays in Yield Vacuum, not the MintStakeShare GitHub. Intended host: `www.yieldvaccum.com`; domain/TLS/deployment mapping still needs release verification.
+- Separate daily chain-local draws, tickets and prizes; one winner per participating chain and equal chance per ticket. No first-version referral, streak or stake-size weighting.
+- USDG tickets on Robinhood; USDC tickets on Arc. A published portion buys LIQUID MSS2 through ordinary Buy, not Buy & Stake. A separate portion is allocated to the developer.
+- Owner-signed prize delivery adds directly to the winner's MSS2 stake from `0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7`. Administrator sign-in ending 8789 is not spending authority.
+- Freeze ticket ownership and outcome-relevant inputs; one accepted request/result per round; no manually selected winner, reopened entries, replacement outcome or failure-driven redraw.
+- Keep existing arcade funds, allocation, theme and application behavior unchanged. A shared-wallet ledger is not escrow or permission to spend arcade rewards.
 
-Ticket price, revenue percentages, receivers, precise cutoff, launch sequence, eligibility, purchase timing, operating-cost treatment, authorized operating payer/limits, backed participant refunds and stake-cap shortfall policy remain unresolved. No test fixture settles those decisions. D20DAO is a candidate under evaluation, not an approved production dependency.
+Ticket price, revenue percentages, payment/developer receivers, operating payer and limits, timing, eligibility, purchase timing, launch sequence, backed participant refunds and stake-cap shortfall policy remain unresolved. Test values, including the integrated suite's 20% developer fixture, do not settle those decisions. D20DAO remains a candidate, not a production-approved dependency.
 
-## Evidence ledger — keep test scopes distinct
+## Evidence ledger — retain separate scopes
 
-| Milestone | Accepted evidence | Scope and limitation |
+| Milestone | Accepted evidence | Scope |
 |---|---|---|
-| Live metadata | Runs 42554165659 and 42554430282 | Payment/MSS2 metadata reads and checker tests; the latter run's original explorer lookup failed, subsequently addressed. |
-| Direct-to-stake delivery | Run 42556404173: 16 scenarios per chain | Isolated forks, synthetic fixtures and simulated sender. Not real signing authority or app payout deduplication. |
-| Liquid purchase and combined gift | Run 42558269951: 7 scenarios per chain | Robinhood USDG -> WETH -> MSS2; Arc USDC -> MSS2; exact purchased amount gifted to fixed test beneficiary. Not random winner selection or ticket accounting. |
-| Winner lifecycle prototype | Run 42563327635: 36 scenarios on each local instance plus 2 chain guards | Mock coordinator/token. 74 executions, not 74 unique cases or live-chain tests. |
-| Historical provider proofs and ownership | Run 42566437894: 4 historical samples and 20 rejected alterations | Provider SDK replay plus separately checked chain context; not independently authored crypto, future liveness or application consumer fulfillment. |
-| Actual-coordinator consumer integration | Run 42611914241: 20 scenarios in each local coordinator mode | Pinned actual provider source/verifiers with public test key and historical beacon signatures; generic local EVM, explicit Robinhood ArbSys shim. |
-| Operating-fee budget/refund-credit component | Run 42614410076: 35 categories per mode, 70 executions | Actual provider-source local tests; payer/round credits, caps and conservation. Separate component, not integrated ticket-to-prize application or native-Arc accounting. |
+| Live metadata | 42554165659 and 42554430282 | Payment/MSS2 reads and checker tests; the latter's initial explorer lookup failed, subsequently addressed. |
+| Direct-to-stake delivery | 42556404173: 16 scenarios per chain | Isolated forks and simulated sender, not real signing control or application payout deduplication. |
+| Liquid purchase and combined gift | 42558269951: 7 scenarios per chain | USDG -> WETH -> MSS2 on Robinhood; USDC -> MSS2 on Arc; fixed test beneficiary, not random winner accounting. |
+| Mock winner prototype | 42563327635: 36 categories twice plus 2 chain guards | Mock coordinator/token; 74 local executions. |
+| Historical provider proofs/ownership | 42566437894: 4 historical samples and 20 rejected alterations | Provider SDK replay plus separately checked historical chain evidence; not independent crypto/audit or future liveness. |
+| Actual coordinator source integration | 42611914241: 20 categories per mode | Local proof verification, callbacks and recovery using public fixture key/signatures; not a live keeper request. |
+| Standalone fee module | 42614410076: 35 categories per mode | Capped service spending, payer credits, per-request refund accounts; no original draw wiring. |
+| Integrated controller and initial funding ledger | 42617426146: 43 integrated + 35 fee regressions per mode | New controller owns the unchanged fee module, binds actual ticket/funding records, selects the winner and retains award liability. Tokens/purchase adapter are FAKE fixtures; no actual stake payout or native Arc test. |
 
-Earlier suites were not rerun as part of the fee-module workflow. The fee report and artifacts preserve an initial 33-pass/2-failure run per mode and the corrected plain-value assertion helper; contract code was unchanged.
+Only the fee regressions were rerun with the latest integrated suite. Do not combine unlike historical totals into a security certification.
 
-## Integration targets already identified
+## What is now linked, and what is not
 
-Historical observations require fresh validation before public authorization:
+The integrated local path is tickets -> close/allocate -> measured fixture purchase -> lock inputs -> capped fee request -> stored authenticated result -> ticket owner -> AwardPending. It does not inherit the old exact-fee prototype; there is no alternative requestDraw or direct callback entry on the new controller. Anyone can synchronize the linked stored result, but cannot supply a word or winner.
 
-| Target | Robinhood | Arc |
-|---|---|---|
-| Public chain ID | 4663 | 5042 |
-| Payment token | USDG `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168` | USDC ERC-20 view `0x3600000000000000000000000000000000000000` |
-| Payment decimals | 6 | 6; native USDC uses 18-decimal units over the same underlying balance |
-| MSS2 | `0x091F0c7e675A787A4018eb47c30BeD3FA2013B65`, 18 decimals | Same recorded address and decimals on its own chain |
-| Stake gift entry point | Token `airdropStake(address[],uint256[])` | Same interface, chain-local state |
+Ticket receipts, developer accrual, unspent purchase budget, measured acquired tokens, outstanding award and operating credits have distinct records. The controller never sweeps operating funds, withdraws developer funds or marks an award paid. Service expiry leaves acquired tokens and remaining payment obligations recorded, rather than inventing a participant refund.
 
-The gift interface needs no separate MSS2 spending allowance; the sender still signs. The observed minimum offered gift is 1 MSS2 and the observed mutable stake cap is 25,000,000 MSS2 per wallet per chain. Partial or zero capacity can produce less than the requested stake credit. Independent repeat gift transactions can pay twice. Verify actual stake-credit evidence and implement duplicate-payout controls; do not equate a successful transaction with a fully paid prize.
+The initial reserve balance is excluded from prize acquisition; aggregate backing is checked before new purchases/authorizations. This does NOT reserve external wallet funds until payout or inventory all later arcade liabilities. Funds may leave the wallet after authorization. An accepted result is still mapped to its original winner even when reserveCoverage reports a shortfall.
 
-The staking proxy was `0x1fD4AD5873443953DBbF403e541f546E829be489`, with observed implementation `0xbe851D5ED304628Dc570A7A0bEB23Bb7ca5f587B`. Source-record/runtime limitations, including the absent Arc proxy verification entry and checked identical runtime, remain in the staking report and earlier snapshot.
+The fixed-rate fixture purchase ABI is not Topaz's production interface. The new combined suite does not supersede or repeat the earlier live-contract fork purchase evidence. Native Arc shared USDC/token accounting requires its dedicated engine, not generic local ETH-like balances.
 
-## Provider review status
+## Existing integration targets
 
-The Robinhood coordinator owner mismatch is explained by a checked October 21, 2026 on-chain transfer at block 94,329,459. The manifest still lists the former owner; its value was not silently replaced to manufacture a passing comparison. Effective upgrade authority, owner implementation/modules/guards and request-specific authority remain review items.
+Historical observations, requiring fresh validation before public authorization: chain IDs Robinhood 4663 and Arc 5042; USDG on Robinhood `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168`; Arc USDC ERC-20 view `0x3600000000000000000000000000000000000000`; observed payment decimals 6. Arc's native view uses 18-decimal units over the same underlying balance, not a second asset balance.
 
-Four historical samples passed the implemented proof and chain-context checks. The consumer and fee-module local suites separately exercise the actual pinned provider code. None proves future live fulfillment, independence of controllers, current bytecode equivalence or absence of upgrades/withholding risk. Provider approval remains false.
+Observed MSS2 token on each chain: `0x091F0c7e675A787A4018eb47c30BeD3FA2013B65`, 18 decimals. Stake gift: token `airdropStake(address[],uint256[])`, without a separate MSS2 allowance, but with sender authorization. Historical minimum offered gift: 1 MSS2; mutable cap: 25,000,000 MSS2 per wallet/chain. Partial or zero credit may accompany a successful transaction. Repeated independent gift transactions may pay twice. Detailed source/runtime qualifications and exact event/receipt requirements remain in the staking report.
 
-## Next scoped implementation
+## Provider review
 
-**Connect the fee component to one locally tested draw lifecycle and implement a per-chain/token/round funding ledger.**
+The Robinhood manifest/current-owner mismatch was explained by the checked October 21, 2026 transfer at block 94,329,459; the manifest still lists the former owner. Four historical samples passed implemented proof and chain-context checks. Local source integration now additionally links fees to the drawing controller. None establishes future fulfillment, complete upgrade/module/guard authority, live deployment equivalence or an independent audit.
 
-The new component takes an explicitly authorized payer, maximum and input digest; pays the same-transaction fee; credits unused funding; and reconciles service refunds through per-request accounts. It cannot spend another round's credit. Its controller is a fixture, not the actual draw. Do not describe the module as already fixing the original draw interface.
+## Next scoped milestone and release gates
 
-The combined controller must derive the digest from locked paid tickets and prize information, authorize one request path, match the accepted result to that exact round, and prevent alternate requests through the older permissionless exact-fee entry point. Exercise same-result delivery recovery and terminal expiry across the combined system. Test native-USDC isolation with Arc's dedicated execution model; the generic local fee suite does not supply that evidence.
-
-The accounting layer must distinguish ticket receipts, developer allocation, prize purchase budget, confirmed liquid MSS2 acquired, winner liabilities, actual stake credit and participant refunds. Keep operating funds and existing arcade obligations separate. Use explicit parameters and unresolved gates rather than inventing prices, percentages or destinations.
-
-The provider's service-fee refund is not a participant ticket refund; transaction gas remains separate. An external reserve wallet is not contract-enforced escrow. Above-cap fees currently stop a request; safe pre-request amendment/cancellation policy has not been selected and must not permit duplicate draw identities or rerolls.
-
-## Open feasibility and release checks
-
-1. Revalidate current deployments, effective provider/owner authority, fee behavior and availability assumptions before a separately approved public test. Local component milestones do not complete Task 3.
-2. Integrate the fee/draw lifecycle; implement real ticket/prize/developer accounting, swap receipt reconciliation, event uniqueness and dropped/replaced/reorganized transaction handling.
-3. Protect shared-reserve liabilities and confirm exact stake credit; prevent duplicate payouts. Set backed participant-refund and stake-cap shortfall rules without replacing the winner.
-4. Verify real reserve control, signing, wallet/network UX and funding. Complete the already-bound nonzero-referrer fixture; review mutable token/router/pool permissions, liquidity and trade limits.
-5. Approve economics, eligibility, operating payer/limits, cutoff, receivers and release sequence. Run whole-application/arcade regressions, independent security and applicable legal launch review; verify the intended domain before paid entry.
+1. Replace the fixed-rate purchase fixture with the verified chain-specific purchase adapters in isolated forks. Recheck source/runtime, allowances, minimum output, exact stablecoin debit and liquid MSS2 delivery. Test native Arc shared-balance isolation with its dedicated engine.
+2. Connect the outstanding award to owner-signed stake delivery and a receipt/evidence reconciler. Preserve the same winner and unpaid remainder; require exact stake credit and prevent duplicate payment or duplicate event attribution. Do not add a trust-based mark-paid shortcut.
+3. Resolve external reserve custody/backing, the authorization-to-request funding interval, complete arcade obligations and backed ticket-refund/stake-cap policies. A service-fee refund does not reimburse ticket revenue converted to MSS2.
+4. Verify real reserve control and wallet/network UX, provider governance/liveness assumptions and mutable token/router behavior. Complete the bound-referrer fixture and comprehensive application/arcade regressions.
+5. Approve economics, eligibility, schedule, destinations and release sequence; obtain independent security and applicable legal release review; verify the intended domain. Keep paid entries disabled until approval.
 
 ## Detailed records
 
-- [Metadata observations](evidence/daily-draw-metadata-2026-11-09.json)
-- [Initial progress and corrections](mss2-daily-draw-progress-2026-11-09.md)
-- [Stake interface](mss2-daily-draw-staking-interface.md)
+- [Metadata](evidence/daily-draw-metadata-2026-11-09.json) and [initial progress](mss2-daily-draw-progress-2026-11-09.md)
+- [Stake interface and evidence requirements](mss2-daily-draw-staking-interface.md)
 - [Purchase integration](mss2-daily-draw-purchase-integration.md) and [purchase evidence](evidence/daily-draw-swap-2026-11-09.json)
 - [Winner prototype](mss2-daily-draw-winner-selection.md) and [prototype/provider snapshot](evidence/daily-draw-winner-2026-11-09.json)
-- [Provider historical review](mss2-daily-draw-provider-review.md) and [historical evidence](evidence/daily-draw-provider-history-2026-11-09.json)
-- [Actual-coordinator integration](mss2-daily-draw-coordinator-integration.md) and [results](evidence/daily-draw-coordinator-integration-2026-11-09.json)
-- [Operating-fee component](mss2-daily-draw-operating-fees.md) and [accepted evidence](evidence/daily-draw-operating-fees-2026-11-09.json)
+- [Provider historical review](mss2-daily-draw-provider-review.md) and [history evidence](evidence/daily-draw-provider-history-2026-11-09.json)
+- [Coordinator integration](mss2-daily-draw-coordinator-integration.md) and [coordinator evidence](evidence/daily-draw-coordinator-integration-2026-11-09.json)
+- [Operating fees](mss2-daily-draw-operating-fees.md) and [fee evidence](evidence/daily-draw-operating-fees-2026-11-09.json)
+- [Integrated ledger](mss2-daily-draw-integrated-ledger.md) and [integrated evidence](evidence/daily-draw-integrated-2026-11-09.json)
 
-No main merge, existing application/arcade change, public deployment, wallet approval, real purchase, prize payout or production-setting change is authorized by these research results. The draft PR remains for review, not release.
+No main merge, existing application/arcade/dependency change, public deployment, real approval/purchase/airdrop or production-setting change is authorized by these research results. Draft PR #54 remains review only.
