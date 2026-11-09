@@ -118,14 +118,14 @@ contract DailyDrawIntegratedPrototype {
         Round storage r=records[id];
         if(r.phase!=Phase.Closed)revert WrongPhase();
         if(minimumOut<1 ether||deadline<block.timestamp||r.prizeBudget==0)revert InvalidInput();
-        uint256 beforePayment=payment.balanceOf(address(this)),beforePrize=prize.balanceOf(reserve);
+        uint256 beforePayment=payment.balanceOf(address(this));uint256 beforePrize=prize.balanceOf(reserve);
         if(beforePayment<totalPaymentLiability||beforePrize<protectedInitialReserve+totalPrizeLiability)revert Shortfall();
         uint256 input=r.prizeBudget;
         // This narrow fixture adapter never receives a generic calldata target or unlimited approval.
         if(!payment.approve(address(purchase),0)||!payment.approve(address(purchase),input))revert WrongPurchase();
         uint256 reported=purchase.buy(input,minimumOut,deadline,reserve);
         if(!payment.approve(address(purchase),0))revert WrongPurchase();
-        uint256 afterPayment=payment.balanceOf(address(this)),afterPrize=prize.balanceOf(reserve);
+        uint256 afterPayment=payment.balanceOf(address(this));uint256 afterPrize=prize.balanceOf(reserve);
         if(afterPayment!=beforePayment-input||afterPrize<beforePrize+minimumOut||
             reported!=afterPrize-beforePrize||payment.allowance(address(this),address(purchase))!=0)revert WrongPurchase();
         r.spent=input;r.acquired=afterPrize-beforePrize;r.phase=Phase.Funded;
