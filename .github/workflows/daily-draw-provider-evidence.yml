@@ -18,8 +18,8 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/provider-evidence"
           cd "$RUNNER_TEMP/provider-evidence"
-          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/48cf7aaa067484f6574ca083745db3de0f2d771b/scripts/daily-draw-provider-evidence.mjs -o verify.mjs
-          test "$(git hash-object verify.mjs)" = b6a42ef04068f6e122cbcd3902ff408d596b2d9d
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/32b0d96f1d7e065f7a4b83b3023e7744d0720f47/scripts/daily-draw-provider-evidence.mjs -o verify.mjs
+          test "$(git hash-object verify.mjs)" = 32118afea1081324039f0a947fba649f1f17aedd
           node --check verify.mjs
           npm init -y >/dev/null
           npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 @d20dao/vrf-sdk@0.6.2
@@ -32,4 +32,4 @@ jobs:
       - name: Record scope
         if: always()
         run: |
-          printf '%s\n' 'Read-only RPC allowlist; no keys, live requests, wallet approvals or transaction submission.' 'Pinned SDK fixture replays plus separately retrieved receipts and historical state. No production integration, independent crypto implementation, finality or audit claim.' 'Ownership bisection locates an observed transition, not complete ownership history or authorization of real-world controller identity. Provider approval remains false.' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'Read-only RPC allowlist; no keys, live requests, wallet approvals or transaction submission.' 'Pinned SDK fixture replays plus separately retrieved receipts and historical state. Historical block hashes corroborated through another documented endpoint; not consensus or finality proof.' 'Ownership bisection locates an observed transition, not complete ownership history or authorization of real-world controller identity. Provider approval remains false.' >> "$GITHUB_STEP_SUMMARY"
