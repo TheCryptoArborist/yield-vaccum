@@ -20,8 +20,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draw-fork"
           cd "$RUNNER_TEMP/draw-fork"
           curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 \
-            https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/58b82db384153cfe29f61fc4342248bf9874fcba/scripts/daily-draw-stake-rehearsal.mjs -o rehearsal.mjs
-          test "$(git hash-object rehearsal.mjs)" = 861fff9b2c8aec97212213cbcd9db6f847002ca0
+            https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/cb576bf04e56c20447d64e2057febbc662bb1959/scripts/daily-draw-stake-rehearsal.mjs -o rehearsal.mjs
+          test "$(git hash-object rehearsal.mjs)" = 87e4f8113e6c72f486c9b68da6342f33af1b7050
           node --check rehearsal.mjs
           npm init -y >/dev/null
           npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 hardhat@2.26.3
@@ -38,4 +38,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          printf '%s\n' 'Mainnet traffic goes through an explicit read-only allowlist. All transaction requests target an in-process Hardhat fork.' 'No wallet keys, repository write permissions, production application changes or mainnet transactions.' 'A passing staking rehearsal does not verify stablecoin purchase routes, random winner selection, wallet control or legal/security release readiness.' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'Mainnet traffic goes through an explicit read-only allowlist. All transaction requests target an in-process Hardhat fork.' 'No wallet keys, repository write permissions, production application changes or mainnet transactions.' 'The staking-only EVM model explicitly defaults absent blob header fields to zero; this is not network-consensus validation.' 'A passing staking rehearsal does not verify stablecoin purchase routes, random winner selection, wallet control or legal/security release readiness.' >> "$GITHUB_STEP_SUMMARY"
