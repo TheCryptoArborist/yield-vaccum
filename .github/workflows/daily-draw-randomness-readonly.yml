@@ -1,0 +1,37 @@
+name: Daily Draw read-only randomness deployment checks
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-randomness-readonly.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-randomness-readonly
+  cancel-in-progress: false
+jobs:
+  observe:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fetch and check pinned read-only script
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-randomness"
+          cd "$RUNNER_TEMP/draw-randomness"
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/02cb3f9fbefc0a363445a1d1484aab1eecb4d986/scripts/daily-draw-randomness-readonly.mjs -o observe.mjs
+          test "$(git hash-object observe.mjs)" = 22ff84d5c5515d2a470bf096b9f943826b675406
+          node --check observe.mjs
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0
+      - name: Compare public deployments and read-only fee quotes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/draw-randomness"
+          node observe.mjs
+      - name: Record boundaries
+        if: always()
+        shell: bash
+        run: |
+          printf '%s\n' 'Only bounded public reads and ABI-declared view calls. No consumer requests, private keys, paid services, or transaction submission.' 'A matching deployment manifest is not a cryptographic audit, a historical proof replay, consumer fulfillment, provider liveness proof, or release approval.' >> "$GITHUB_STEP_SUMMARY"
