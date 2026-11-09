@@ -1,84 +1,94 @@
 # MSS2 Daily Draw — current two-chain readiness index
 
-Updated 2026-11-09 UTC. Tracker: TheCryptoArborist/yield-vaccum #53. Draft review PR: #54.
+Updated 2026-11-09 UTC. Issue #53; Draft PR #54.
 Research branch: `research/mss2-daily-draw-readiness`.
 Application/main baseline: `c94d6a0f8a7884d818c907b86749eda1ff068237`.
 
-**Latest completed milestone: a Postgres-backed research payout store passed 62 database checks and a separate actual database-server restart check in run 42626166537. It durably reserves attempts/nonces, binds matching replacements, credits verified receipts once and freezes ambiguous/reorganized payouts. These tests use synthetic receipt evidence, not new network forks. On-chain liability settlement remains unimplemented. Task 3 and production/provider approval remain open.**
+**Latest completed milestone: read-only award/evidence ingestion is connected to durable Postgres records and the real-market private-fork rehearsal. Run 42628540736 passed 20 new reader cases plus 23 retained market/receipt/swap cases per fork (43/0 each), plus a separate rerun of 62 persistence checks and an actual database-server restart. This closes the initial synthetic-to-fork-receipt persistence integration, not public release or on-chain settlement. Task 3 remains open; paid entries and provider approval remain disabled.**
 
-Start with [the persistence report](mss2-daily-draw-persistence.md) and [normalized evidence](evidence/daily-draw-persistence-2026-11-09.json). The preceding market-ledger index is preserved at commit `1f9cb1e8984faaa3a5c7fb0547349e282bf74458`. Historical reports retain their source revisions, failures and limitations.
+Start with [the chain-reader report](mss2-daily-draw-chain-reader.md) and [normalized evidence](evidence/daily-draw-chain-reader-2026-11-09.json). The previous complete index is preserved at commit `271f68b57c8acbc8a591adbc9fc413321d5e878d`. Earlier reports retain their failures, source revisions and scope limitations.
 
 ## Confirmed product direction
 
-- Work stays in Yield Vacuum, not the MintStakeShare GitHub. Intended host: `www.yieldvaccum.com`; domain/TLS/deployment mapping still requires release verification.
-- Separate daily chain-local draws, tickets and prizes; one winner per participating chain and equal chance per ticket. No first-version referral, streak or stake-size weighting.
-- USDG tickets on Robinhood; USDC tickets on Arc. A published portion buys LIQUID MSS2 through ordinary Buy, not Buy & Stake. A separate portion is allocated to the developer.
-- Owner-signed prize delivery adds directly to the winner's MSS2 stake from `0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7`. Administrator sign-in ending 8789 is not spending authority.
-- Freeze ticket ownership and outcome-relevant inputs; one accepted request/result per round; no manual winner, reopened entries, replacement outcome or failure-driven redraw.
-- Keep existing arcade funds, allocation, theme and application behavior unchanged. Shared-wallet accounting is not escrow or permission to spend arcade rewards.
+- Work stays in Yield Vacuum, not the MintStakeShare GitHub. Intended host: `www.yieldvaccum.com`; domain/TLS/deployment mapping remains a release check.
+- Separate daily chain-local draws, tickets and prizes; one winner per participating chain; equal odds per ticket. No referral, streak or stake-size weighting in the first-version direction.
+- USDG tickets on Robinhood; USDC tickets on Arc. A published allocation buys LIQUID MSS2 through ordinary Buy, not Buy & Stake. A separate allocation is developer revenue.
+- Owner-signed prize delivery adds to the winner's stake from `0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7`. Administrator sign-in ending 8789 is separate from spending authority.
+- Lock outcome-relevant inputs and ticket ownership before randomness. One accepted request/result; no administrator-selected winner, reroll, reopened entries or replacement winner after failure.
+- Existing arcade allocations, funds, theme, dependencies and application behavior remain unchanged. Shared-wallet accounting is not escrow or authorization to consume arcade rewards.
 
-Ticket price, revenue percentages, payment/developer receivers, operating payer/limits, precise timing, eligibility, purchase timing, launch sequence, backed participant refunds, stake-cap shortfall policy and on-chain settlement authority remain unresolved. Fixture percentages/amounts do not settle them. D20DAO remains a candidate, not a production-approved dependency.
+Prices, allocation percentages, receiver addresses, operating payer/limits, schedule, eligibility, purchase timing, launch order, custody/backing, participant refunds, stake-cap shortfalls and on-chain settlement authority remain unresolved. Test quantities/percentages/confirmation counts do not approve production policy. D20DAO remains a candidate, not a production-approved provider.
 
-## Evidence ledger — retain separate scopes
+## Evidence ledger — separate scopes
 
-| Milestone | Accepted evidence | Scope |
+| Milestone | Accepted run | Scope |
 |---|---|---|
-| Live metadata | 42554165659 and 42554430282 | Payment/MSS2 reads and checker tests; latter's original explorer lookup failed, subsequently addressed. |
-| Direct-to-stake delivery | 42556404173: 16 cases per chain | Isolated forks/simulated sender; not real wallet control or application deduplication. |
-| Liquid purchase and gift | 42558269951: 7 cases per chain | Real forked market/staking contracts, fixed beneficiary. |
-| Mock winner prototype | 42563327635: 36 categories twice plus 2 chain guards | Mock coordinator/token; 74 local executions. |
-| Historical provider proofs/ownership | 42566437894: 4 samples, 20 rejected alterations | SDK replay plus historical chain checks; not independent crypto or future liveness. |
-| Actual coordinator source integration | 42611914241: 20 categories per mode | Local verification/callbacks/recovery with public fixture key/signatures, not live keeper. |
-| Standalone fee module | 42614410076: 35 categories per mode | Capped fees, payer credits and request-specific refund accounts. |
-| Integrated initial ledger | 42617426146: 43 integrated + 35 fee regressions per mode | Actual provider source, but fake payment/prize/purchase contracts. |
-| Real market-ledger and stake receipts | 42621984190: 16 new + 7 retained swap categories per fork | Real forked assets/router/staking, dedicated Arc engine, deterministic mock coordinator, original in-memory receipt book. |
-| Persistent payout reservations | 42626166537: 62 checks plus server restart | Real local Postgres and competing/crashed processes, synthetic receipts, unchanged receipt verifier. No on-chain settlement. |
+| Live metadata | 42554165659 / 42554430282 | Metadata reads/checker tests; original explorer gap retained in history. |
+| Direct-to-stake delivery | 42556404173 | 16 cases per fork; simulated sender, not real wallet control. |
+| Original liquid purchase/gift | 42558269951 | Seven cases per fork; actual forked market and staking contracts, fixed beneficiary. |
+| Mock winner prototype | 42563327635 | 36 categories twice plus two public-chain guards; mock token/coordinator. |
+| Provider history/ownership | 42566437894 | Four historical samples, 20 rejected alterations; not independent cryptographic audit or future liveness. |
+| Actual coordinator source integration | 42611914241 | 20 categories per local implementation, public test key/historical beacon signatures. |
+| Standalone fee module | 42614410076 | 35 categories per mode; capped fees/payer credits/request refund accounts. |
+| Initial integrated ledger | 42617426146 | 43 integrated + 35 fee cases per mode; actual provider source, fake tokens/purchase. |
+| Real-market ledger/receipt forks | 42621984190 | 16 new + seven retained cases per fork; real forked assets, Arc native engine, mock randomness, in-memory book. |
+| Durable payout store | 42626166537 | 62 database checks plus server restart; synthetic receipt evidence. |
+| Durable read-only ingestion with fork receipts | 42628540736 | 20 new + 23 retained cases per fork; actual fork receipts and local Postgres, mock randomness. Separate 62-check regression/server restart rerun once. |
 
-The persistence run did not rerun any earlier chain/provider/market suite. Its 62 checks are 29 categories repeated for local IDs 31337/31338 plus four shared checks. Do not combine unlike totals into a security certification.
+The latest suite has 40 new reader executions and 46 retained fork executions, not 86 unique scenarios. Its 62 synthetic-evidence persistence regressions remain separate. No actual-provider suite was rerun in this step. Do not sum unlike totals into a security certification.
 
-## Connected behavior and limits
+## What is now connected
 
-The previously tested fork flow is stablecoin tickets -> allocate -> real Topaz purchase of liquid MSS2 -> lock ticket/funding digest -> capped fee request -> known test result -> selected ticket owner -> owner-impersonated stake gift -> receipt/event reconciliation. Original controller/fee sources remain unchanged. The fixed-route adapter checks actual input/output and resets exact allowances. Arc's native/token balance relation was exercised in that purchase/request path.
+The private-fork path is stablecoin tickets -> close/allocate -> real Topaz liquid MSS2 purchase -> locked inputs -> capped fee request -> deterministic test result -> selected ticket owner -> durable reservation -> simulated reserve-signed stake gift -> read-only receipt ingestion -> persistent exact credit/unpaid remainder.
 
-The new Postgres store reuses the original receipt verifier, adds durable row-lock reservations, permanent chain/sender/nonce and transaction/log uniqueness, idempotency and exact integer accounting. Repeated or concurrent reconciliation credits once. A matching replacement belongs to the same attempt; altered instructions freeze the sender lane. Pending/unknown receipts never unlock a fresh signature merely because a worker restarted or time elapsed.
+The worker derives the award from the selection transaction/event and block-qualified contract state, rather than accepting a browser-provided winner or amount. It checks deployment pins, stake implementation, configured targets, ticket ownership, recorded award and confirmations. Payout observation fetches fresh transaction/receipt/header/selection evidence through a strict read-only method boundary.
 
-A positively contradicted payout inclusion restores its local unpaid amount once and freezes new reservations from the sender on that chain. Missing evidence after credit triggers review without pretending the payment never happened. Reorg unfreezing/recrediting and abandoned pre-signature cancellation are not implemented recovery procedures. Original winner and historical evidence remain recorded.
+The original controller, fee contract, purchase adapter, database schema, base payout store and receipt verifier remain unchanged. New reader files add archived-evidence access and a fail-closed review transition. Source-pinned test hooks append cases without removing existing assertions.
 
-**Persistence is now tested, but not connected to the full live/fork application flow.** SQL stays under research, outside automatic Netlify migrations. The runtime rejects remote/production database configuration and public chain IDs. No application database was accessed.
+Four concurrent reader instances credit one actual fork receipt once. Client recreation preserves reservations and credits. Partial/zero stake credits retain the original winner and exact unpaid amount. An actual local snapshot rollback is detected through fresh headers; archived verified inclusion is used only to reverse a positively contradicted local credit once and freeze the sender. Missing evidence alone does not erase earlier payment or authorize resending.
 
-**On-chain settlement remains open.** A receipt can be `PaidInDatabase`, while the unchanged contract still shows `AwardPending` with full liability. The transactional settlement outbox is held for authority review and cannot dispatch. No administrator mark-paid shortcut or receipt-proof claim was added. A reserve-signed attestation would be explicitly operator-attested accounting, not trustless proof; no new authority/custody policy is approved here.
+The reader is an internal, synchronously invoked research component—not a production RPC watcher, replacement-discovery daemon, wallet UI or authenticated public API. Postgres remains loopback-only with research-name guards; SQL is outside automatic Netlify migration paths. Runtime pins and 1/2-confirmation fixture policies are not production approvals.
 
-External reserve balances remain owner-controlled. Initial quarantine is not a full inventory of later arcade obligations. The reserve can be depleted after authorization. The fixed winner must still be recorded and its unpaid award retained. Randomness-service refunds are not participant refunds.
+## Settlement boundary — next design gate
 
-## Existing integration targets
+**A verified database credit is not an on-chain liability decrement.** The unchanged contract still records AwardPending and the full obligation. Outbox entries remain HeldForAuthorityReview. No signer, dispatcher, force-paid endpoint or new attestation/custody authority was introduced.
 
-Revalidate before public authorization: Robinhood chain 4663, USDG `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168`; Arc chain 5042, USDC ERC-20 view `0x3600000000000000000000000000000000000000`. Observed payment decimals are 6; Arc native units use 18 decimals over the same balance.
+The next scoped work is a settlement-authority design for developer/user review, preserving the chosen direct-wallet sender. A narrowly scoped reserve-signed accounting acknowledgment is operator-attested, not trustless receipt proof. Atomic escrow payout and verified receipt-proof designs have different custody, trust and implementation requirements. Do not silently choose one through a reader update.
 
-MSS2: `0x091F0c7e675A787A4018eb47c30BeD3FA2013B65`, 18 decimals on each chain. Gift entry: token `airdropStake(address[],uint256[])`, no separate MSS2 allowance but explicit sender authorization. Historical minimum offer 1 MSS2 and mutable 25,000,000 stake cap. Successful receipts may credit partially or not at all; repeated independent gifts can pay twice. Source/runtime qualifications remain in the staking report.
+After that decision, connect the reviewed settlement transition and actual-provider behavior to the complete market/database acceptance path. Public rollout additionally requires production authentication, wallet handoff, replacement discovery, durable post-credit monitoring, reviewed unfreeze/cancellation procedures, database roles/backups and incident recovery.
 
-## Provider review
+## Existing targets and material limitations
 
-The former Robinhood owner discrepancy is explained by the checked October 21, 2026 transfer at block 94,329,459; the manifest still lists its old owner. Historical samples and actual-source local callbacks have separate evidence. They do not establish complete upgrade/module/guard authority, current live operational equivalence, future fulfillment or independent audit. Neither deterministic fork outcomes nor synthetic database receipt fixtures are live-provider acceptance evidence.
+Historical integration targets must be revalidated before public authorization:
 
-## Next scoped milestone and release gates
+| Item | Robinhood | Arc |
+|---|---|---|
+| Source chain ID | 4663 | 5042 |
+| Ticket token | USDG `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168` | USDC `0x3600000000000000000000000000000000000000` |
+| Payment units | Six decimals | Six-decimal token view and 18-decimal native view of the same underlying balance |
+| Purchase route | USDG -> WETH -> liquid MSS2 | USDC -> liquid MSS2 |
 
-1. Connect a read-only award/evidence ingestion worker and this durable store to the existing isolated market rehearsal. Use actual fork receipts; do not accept a browser-provided paid amount. Verify durable duplicate prevention and source selection anchors across that complete path.
-2. Review and approve the on-chain/off-chain settlement authority and liability decrement model. The held outbox is not authorization to mutate contracts. Add explicit reorg and abandoned-attempt incident procedures, production database roles/backups and signer handoff controls.
-3. Exercise the market/settlement path with actual-provider behavior under appropriate isolated/separately authorized test conditions. Preserve one result, original winner and exact unpaid remainder.
-4. Resolve custody/backing, authorization-to-request timing, complete arcade obligations, backed ticket refunds and cap-shortfall policies. Revalidate token/router/provider implementations and governance. Verify real reserve control, wallet/network UX, bound-referrer behavior, application/arcade regressions and provider liveness/withholding.
-5. Approve economics, eligibility, schedule, destinations and release sequence; obtain independent security/applicable legal review and verify the intended domain. Paid entries remain disabled.
+MSS2 token on each chain: `0x091F0c7e675A787A4018eb47c30BeD3FA2013B65`, 18 decimals. Gift entry is token `airdropStake(address[],uint256[])`; no separate MSS2 allowance is needed, but the sender signs. Historical minimum offer is 1 MSS2, and the observed mutable stake cap is 25,000,000 per wallet/chain. Successful receipts can credit partially or zero. Independent repeated transactions can pay twice. Detailed source/runtime and event checks remain in the staking/purchase reports.
+
+The external reserve remains owner-controlled, not escrow. Initial balance quarantine is not a complete inventory of arcade obligations. Funds can leave after authorization. Existing obligations, protected refund funding and the authorization-to-request interval still need resolution.
+
+Robinhood provider ownership history explains the October 21, 2026 transfer at block 94,329,459; the published manifest remains stale. Complete effective upgrade/module/guard authority, future fulfillment/withholding and independent security review remain open. Historical proof and local coordinator success are not live service guarantees.
+
+## Remaining release gates
+
+1. Approve and test settlement authority/liability reduction and reconnect genuine provider behavior to the full isolated acceptance path.
+2. Resolve economics, eligibility, timing, receivers, operating costs, custody/backing, arcade liabilities, backed participant refunds and stake-cap shortfalls.
+3. Verify real reserve control, account/network signing UX, bound-referrer behavior and current token/router/provider implementations and authority.
+4. Add reviewed operational monitoring, nonce/replacement discovery, authentication/roles, backup restoration and recovery procedures; rechecks are not blockchain-atomic or cryptographic finality proofs.
+5. Complete full application/arcade regressions, independent security and applicable legal launch review, and intended-domain verification. Keep paid entries disabled until authorized.
 
 ## Detailed records
 
 - [Metadata](evidence/daily-draw-metadata-2026-11-09.json) and [initial progress](mss2-daily-draw-progress-2026-11-09.md)
-- [Stake interface](mss2-daily-draw-staking-interface.md)
-- [Purchase integration](mss2-daily-draw-purchase-integration.md) and [purchase evidence](evidence/daily-draw-swap-2026-11-09.json)
-- [Winner prototype](mss2-daily-draw-winner-selection.md) and [provider snapshot](evidence/daily-draw-winner-2026-11-09.json)
-- [Provider history](mss2-daily-draw-provider-review.md) and [history evidence](evidence/daily-draw-provider-history-2026-11-09.json)
-- [Coordinator integration](mss2-daily-draw-coordinator-integration.md) and [coordinator evidence](evidence/daily-draw-coordinator-integration-2026-11-09.json)
-- [Operating fees](mss2-daily-draw-operating-fees.md) and [fee evidence](evidence/daily-draw-operating-fees-2026-11-09.json)
-- [Initial integrated ledger](mss2-daily-draw-integrated-ledger.md) and [integrated evidence](evidence/daily-draw-integrated-2026-11-09.json)
-- [Market-ledger/receipts](mss2-daily-draw-market-ledger.md) and [fork evidence](evidence/daily-draw-market-ledger-2026-11-09.json)
-- [Durable payouts](mss2-daily-draw-persistence.md) and [persistence evidence](evidence/daily-draw-persistence-2026-11-09.json)
+- [Staking interface](mss2-daily-draw-staking-interface.md) and [purchase integration](mss2-daily-draw-purchase-integration.md)
+- [Winner prototype](mss2-daily-draw-winner-selection.md) and [provider historical review](mss2-daily-draw-provider-review.md)
+- [Coordinator integration](mss2-daily-draw-coordinator-integration.md) and [operating fees](mss2-daily-draw-operating-fees.md)
+- [Initial ledger](mss2-daily-draw-integrated-ledger.md) and [real-market/receipt forks](mss2-daily-draw-market-ledger.md)
+- [Persistence](mss2-daily-draw-persistence.md) and [durable chain reader](mss2-daily-draw-chain-reader.md)
 
-No main merge, existing application/arcade/dependency change, production database/migration, public contract deployment, real approval/purchase/airdrop or production-setting change is authorized by these results. Draft PR #54 remains review only.
+No main merge, existing application/arcade/dependency change, production database/migration, public contract deployment, real approval/purchase/airdrop or production-setting change is authorized by these research results. Draft PR #54 remains review only.
