@@ -20,12 +20,14 @@ jobs:
           [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
           mkdir -p "$RUNNER_TEMP/daily-draw-readonly/scripts"
           cd "$RUNNER_TEMP/daily-draw-readonly"
-          for file in daily-draw-readiness.mjs daily-draw-readiness.test.mjs; do
+          for file in daily-draw-readiness.mjs daily-draw-readiness.test.mjs daily-draw-contract-discovery.mjs daily-draw-contract-discovery.test.mjs; do
             curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 30 \
               "https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/$GITHUB_SHA/scripts/$file" -o "scripts/$file"
           done
           test "$(git hash-object scripts/daily-draw-readiness.mjs)" = 9c1dba913a0483b5529ca97bfc95e996af533022
           test "$(git hash-object scripts/daily-draw-readiness.test.mjs)" = df8ce3b77e933821e9fff0fe061485ba14282f4f
+          test "$(git hash-object scripts/daily-draw-contract-discovery.mjs)" = 21f5836cf53800b97104e191409abf567bad8f14
+          test "$(git hash-object scripts/daily-draw-contract-discovery.test.mjs)" = c29449c19f211be3a06b8a563d239d021dc669c4
           node --version
           node -e 'if (Number(process.versions.node.split(".")[0]) < 22) process.exit(1)'
       - name: Run read-only checker fixtures
@@ -33,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP/daily-draw-readonly"
-          node --test scripts/daily-draw-readiness.test.mjs
+          node --test scripts/daily-draw-readiness.test.mjs scripts/daily-draw-contract-discovery.test.mjs
       - name: Observe public mainnet metadata without transactions
         id: metadata
         shell: bash
@@ -41,13 +43,22 @@ jobs:
           set -euo pipefail
           cd "$RUNNER_TEMP/daily-draw-readonly"
           node scripts/daily-draw-readiness.mjs observations.json
+      - name: Read public explorer ABI and gift-source excerpts
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/daily-draw-readonly"
+          node scripts/daily-draw-contract-discovery.mjs contracts.json
       - name: Print bounded public evidence and scope
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP/daily-draw-readonly"
-          if test -f observations.json; then
-            node --input-type=module -e 'import {readFileSync} from "node:fs"; const s=readFileSync("observations.json","utf8"); if(s.length>131072)throw Error("Oversized evidence"); const r=JSON.parse(s); console.log("BEGIN_DAILY_DRAW_READONLY_EVIDENCE"); console.log(JSON.stringify(r,null,2)); console.log("END_DAILY_DRAW_READONLY_EVIDENCE");'
+          for report in observations.json contracts.json; do
+          if test -f "$report"; then
+            node --input-type=module -e 'import {readFileSync} from "node:fs"; const s=readFileSync(process.argv[1],"utf8"); if(s.length>131072)throw Error("Oversized evidence"); const r=JSON.parse(s); console.log("BEGIN_DAILY_DRAW_READONLY_EVIDENCE"); console.log(JSON.stringify(r,null,2)); console.log("END_DAILY_DRAW_READONLY_EVIDENCE");' "$report"
           fi
+          done
           printf '%s\n' 'No secrets, repository checkout credentials, package installs, transactions or deployment steps are used.' 'Metadata observations are not swap/payout simulations or release approval.' >> "$GITHUB_STEP_SUMMARY"
