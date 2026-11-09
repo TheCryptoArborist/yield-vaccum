@@ -1,0 +1,41 @@
+name: Daily Draw isolated staking fork rehearsal
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-stake-rehearsal.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-stake-rehearsal-research
+  cancel-in-progress: false
+jobs:
+  rehearse:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch pinned rehearsal and install isolated test tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-fork"
+          cd "$RUNNER_TEMP/draw-fork"
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 \
+            https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/58b82db384153cfe29f61fc4342248bf9874fcba/scripts/daily-draw-stake-rehearsal.mjs -o rehearsal.mjs
+          test "$(git hash-object rehearsal.mjs)" = 861fff9b2c8aec97212213cbcd9db6f847002ca0
+          node --check rehearsal.mjs
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 hardhat@2.26.3
+      - name: Rehearse both chains without broadcasting
+        shell: bash
+        run: |
+          set -uo pipefail
+          cd "$RUNNER_TEMP/draw-fork"
+          result=0
+          node rehearsal.mjs robinhood || result=1
+          node rehearsal.mjs arc || result=1
+          exit "$result"
+      - name: Record the exact safety scope
+        if: always()
+        shell: bash
+        run: |
+          printf '%s\n' 'Mainnet traffic goes through an explicit read-only allowlist. All transaction requests target an in-process Hardhat fork.' 'No wallet keys, repository write permissions, production application changes or mainnet transactions.' 'A passing staking rehearsal does not verify stablecoin purchase routes, random winner selection, wallet control or legal/security release readiness.' >> "$GITHUB_STEP_SUMMARY"
