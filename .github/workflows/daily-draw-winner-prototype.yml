@@ -20,7 +20,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draw-winner/research/daily-draw" "$RUNNER_TEMP/draw-winner/protocol/contracts/interfaces" "$RUNNER_TEMP/draw-winner/protocol/contracts/libraries"
           cd "$RUNNER_TEMP/draw-winner"
           fetch() { curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 30 "$1" -o "$2"; }
-          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/c300a7d35c36f4e54c957c0ba9d3aa68a94e0d18
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/a2be329e04eea46ccffade86feb560ab108e3f24
           SDK=https://raw.githubusercontent.com/d20dao/d20-sdk/fc4b546c06017703b0508ef2182d2030d789c966
           fetch "$ROOT/research/daily-draw/DailyDrawPrototype.sol" research/daily-draw/DailyDrawPrototype.sol
           fetch "$ROOT/scripts/daily-draw-winner-prototype.mjs" runner.mjs
@@ -28,7 +28,7 @@ jobs:
           fetch "$SDK/protocol/contracts/interfaces/ID20VRF.sol" protocol/contracts/interfaces/ID20VRF.sol
           fetch "$SDK/protocol/contracts/libraries/RandomnessMapping.sol" protocol/contracts/libraries/RandomnessMapping.sol
           test "$(git hash-object research/daily-draw/DailyDrawPrototype.sol)" = 7c6471f8154d9b71d19aad1d3ad5c463135c5d9a
-          test "$(git hash-object runner.mjs)" = 2c637634f7762f309c91e12d1bce8bd5e0326493
+          test "$(git hash-object runner.mjs)" = eac0716e805e00c54e0564ab0958da19df135f35
           test "$(git hash-object protocol/contracts/D20VRFConsumer.sol)" = 59577fae953ab062cdeb401ae0995d0571a35eca
           test "$(git hash-object protocol/contracts/interfaces/ID20VRF.sol)" = 52ce477699a16c18c9e86a067087b585e6cbfa37
           test "$(git hash-object protocol/contracts/libraries/RandomnessMapping.sol)" = 03747dddcdc68f2e8c421a34056ffe06611e1f8b
@@ -44,9 +44,10 @@ jobs:
           node runner.mjs 31337 || result=1
           node runner.mjs 31338 || result=1
           node runner.mjs 4663 || result=1
+          node runner.mjs 5042 || result=1
           exit "$result"
       - name: Record test scope
         if: always()
         shell: bash
         run: |
-          printf '%s\n' 'Fresh local Hardhat networks only. No public RPC, mainnet transactions, real tokens, production deployment, wallet authorization, or configured secrets.' 'Mock coordinator exercises application lifecycle; it does NOT verify live D20 proofs, provider liveness, deployed upgrade safety, paid-entry accounting or real refunds.' 'The 4663 case is a local emulator that must reject construction. Test prices and prize commitments are fixtures, not approved economics or reserve funding.' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'Fresh local Hardhat networks only. No public RPC, mainnet transactions, real tokens, production deployment, wallet authorization, or configured secrets.' 'Mock coordinator exercises application lifecycle; it does NOT verify live D20 proofs, provider liveness, deployed upgrade safety, paid-entry accounting or real refunds.' 'The 4663/5042 cases are local emulators that must reject construction. Test prices and prize commitments are fixtures, not approved economics or reserve funding.' >> "$GITHUB_STEP_SUMMARY"
