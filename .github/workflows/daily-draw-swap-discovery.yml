@@ -1,0 +1,55 @@
+name: Daily Draw read-only swap discovery
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-swap-discovery.yml]
+permissions: {}
+jobs:
+  inspect:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Inspect same-chain routing without signing or broadcasting
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-swap-discovery"
+          cd "$RUNNER_TEMP/draw-swap-discovery"
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0
+          cat > inspect.mjs <<'JS'
+          import assert from 'node:assert/strict';
+          import {Interface,getAddress,keccak256,solidityPacked} from 'ethers';
+          import {setTimeout as delay} from 'node:timers/promises';
+          const TOKEN='0x091F0c7e675A787A4018eb47c30BeD3FA2013B65';
+          const ROUTER='0x2e7395A6E0De6eE1f390bEcE891069Cd18Ff8572', QUOTER='0xA9Cd3aC90513663197E7Fd6c932f63f0C40701be', FACTORY='0xaa5865dC3A60b25D305226d66fd573021f0D8fFB';
+          const WETH='0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73';
+          const nets=[{key:'robinhood',id:4663,rpc:'https://rpc.mainnet.chain.robinhood.com',payment:'0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168'},{key:'arc',id:5042,rpc:'https://rpc.mainnet.arc.io',payment:'0x3600000000000000000000000000000000000000'}];
+          const methods=new Set(['eth_chainId','eth_getBlockByNumber','eth_getCode','eth_getStorageAt','eth_call']);
+          const serialize=v=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?x.toString():x);
+          async function json(url,options={}){let r;for(let i=0;i<3;i++){r=await fetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(20000)});if(r.status!==429&&r.status!==503)break;await r.body?.cancel();await delay(3000*(i+1));}if(!r.ok)throw Error(`HTTP ${r.status}`);const s=await r.text();assert(s.length<6000000);return JSON.parse(s);}
+          let id=0;
+          async function rpc(n,method,params){assert(methods.has(method));await delay(450);const requestId=++id,v=await json(n.rpc,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:requestId,method,params})});assert.equal(v.id,requestId);if(v.error)throw Error(String(v.error.message).slice(0,250));return v.result;}
+          async function src(n,address){const a=getAddress(address),v=await json(`https://sourcify.dev/server/v2/contract/${n.id}/${a}?fields=abi,compilation,runtimeBytecode,sources,storageLayout`);assert.equal(String(v.chainId),String(n.id));assert.equal(getAddress(v.address),a);assert(['match','exact_match'].includes(v.runtimeMatch),'Unverified runtime');return v;}
+          const report={createdAt:new Date().toISOString(),scope:'Read-only source, live runtime, pool and quotation observations. Non-exact source matches are explicitly recorded, not called exact. No approvals, swaps or signing. Not release approval.',livePaymentEnabled:false,networks:{}};
+          for(const n of nets){const o=report.networks[n.key]={contracts:{},pools:[],quotes:[]};try{
+            assert.equal(BigInt(await rpc(n,'eth_chainId',[])),BigInt(n.id));const block=await rpc(n,'eth_getBlockByNumber',['latest',false]);o.anchor={number:block.number,hash:block.hash};
+            const records={};
+            for(const [role,address] of Object.entries({router:ROUTER,quoter:QUOTER,factory:FACTORY})){const s=await src(n,address),code=await rpc(n,'eth_getCode',[address,block.number]);assert.equal(code.toLowerCase(),s.runtimeBytecode.onchainBytecode.toLowerCase());records[role]=s;o.contracts[role]={address,name:s.compilation?.name,keccak256:keccak256(code),sourceRuntimeMatch:s.runtimeMatch,liveRuntimeMatchesRecord:true,functions:s.abi.filter(a=>a.type==='function'&&/exactInput|quoteExactInput|factory|WETH|Pool|Spacing|multicall/.test(a.name))};}
+            const fi=new Interface(records.factory.abi),qi=new Interface(records.quoter.abi);
+            const read=async(address,abi,name,args=[])=>abi.decodeFunctionResult(name,await rpc(n,'eth_call',[{to:address,data:abi.encodeFunctionData(name,args)},block.number]));
+            o.routerFactory=(await read(ROUTER,new Interface(records.router.abi),'factory'))[0];assert.equal(getAddress(o.routerFactory),FACTORY);
+            let spacings=[1,10,50,100,200,2000];
+            if(fi.hasFunction('tickSpacings()')){spacings=Array.from((await read(FACTORY,fi,'tickSpacings'))[0]).map(Number);}o.tickSpacings=spacings;
+            const pairs=n.key==='arc'?[[n.payment,TOKEN]]:[[n.payment,WETH],[WETH,TOKEN],[n.payment,TOKEN]];
+            for(const [a,b] of pairs){for(const ts of spacings){const p=(await read(FACTORY,fi,'getPool',[a,b,ts]))[0];if(BigInt(p)===0n)continue;const pcode=await rpc(n,'eth_getCode',[p,block.number]);o.pools.push({tokenIn:a,tokenOut:b,tickSpacing:ts,address:p,codeKeccak256:keccak256(pcode)});}}
+            const routes=n.key==='arc'?o.pools.filter(p=>p.tokenIn===n.payment).map(p=>[p]):o.pools.filter(p=>p.tokenIn===n.payment&&p.tokenOut===WETH).flatMap(p=>o.pools.filter(q=>q.tokenIn===WETH&&q.tokenOut===TOKEN).map(q=>[p,q])).concat(o.pools.filter(p=>p.tokenIn===n.payment&&p.tokenOut===TOKEN).map(p=>[p]));
+            for(const hops of routes.slice(0,12)){const types=['address'],values=[n.payment];for(const h of hops){types.push('uint24','address');values.push(h.tickSpacing,h.tokenOut);}const path=solidityPacked(types,values);try{const r=await read(QUOTER,qi,'quoteExactInput',[path,1000000n]);o.quotes.push({hops,path,amountInRaw:'1000000',amountOutRaw:r[0],otherQuoteFields:Array.from(r).slice(1)});}catch(e){o.quotes.push({hops,path,error:e.message});}}
+            try{const s=await src(n,n.payment);o.paymentSource={name:s.compilation?.name,sourceRuntimeMatch:s.runtimeMatch,storageLayout:s.storageLayout,sourceFiles:Object.keys(s.sources??{}),transferExcerpts:Object.entries(s.sources??{}).filter(([p])=>!p.includes('interfaces')).flatMap(([p,s])=>{const text=s.content??'';const matches=[...text.matchAll(/function\s+(?:transferFrom|balanceOf|_transfer)\b/g)];return matches.slice(0,3).map(m=>({path:p,text:text.slice(Math.max(0,m.index-80),m.index+2100)}));}).slice(0,5)};}catch(e){o.paymentSource={error:e.message};}
+            assert.equal((await rpc(n,'eth_getBlockByNumber',[block.number,false])).hash,block.hash);o.status=o.quotes.some(q=>BigInt(q.amountOutRaw??0)>0n)?'route_quoted':'no_route_quoted';
+          }catch(e){o.status='blocked';o.error=e.message;} }
+          console.log('BEGIN_SWAP_DISCOVERY');console.log(serialize(report));console.log('END_SWAP_DISCOVERY');
+          if(Object.values(report.networks).some(n=>n.status!=='route_quoted'))process.exitCode=1;
+          JS
+          node inspect.mjs

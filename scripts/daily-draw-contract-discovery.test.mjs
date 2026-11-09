@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readPublicContract,summarize} from './daily-draw-contract-discovery.mjs';
+test('unsupported explorers never issue a request',async()=>{let calls=0;await assert.rejects(readPublicContract('evil',async()=>{calls++;}));assert.equal(calls,0);});
+test('public source retrieval uses GET with no credentials or redirects',async()=>{const r=await readPublicContract('arc',async(url,opts)=>{assert.match(url,/^https:\/\/explorer\.arc\.io\/api\/v2\/smart-contracts\/0x/);assert.equal(opts.method,'GET');assert.equal(opts.redirect,'error');assert.deepEqual(opts.headers,{Accept:'application/json'});return new Response(JSON.stringify({abi:[],source_code:''}));});assert.equal(r.rawSha256.length,64);});
+test('non-OK, malformed and array responses are rejected',async()=>{for(const r of [new Response('',{status:403}),new Response('no json'),new Response('[]')])await assert.rejects(readPublicContract('arc',async()=>r));});
+test('oversized source responses are rejected',async()=>{await assert.rejects(readPublicContract('arc',async()=>new Response('x'.repeat(2_000_001))));});
+test('summary never infers verification flags',()=>{const r=summarize({url:'public',rawSha256:'x',value:{abi:[]}});assert.equal(r.explorerVerificationFlags.is_verified,null);assert.equal(r.explorerVerificationFlags.is_fully_verified,null);assert.match(r.scope,/Not independently compiled/);});
+test('summary retains relevant ABI and bounded source excerpts',()=>{const r=summarize({url:'public',rawSha256:'x',value:{abi:[{type:'function',name:'giftStake',inputs:[]},{type:'function',name:'transfer',inputs:[]}],source_code:'contract Example {\n function giftStake() public {}\n}'}});assert.equal(r.relevantAbi.length,1);assert.equal(r.sourceExcerpts.length,1);assert.equal(r.sourceExcerpts[0].truncated,false);assert.match(r.sourceExcerpts[0].excerpt,/2:  function/);});

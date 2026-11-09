@@ -1,0 +1,30 @@
+name: Daily Draw swap interface details
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-swap-interface-details.yml]
+permissions: {}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Read verified wrapper and deadline source only
+        run: |
+          python3 - <<'PY'
+          import urllib.request,json,re
+          targets=[(4663,'0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73'),(4663,'0x68184C449E1a8f34fA18d289737129FD27B66f8F'),(5042,'0x2e7395A6E0De6eE1f390bEcE891069Cd18Ff8572')]
+          for chain,address in targets:
+            u=f'https://sourcify.dev/server/v2/contract/{chain}/{address}?fields=abi,compilation,sources,storageLayout'
+            with urllib.request.urlopen(u,timeout=20) as r:
+              b=r.read(6000001)
+              if len(b)>6000000:raise ValueError('Oversize')
+              v=json.loads(b)
+            out={'chain':chain,'address':address,'runtimeMatch':v.get('runtimeMatch'),'name':v.get('compilation',{}).get('name'),'abi':v.get('abi') if address!=targets[-1][1] else None,'storageLayout':v.get('storageLayout') if address!=targets[-1][1] else None,'excerpts':[]}
+            for p,s in v.get('sources',{}).items():
+              text=s.get('content','')
+              for pat in [r'modifier checkDeadline',r'Transaction too old',r'deadline',r'function deposit',r'function bridgeMint',r'mapping\(address.*balances',r'mapping\(address.*_balances']:
+                for m in list(re.finditer(pat,text))[:3]:
+                  out['excerpts'].append({'path':p,'pattern':pat,'content':text[max(0,m.start()-100):m.start()+1000]})
+            print('BEGIN_INTERFACE_DETAILS');print(json.dumps(out));print('END_INTERFACE_DETAILS')
+          PY

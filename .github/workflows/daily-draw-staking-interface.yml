@@ -1,0 +1,69 @@
+name: Daily Draw active staking interface evidence
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-staking-interface.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-staking-interface-research
+  cancel-in-progress: false
+jobs:
+  inspect:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Install isolated ABI encoder without lifecycle scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-interface"
+          cd "$RUNNER_TEMP/draw-interface"
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0
+      - name: Resolve verified active implementation and simulate without broadcasting
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/draw-interface"
+          cat > inspect.mjs <<'JS'
+          import { Interface, getAddress, keccak256 } from 'ethers';
+          import { writeFile } from 'node:fs/promises';
+          const TOKEN='0x091F0c7e675A787A4018eb47c30BeD3FA2013B65';
+          const SENDER='0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7';
+          const TEST='0x000000000000000000000000000000000da1d001';
+          const SLOT='0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
+          const networks=[{id:4663,key:'robinhood',rpc:'https://rpc.mainnet.chain.robinhood.com'},{id:5042,key:'arc',rpc:'https://rpc.mainnet.arc.io'}];
+          const allowed=new Set(['eth_chainId','eth_getBlockByNumber','eth_getCode','eth_call','eth_getStorageAt']);
+          let seq=0;
+          const json=async(url,options={})=>{const r=await fetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error(`HTTP ${r.status}`);const s=await r.text();if(s.length>6000000)throw Error('Oversized response');return JSON.parse(s);};
+          async function rpc(n,method,params){if(!allowed.has(method))throw Error('Non-read method blocked');const id=++seq;const r=await json(n.rpc,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id,method,params})});if(r.id!==id||r.jsonrpc!=='2.0'||r.error||!Object.hasOwn(r,'result')){const e=new Error('Read-only RPC failed');e.data=r.error?.data;e.rpcMessage=r.error?.message;throw e;}return r.result;}
+          const stringify=x=>JSON.stringify(x,(_,v)=>typeof v==='bigint'?v.toString():v);
+          const cache=new Map();
+          async function source(n,address){const a=getAddress(address),key=n.id+':'+a;if(cache.has(key))return cache.get(key);const url=`https://sourcify.dev/server/v2/contract/${n.id}/${a}?fields=abi,compilation,runtimeBytecode,sources,storageLayout`;const v=await json(url,{headers:{'User-Agent':'YieldVacuum-ReadOnly-Research/1.0 (+https://github.com/TheCryptoArborist/yield-vaccum)'}});if(String(v.chainId)!==String(n.id)||getAddress(v.address)!==a||v.runtimeMatch!=='exact_match'||!Array.isArray(v.abi))throw Error('Verification identity or exact runtime match missing');cache.set(key,v);await writeFile(`${n.key}-${a}.json`,stringify(v));return v;}
+          async function match(n,address,s,block){const code=await rpc(n,'eth_getCode',[address,block]);const expected=s.runtimeBytecode?.onchainBytecode;if(typeof expected!=='string'||expected.toLowerCase()!==code.toLowerCase())throw Error('Live code does not match source record onchain runtime');return {address,bytes:(code.length-2)/2,keccak256:keccak256(code),sourcifyExactMatch:true,liveBytecodeMatches:true};}
+          const out={livePaymentEnabled:false,scope:'Source/runtime comparison and eth_call only. No state changes, fork execution, wallet authority or production approval.',networks:{}};
+          for(const n of networks){const o=out.networks[n.key]={};try{
+            if(BigInt(await rpc(n,'eth_chainId',[]))!==BigInt(n.id))throw Error('Wrong chain');
+            const b=await rpc(n,'eth_getBlockByNumber',['latest',false]);o.anchor={number:b.number,hash:b.hash};
+            const ts=await source(n,TOKEN),ti=new Interface(ts.abi);o.token=await match(n,TOKEN,ts,b.number);
+            const read=async(to,abi,name,args=[])=>abi.decodeFunctionResult(name,await rpc(n,'eth_call',[{to,data:abi.encodeFunctionData(name,args)},b.number]));
+            const staking=getAddress((await read(TOKEN,ti,'staking'))[0]);o.stakingProxy=staking;
+            const slot=await rpc(n,'eth_getStorageAt',[staking,SLOT,b.number]);if(!/^0x0{24}[0-9a-fA-F]{40}$/.test(slot)||BigInt(slot)===0n)throw Error('Invalid staking implementation slot');
+            const implementation=getAddress('0x'+slot.slice(-40));o.implementation=implementation;
+            const ss=await source(n,implementation),si=new Interface(ss.abi);o.implementationCode=await match(n,implementation,ss,b.number);
+            o.proxyCodeKeccak256=keccak256(await rpc(n,'eth_getCode',[staking,b.number]));
+            const ps=await source(n,staking);o.proxySourceCode=await match(n,staking,ps,b.number);
+            o.stakingAbi=ss.abi.filter(x=>x.type==='function'||x.type==='event'||x.type==='error');
+            o.storageLayout=ss.storageLayout;
+            o.sourceFiles=Object.keys(ss.sources??{});
+            o.stakingSource=Object.entries(ss.sources??{}).filter(([p])=>p.endsWith('/MSS2Staking.sol')).map(([path,v])=>({path,content:v.content}));
+            o.noArgumentReads={};for(const a of ss.abi.filter(a=>a.type==='function'&&a.inputs.length===0&&a.stateMutability==='view'&&/token|cap|limit|min|totalStak/i.test(a.name))){try{o.noArgumentReads[a.name]=await read(staking,si,a.name);}catch{o.noArgumentReads[a.name]='read failed';}}
+            try{const data=ti.encodeFunctionData('airdropStake',[[TEST],[10n**18n]]);const value=await rpc(n,'eth_call',[{from:SENDER,to:TOKEN,data,gas:'0x989680'},b.number]);o.staticAirdrop={recipient:TEST,offered:'1000000000000000000',accepted:ti.decodeFunctionResult('airdropStake',value)[0],scope:'eth_call return only; no committed stake change'};}catch(e){o.staticAirdrop={status:'reverted_or_unavailable',message:e.rpcMessage??e.message,data:e.data??null};}
+            const end=await rpc(n,'eth_getBlockByNumber',[b.number,false]);if(end.hash!==b.hash)throw Error('Anchor changed');o.status='source_and_runtime_observed';
+          }catch(e){o.status='blocked';o.error=e.message;}}
+          await writeFile('active-staking-evidence.json',stringify(out)+'\n');
+          console.log('BEGIN_ACTIVE_STAKING_EVIDENCE');console.log(stringify(out));console.log('END_ACTIVE_STAKING_EVIDENCE');
+          if(Object.values(out.networks).some(n=>n.status!=='source_and_runtime_observed'))process.exitCode=1;
+          JS
+          node inspect.mjs

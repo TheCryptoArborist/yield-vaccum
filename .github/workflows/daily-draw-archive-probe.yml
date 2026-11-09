@@ -1,0 +1,55 @@
+name: Daily Draw archive evidence probe
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-archive-probe.yml]
+permissions: {}
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Check public archival reads without keys or transactions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request,json,time
+          endpoints=[
+            ('robinhood',4663,'https://robinhood-mainnet-rpc.blockreq.com/v1/rpc/public'),
+            ('robinhood',4663,'https://robinhood.rpc.pinax.network'),
+            ('arc',5042,'https://rpc.blockdaemon.mainnet.arc.io'),
+            ('arc',5042,'https://rpc.drpc.mainnet.arc.io'),
+            ('arc',5042,'https://rpc.quicknode.mainnet.arc.io')]
+          allowed={'eth_chainId','eth_call','eth_getTransactionReceipt','eth_getBlockByNumber'}
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self,*args,**kwargs): return None
+          opener=urllib.request.build_opener(NoRedirect)
+          def rpc(url,method,params):
+            assert method in allowed
+            time.sleep(.4)
+            body=json.dumps({'jsonrpc':'2.0','id':1,'method':method,'params':params}).encode()
+            req=urllib.request.Request(url,data=body,headers={'Content-Type':'application/json','User-Agent':'YieldVacuum-ReadOnly-Research/1.0'})
+            with opener.open(req,timeout=15) as r:
+              raw=r.read(2000001)
+              assert len(raw)<=2000000
+            v=json.loads(raw); assert v.get('id')==1
+            if 'error' in v: raise ValueError(str(v['error'])[:300])
+            return v['result']
+          report={'scope':'Public endpoint probes only; no keys, paid accounts, signing or transaction submission. No provider approval.','results':[]}
+          for name,chain,url in endpoints:
+            row={'network':name,'endpoint':url}; report['results'].append(row)
+            try:
+              assert int(rpc(url,'eth_chainId',[]),16)==chain
+              row['chainMatched']=True
+              if name=='robinhood':
+                owner=rpc(url,'eth_call',[{'to':'0xEc8b95B168c87294c45727Bd2ac903d09316D132','data':'0x8da5cb5b'},hex(84205956)])
+                row['deploymentBlockOwner']=owner
+                row['deploymentBlockHash']=rpc(url,'eth_getBlockByNumber',[hex(84205956),False])['hash']
+              else:
+                row['receipts']=[]
+                for tx in ['0x9d2441174c0ed0fc5ecc184ca3c66f91bc0581c3e4c140ff1775bd5125fb8876','0xe3eca09079e7c4d0a9e3d54f0e4dc058acb9348b37b8c8804d5a8f813e97b530']:
+                  r=rpc(url,'eth_getTransactionReceipt',[tx])
+                  row['receipts'].append({'transactionHash':tx,'found':r is not None,'status':r.get('status') if r else None,'blockHash':r.get('blockHash') if r else None,'blockNumber':r.get('blockNumber') if r else None})
+            except Exception as e: row['error']=str(e)[:500]
+          print('BEGIN_ARCHIVE_PROBE'); print(json.dumps(report)); print('END_ARCHIVE_PROBE')
+          PY

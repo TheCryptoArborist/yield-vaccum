@@ -1,0 +1,46 @@
+name: Daily Draw isolated liquid purchase rehearsal
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-swap-rehearsal.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-swap-rehearsal-research
+  cancel-in-progress: false
+jobs:
+  rehearse:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Fetch pinned test script and isolated tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-swap/bin"
+          cd "$RUNNER_TEMP/draw-swap"
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 \
+            https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/3912142e347b576704f5a37cebc2b0b12df093f4/scripts/daily-draw-swap-rehearsal.mjs -o rehearsal.mjs
+          test "$(git hash-object rehearsal.mjs)" = 5223d49fad11e0e5e314b4c47ff1e9d683e07e0c
+          node --check rehearsal.mjs
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 hardhat@2.26.3
+          curl --fail --location --silent --show-error --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 180 \
+            https://github.com/circlefin/arc-foundry/releases/download/v0.8.0-4/arc-foundry-v0.8.0-4-x86_64-unknown-linux-gnu.tar.gz -o arc-foundry.tar.gz
+          echo '78330505af7dc0d2c9b55fc1aed00d9d063581bb57054949d31ef1c1b4bdbc5e  arc-foundry.tar.gz' | sha256sum -c -
+          tar -xzf arc-foundry.tar.gz -C bin anvil
+          ./bin/anvil --version
+      - name: Execute purchases only on private forks
+        shell: bash
+        run: |
+          set -uo pipefail
+          cd "$RUNNER_TEMP/draw-swap"
+          result=0
+          node rehearsal.mjs robinhood || result=1
+          ARC_ANVIL="$RUNNER_TEMP/draw-swap/bin/anvil" node rehearsal.mjs arc || result=1
+          exit "$result"
+      - name: Summarize scope
+        if: always()
+        shell: bash
+        run: |
+          printf '%s\n' 'No keys, configured secrets, production deployment or real-chain transaction submission.' 'Public reads are filtered through a read-only RPC gateway. Swap and payout tests run exclusively on private local forks.' 'Arc uses checksum-pinned Circle Arc Foundry with an asserted Arc execution mode; USDC is not mocked.' 'A passing run is not finality, operator signing, full application, randomness or security-audit approval.' >> "$GITHUB_STEP_SUMMARY"

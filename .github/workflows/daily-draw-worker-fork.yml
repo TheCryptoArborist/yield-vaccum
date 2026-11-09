@@ -1,0 +1,105 @@
+name: Daily Draw durable chain-reader forks
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-worker-fork.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-worker-fork-research
+  cancel-in-progress: false
+jobs:
+  worker:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        network: [robinhood, arc]
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_USER: drawtest
+          POSTGRES_PASSWORD: public-local-fixture-only
+          POSTGRES_DB: mss2_draw_research
+        ports: ['15432:5432']
+        options: >-
+          --health-cmd "pg_isready -U drawtest -d mss2_draw_research"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      DRAW_RESEARCH_DATABASE_URL: postgresql://drawtest:public-local-fixture-only@127.0.0.1:15432/mss2_draw_research
+      LOCAL_MODE: ${{ matrix.network }}
+    steps:
+      - name: Fetch immutable research and isolated dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-worker/research/daily-draw/payout-store" "$RUNNER_TEMP/draw-worker/scripts" "$RUNNER_TEMP/draw-worker/sdk" "$RUNNER_TEMP/draw-worker/bin" "$RUNNER_TEMP/draw-worker/evidence"
+          cd "$RUNNER_TEMP/draw-worker"
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/5cff077d71796b4ce3f9c2f141d179d320bee2b3
+          fetch() { curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 90 "$1" -o "$2"; }
+          for FILE in research/daily-draw/payout-store/schema.sql research/daily-draw/payout-store/store.mjs research/daily-draw/payout-store/reader-store.mjs research/daily-draw/payout-store/chain-reader.mjs research/daily-draw/stake-award-reconciliation.mjs research/daily-draw/DailyDrawIntegratedPrototype.sol research/daily-draw/DailyDrawOperatingFeesPrototype.sol research/daily-draw/DailyDrawTopazPurchasePrototype.sol scripts/daily-draw-market-ledger-cases.mjs scripts/daily-draw-market-ledger-fork.mjs scripts/daily-draw-worker-cases.mjs scripts/daily-draw-worker-fork.mjs scripts/daily-draw-persistence.mjs; do
+            fetch "$ROOT/$FILE" "$FILE"
+          done
+          fetch "$ROOT/scripts/daily-draw-swap-rehearsal.mjs" base-swap.mjs
+          test "$(git hash-object research/daily-draw/payout-store/chain-reader.mjs)" = b4614fc721a0c6cc5585ce6b3426931a9d574aa6
+          test "$(git hash-object research/daily-draw/payout-store/reader-store.mjs)" = babef1f7943b9d157fad730f609a28ea8e7f40db
+          test "$(git hash-object scripts/daily-draw-worker-cases.mjs)" = db684240adddc91f6a959f16a04003acdbedc2df
+          test "$(git hash-object scripts/daily-draw-worker-fork.mjs)" = 348d344b5430674c77c060a5b014b4ababee07e8
+          test "$(git hash-object research/daily-draw/payout-store/store.mjs)" = cabd5a1c31dbc64d2d277f0971e21954924a5083
+          test "$(git hash-object research/daily-draw/payout-store/schema.sql)" = 4cbd3958713315ed79ba02598f563092122f9cd3
+          test "$(git hash-object scripts/daily-draw-persistence.mjs)" = 9b48898ae902e0458549229e0df7627ee8b5e1b4
+          test "$(git hash-object research/daily-draw/stake-award-reconciliation.mjs)" = c4b9bdddb57a12984d46018dee7ceefa98e061c9
+          cp scripts/daily-draw-worker-fork.mjs worker-run.mjs
+          node --check worker-run.mjs
+          node --check scripts/daily-draw-worker-cases.mjs
+          node --check research/daily-draw/payout-store/chain-reader.mjs
+          fetch https://codeload.github.com/d20dao/d20-sdk/tar.gz/fc4b546c06017703b0508ef2182d2030d789c966 provider.tar.gz
+          tar -xzf provider.tar.gz --strip-components=1 -C sdk
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 pg@8.16.3 hardhat@2.26.3 solc@0.8.28 @openzeppelin/contracts@5.6.1
+          curl --fail --location --silent --show-error --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 180 https://github.com/circlefin/arc-foundry/releases/download/v0.8.0-4/arc-foundry-v0.8.0-4-x86_64-unknown-linux-gnu.tar.gz -o arc-foundry.tar.gz
+          echo '78330505af7dc0d2c9b55fc1aed00d9d063581bb57054949d31ef1c1b4bdbc5e  arc-foundry.tar.gz' | sha256sum -c -
+          tar -xzf arc-foundry.tar.gz -C bin anvil
+          sha256sum research/daily-draw/payout-store/* scripts/daily-draw-worker* package-lock.json > evidence/source-hashes.txt
+          docker inspect --format '{{.Image}}' '${{ job.services.postgres.id }}' > evidence/postgres-image.txt
+      - name: Rerun unchanged persistence regression suite
+        if: matrix.network == 'robinhood'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/draw-worker"
+          node scripts/daily-draw-persistence.mjs | tee evidence/persistence.log
+          docker restart '${{ job.services.postgres.id }}'
+          ready=0
+          for i in $(seq 1 30); do
+            if docker exec '${{ job.services.postgres.id }}' pg_isready -U drawtest -d mss2_draw_research; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1
+          node scripts/daily-draw-persistence.mjs --restart-check | tee evidence/server-restart.log
+      - name: Connect actual private-fork receipts to durable read-only ingestion
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/draw-worker"
+          ARC_ANVIL="$RUNNER_TEMP/draw-worker/bin/anvil" node worker-run.mjs "$LOCAL_MODE" | tee evidence/worker-fork.log
+      - name: Preserve executed code and evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: daily-draw-worker-${{ matrix.network }}-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/draw-worker/research/
+            ${{ runner.temp }}/draw-worker/scripts/
+            ${{ runner.temp }}/draw-worker/evidence/
+            ${{ runner.temp }}/draw-worker/*.mjs
+            ${{ runner.temp }}/draw-worker/*.json
+      - name: Record scope
+        if: always()
+        shell: bash
+        run: |
+          printf '%s\n' 'Read-only worker, actual private-fork market/stake receipts, local Postgres only. No public transaction or production database.' 'Original 23 market cases retained; new cases cover read-derived award import, durable receipt credits, restarts, concurrent readers and local snapshot reorgs.' 'Randomness in this suite is deterministic mock, not actual D20 fulfillment. Existing source/provider suites remain separate.' 'Held settlement outbox cannot reduce on-chain liabilities; no new custody/attestation model, public API, signer or scheduled watcher.' >> "$GITHUB_STEP_SUMMARY"

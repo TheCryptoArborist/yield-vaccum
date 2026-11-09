@@ -1,0 +1,50 @@
+{
+  "scope": "Normalized transcription of public metadata from GitHub Actions job logs. Read-only observations, not an audit or swap/payout simulation.",
+  "run": "https://github.com/TheCryptoArborist/yield-vaccum/actions/runs/42554165659",
+  "jobId": 128956065299,
+  "commit": "98a15221935e41d91541c1fc527fbc1b260cff2c",
+  "observedAt": "2026-11-09T03:02:40.118Z",
+  "fixtures": {"pass": 17, "fail": 0},
+  "livePaymentEnabled": false,
+  "networks": {
+    "robinhood": {
+      "chainId": 4663,
+      "block": "0x68a5aad",
+      "blockHash": "0x54b276a10acdead14a9a9f1e3b36dc28900acebfbe8df65ef207d69b29180e20",
+      "paymentAddress": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+      "paymentSymbol": "USDG",
+      "paymentDecimals": 6,
+      "paymentCodeBytes": 170,
+      "paymentCodeSha256": "c85d18dc1e49769e01f9f88981176e213b2bc24d2f14d33a81d54bc06579f6db",
+      "paymentERC1967ImplementationCandidate": "0x68184c449e1a8f34fa18d289737129fd27b66f8f",
+      "mss2Decimals": 18,
+      "mss2CodeBytes": 24285,
+      "mss2CodeSha256": "fa0e02d9d10c7fcb603f945a22acbd6b3f7a00733b3148406af1dc594fdb36ad",
+      "senderCodeBytes": 0
+    },
+    "arc": {
+      "chainId": 5042,
+      "block": "0x1ce1003",
+      "blockHash": "0xa2cd8ee9ef93220d978524ef82e654a9b5f6d2cf2a1e7d4cacac73972f471f8d",
+      "paymentAddress": "0x3600000000000000000000000000000000000000",
+      "paymentSymbol": "USDC",
+      "paymentDecimals": 6,
+      "paymentCodeBytes": 1798,
+      "paymentCodeSha256": "d06405421b354a12b2f03fcc8aac4b324f274aed5b8ecc5fd62d8fa119067154",
+      "paymentERC1967ImplementationCandidate": null,
+      "mss2Decimals": 18,
+      "mss2CodeBytes": 24285,
+      "mss2CodeSha256": "b972aac67adaab4a53152a327acca1b9987ad7b17087be4d7a023a7304dccd72",
+      "senderCodeBytes": 0
+    }
+  },
+  "mss2Address": "0x091F0c7e675A787A4018eb47c30BeD3FA2013B65",
+  "sender": "0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7",
+  "limits": [
+    "Latest block, not independently finalized.",
+    "One public RPC observation per chain, not independent source/bytecode reconciliation.",
+    "Code absence is not wallet-control proof.",
+    "SHA-256 fingerprints are not Ethereum Keccak code hashes.",
+    "No transactions, swaps, payout or fork simulation."
+  ]
+}

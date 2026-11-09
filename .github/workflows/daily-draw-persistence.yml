@@ -1,0 +1,81 @@
+name: Daily Draw durable payout research
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-persistence.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-persistence-research
+  cancel-in-progress: false
+jobs:
+  persistence:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_USER: drawtest
+          POSTGRES_PASSWORD: public-local-fixture-only
+          POSTGRES_DB: mss2_draw_research
+        ports: ['15432:5432']
+        options: >-
+          --health-cmd "pg_isready -U drawtest -d mss2_draw_research"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      DRAW_RESEARCH_DATABASE_URL: postgresql://drawtest:public-local-fixture-only@127.0.0.1:15432/mss2_draw_research
+    steps:
+      - name: Fetch immutable research sources into isolated directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-persistence/research/daily-draw/payout-store" "$RUNNER_TEMP/draw-persistence/scripts" "$RUNNER_TEMP/draw-persistence/evidence"
+          cd "$RUNNER_TEMP/draw-persistence"
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/adfe3471c6c04e22caaf63477da553fd0f1fb233
+          for FILE in research/daily-draw/payout-store/schema.sql research/daily-draw/payout-store/store.mjs research/daily-draw/stake-award-reconciliation.mjs scripts/daily-draw-persistence.mjs; do
+            curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 60 "$ROOT/$FILE" -o "$FILE"
+          done
+          test "$(git hash-object research/daily-draw/stake-award-reconciliation.mjs)" = c4b9bdddb57a12984d46018dee7ceefa98e061c9
+          node --check research/daily-draw/payout-store/store.mjs
+          node --check scripts/daily-draw-persistence.mjs
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 pg@8.16.3
+          sha256sum research/daily-draw/payout-store/* scripts/daily-draw-persistence.mjs research/daily-draw/stake-award-reconciliation.mjs package-lock.json > evidence/source-hashes.txt
+          docker inspect --format '{{.Image}}' '${{ job.services.postgres.id }}' > evidence/postgres-image.txt
+      - name: Exercise reservations receipts competing processes and crash boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/draw-persistence"
+          node scripts/daily-draw-persistence.mjs | tee evidence/persistence.log
+      - name: Restart the actual database service and verify pending state survives
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker restart '${{ job.services.postgres.id }}'
+          ready=0
+          for i in $(seq 1 30); do
+            if docker exec '${{ job.services.postgres.id }}' pg_isready -U drawtest -d mss2_draw_research; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1
+          cd "$RUNNER_TEMP/draw-persistence"
+          node scripts/daily-draw-persistence.mjs --restart-check | tee evidence/server-restart.log
+      - name: Preserve source evidence and dependency lock
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: daily-draw-persistence-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/draw-persistence/evidence/
+            ${{ runner.temp }}/draw-persistence/research/
+            ${{ runner.temp }}/draw-persistence/scripts/
+            ${{ runner.temp }}/draw-persistence/package*.json
+      - name: Record scope
+        if: always()
+        shell: bash
+        run: |
+          printf '%s\n' 'Fresh local Postgres only; SQL is outside automatic Netlify migrations. No application database touched.' 'Synthetic receipt evidence and local chain namespaces; no public RPC, keys, signing, market purchase or airdrop.' 'Permanent reservations survive process and server restarts. Uncertain receipts do not authorize retry. Reorg review freezes the sender lane.' 'Settlement outbox is held for authority review; no on-chain liability mutation, production migration or paid-entry approval.' >> "$GITHUB_STEP_SUMMARY"

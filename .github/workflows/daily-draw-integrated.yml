@@ -1,0 +1,79 @@
+name: Daily Draw integrated local ledger
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-integrated.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-integrated-local-research
+  cancel-in-progress: false
+jobs:
+  integrated:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [robinhood, arc]
+    steps:
+      - name: Fetch immutable research and provider sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-integrated/research/daily-draw" "$RUNNER_TEMP/draw-integrated/sdk"
+          cd "$RUNNER_TEMP/draw-integrated"
+          fetch() { curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 90 "$1" -o "$2"; }
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/02ee08804abf7e4989166185f22a93cb2669e957
+          fetch "$ROOT/scripts/daily-draw-integrated.mjs" integrated.mjs
+          fetch "$ROOT/scripts/daily-draw-operating-fees.mjs" fee-regression.mjs
+          fetch "$ROOT/scripts/daily-draw-fee-test-environment.mjs" daily-draw-fee-test-environment.mjs
+          fetch "$ROOT/research/daily-draw/DailyDrawIntegratedPrototype.sol" research/daily-draw/DailyDrawIntegratedPrototype.sol
+          fetch "$ROOT/research/daily-draw/DailyDrawOperatingFeesPrototype.sol" research/daily-draw/DailyDrawOperatingFeesPrototype.sol
+          test "$(git hash-object integrated.mjs)" = 9a4b8a287979e9fae6f04e59f4da0c610e3752f6
+          test "$(git hash-object fee-regression.mjs)" = 6d39235feb575f538a3a824dac5b23a2e000685f
+          test "$(git hash-object daily-draw-fee-test-environment.mjs)" = 58de49be9ef50b3c199cfa72763fe30b380b671d
+          test "$(git hash-object research/daily-draw/DailyDrawIntegratedPrototype.sol)" = 57ae893df611287a4168f80f952cdbca5bada24b
+          test "$(git hash-object research/daily-draw/DailyDrawOperatingFeesPrototype.sol)" = 37c4a19ae733387c41bf10b18d21334b9f2e6ef8
+          fetch https://codeload.github.com/d20dao/d20-sdk/tar.gz/fc4b546c06017703b0508ef2182d2030d789c966 provider.tar.gz
+          tar -xzf provider.tar.gz --strip-components=1 -C sdk
+          test "$(git hash-object sdk/protocol/contracts/D20VRFCoordinator.sol)" = 1eb9bdd5831a4bda7635760ca78fc48553034fb7
+          test "$(git hash-object sdk/protocol/contracts/robinhood/D20VRFCoordinatorRobinhood.sol)" = b107fcb9a2d1dc4aed173f9381a6030bb261979e
+          test "$(git hash-object sdk/protocol/contracts/EpochEntropy.sol)" = 5bbbfa296748202da0c710729d16b51d868d13ce
+          node --check integrated.mjs
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 hardhat@2.26.3 solc@0.8.28 @openzeppelin/contracts@5.6.1 @openzeppelin/contracts-upgradeable@5.6.1 @d20dao/vrf-sdk@0.6.2 @noble/curves@1.9.7
+      - name: Run unchanged operating-fee regressions
+        shell: bash
+        env:
+          LOCAL_MODE: ${{ matrix.mode }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/draw-integrated"
+          node fee-regression.mjs "$LOCAL_MODE" | tee fee-regression.log
+      - name: Run combined draw and funding-accounting tests
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          LOCAL_MODE: ${{ matrix.mode }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/draw-integrated"
+          node integrated.mjs "$LOCAL_MODE" | tee integrated.log
+      - name: Preserve results source and dependency lock
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: daily-draw-integrated-${{ matrix.mode }}-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/draw-integrated/evidence/*.json
+            ${{ runner.temp }}/draw-integrated/*.log
+            ${{ runner.temp }}/draw-integrated/*.mjs
+            ${{ runner.temp }}/draw-integrated/package*.json
+            ${{ runner.temp }}/draw-integrated/research/daily-draw/*.sol
+      - name: Record scope
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          printf '%s\n' 'Local-only chain IDs 31337/31338; no public RPC or transaction, no real keys, stablecoin, market swap or stake gift.' 'New controller integrates the unchanged fee component and actual pinned coordinator sources. Fixture purchase adapter is NOT the production router; no website change or launch.' 'Balances, operating credits, developer accrual and outstanding prize records are separate. Outside-wallet custody remains operator-controlled, not escrow.' 'Two recovery tests temporarily inject reverting local fee-account code then restore it byte-for-byte. No result is substituted.' 'No participant refund/developer withdrawal/payout implementation. Test prices and revenue splits are NOT production decisions.' >> "$GITHUB_STEP_SUMMARY"

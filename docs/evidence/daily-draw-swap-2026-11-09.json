@@ -1,0 +1,82 @@
+{
+  "recordType": "Normalized transcription of completed GitHub Actions job output; not the raw log",
+  "runId": 42558269951,
+  "jobId": 128968762734,
+  "runUrl": "https://github.com/TheCryptoArborist/yield-vaccum/actions/runs/42558269951",
+  "workflowCommit": "a012cb84be4d865100afe9d21df25d04665d2f76",
+  "scriptCommit": "3912142e347b576704f5a37cebc2b0b12df093f4",
+  "scriptBlob": "5223d49fad11e0e5e314b4c47ff1e9d683e07e0c",
+  "conclusion": "success",
+  "scope": "Isolated state-fork purchase and purchase-to-stake integration. Not ticket collection, random selection, actual signing authority, production gas/finality validation, audit or release approval.",
+  "mainnetTransactionsSubmitted": 0,
+  "livePaymentEnabled": false,
+  "reserve": "0xE8b63245DdDAB73C7A276818942341D8Cfb7D7A7",
+  "mss2": "0x091F0c7e675A787A4018eb47c30BeD3FA2013B65",
+  "router": "0x2e7395A6E0De6eE1f390bEcE891069Cd18Ff8572",
+  "testInputUnits": ["1", "10", "100"],
+  "testInputNote": "Stablecoin units, not approved ticket prices. Test slippage margin 1%, deadline 600 seconds; neither is approved production policy.",
+  "networks": {
+    "robinhood": {
+      "chainId": 4663,
+      "paymentToken": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+      "paymentSymbol": "USDG",
+      "paymentDecimals": 6,
+      "mss2Decimals": 18,
+      "anchor": {"number": "0x68abf9f", "hash": "0x6d5517df5e35a2e585f0296cf250d7cbee8e0b057b415fc75fbeb0cf92e89033", "finalized": false},
+      "path": "USDG -> WETH -> MSS2",
+      "tickSpacings": [50, 2000],
+      "pools": ["0x8132252bd65E7C03F7B57739E1DB1c58d6Ee792F", "0xdfCC6Ad671033f7d3ECEb24cBaE5c0F7f6f8d91e"],
+      "passed": 7,
+      "failed": 0,
+      "liquidPurchases": [
+        {"inputRaw": "1000000", "receivedMssRaw": "163915500451531559835", "minimumMssRaw": "162276345447016244236", "allowanceRemainingRaw": "0", "purchaserStakeUnchanged": true},
+        {"inputRaw": "10000000", "receivedMssRaw": "1638799644333429597509", "minimumMssRaw": "1622411647890095301533", "allowanceRemainingRaw": "0", "purchaserStakeUnchanged": true},
+        {"inputRaw": "100000000", "receivedMssRaw": "16352544986061499236384", "minimumMssRaw": "16189019536200884244020", "allowanceRemainingRaw": "0", "purchaserStakeUnchanged": true}
+      ],
+      "minimumOutputGuard": "passed: rejected local eth_call, checked state unchanged",
+      "deadlineGuard": "passed: fresh-deadline positive control; only deadline changed; EVM revert and checked state unchanged",
+      "missingApprovalGuard": "passed: rejected local eth_call, checked state unchanged",
+      "purchaseToStake": {"purchasedMssRaw": "163915500451531559835", "winnerStakeIncreaseRaw": "163915500451531559835", "winnerLiquidIncreaseRaw": "0", "preExistingReserveMssUnchanged": true},
+      "engine": "Hardhat 2.26.3, local Cancun EVM state fork",
+      "syntheticState": "100 ETH local gas balance; 1 ETH wrapped and swapped for USDG to seed the fixture; local impersonation. No token code mock or USDG storage override.",
+      "headerFieldsDefaultedToZero": ["blobGasUsed", "excessBlobGas"],
+      "priceCaveat": "Fixture funding changes local USDG/WETH pool state before purchase tests. These outputs are not live executable quotes or promised prices.",
+      "upstreamWriteChecksDenied": 5
+    },
+    "arc": {
+      "chainId": 5042,
+      "paymentToken": "0x3600000000000000000000000000000000000000",
+      "paymentSymbol": "USDC",
+      "paymentDecimals": 6,
+      "mss2Decimals": 18,
+      "anchor": {"number": "0x1ce25be", "hash": "0x04f604465cce798ed93478e0fa7015789baeab33c7bf81e7fc708e36b92cb856", "finalized": false},
+      "path": "USDC -> MSS2",
+      "tickSpacings": [2000],
+      "pools": ["0x01A19Ee4688aac8918B99FaA6eCB6f2CC3a97a31"],
+      "passed": 7,
+      "failed": 0,
+      "liquidPurchases": [
+        {"inputRaw": "1000000", "receivedMssRaw": "153519109908255083571", "minimumMssRaw": "151983918809172532735", "allowanceRemainingRaw": "0", "purchaserStakeUnchanged": true},
+        {"inputRaw": "10000000", "receivedMssRaw": "1534958482558846512624", "minimumMssRaw": "1519608897733258047497", "allowanceRemainingRaw": "0", "purchaserStakeUnchanged": true},
+        {"inputRaw": "100000000", "receivedMssRaw": "15326361885948738816372", "minimumMssRaw": "15173098267089251428208", "allowanceRemainingRaw": "0", "purchaserStakeUnchanged": true}
+      ],
+      "minimumOutputGuard": "passed: rejected local eth_call, checked state unchanged",
+      "deadlineGuard": "passed: fresh-deadline positive control; only deadline changed; EVM revert and checked state unchanged",
+      "missingApprovalGuard": "passed: rejected local eth_call, checked state unchanged",
+      "nativeUsdcGasAndErc20Reconciled": true,
+      "purchaseToStake": {"purchasedMssRaw": "153519109908255083571", "winnerStakeIncreaseRaw": "153519109908255083571", "winnerLiquidIncreaseRaw": "0", "preExistingReserveMssUnchanged": true},
+      "engine": "Circle Arc Foundry v0.8.0-4; anvil_nodeInfo.network asserted arc",
+      "binaryCommit": "3e95efaeaaaca64d6ac9c1ee988968683dbd0d22",
+      "archiveSha256": "78330505af7dc0d2c9b55fc1aed00d9d063581bb57054949d31ef1c1b4bdbc5e",
+      "syntheticState": "10000 USDC local native balance; matching ERC20 view; local impersonation. No mock USDC.",
+      "headerFieldsDefaultedToZero": [],
+      "upstreamWriteChecksDenied": 5
+    }
+  },
+  "sourceProvenance": "Topaz router, quoter, factory and pool implementation have Sourcify match (not exact_match) records. Live runtime compared to each record's onchainBytecode at the anchor. Source matches and simulation are not security audits.",
+  "earlierFailedRuns": [
+    {"runId": 42557126218, "reason": "Discovery required exact metadata match although Topaz records report match; updated to retain actual match classification and require identical live/runtime-record code."},
+    {"runId": 42557578365, "reason": "Initial script syntax error; no purchase scenarios executed."},
+    {"runId": 42557759189, "reason": "Robinhood fixture used WETH proxy ABI instead of implementation ABI; Arc passed 6 cases but expected an incorrect deadline reason string. Both corrected from retrieved source; final tests retain state and outcome assertions."}
+  ]
+}

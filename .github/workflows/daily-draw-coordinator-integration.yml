@@ -1,0 +1,51 @@
+name: Daily Draw actual coordinator local integration
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-coordinator-integration.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-local-coordinator-research
+  cancel-in-progress: false
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Fetch immutable research and provider sources into an isolated directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-coordinator/research/daily-draw" "$RUNNER_TEMP/draw-coordinator/sdk"
+          cd "$RUNNER_TEMP/draw-coordinator"
+          fetch() { curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 90 "$1" -o "$2"; }
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/8f578a26bb941aded203fe3494da4014ba09359e
+          fetch "$ROOT/scripts/daily-draw-coordinator-integration.mjs" runner.mjs
+          fetch "$ROOT/research/daily-draw/DailyDrawPrototype.sol" research/daily-draw/DailyDrawPrototype.sol
+          test "$(git hash-object runner.mjs)" = 4c01949f6034a2ff21c0193c9bb8a886d0ac9c79
+          test "$(git hash-object research/daily-draw/DailyDrawPrototype.sol)" = 7c6471f8154d9b71d19aad1d3ad5c463135c5d9a
+          fetch https://codeload.github.com/d20dao/d20-sdk/tar.gz/fc4b546c06017703b0508ef2182d2030d789c966 provider.tar.gz
+          tar -xzf provider.tar.gz --strip-components=1 -C sdk
+          test "$(git hash-object sdk/protocol/contracts/D20VRFCoordinator.sol)" = 1eb9bdd5831a4bda7635760ca78fc48553034fb7
+          test "$(git hash-object sdk/protocol/contracts/robinhood/D20VRFCoordinatorRobinhood.sol)" = b107fcb9a2d1dc4aed173f9381a6030bb261979e
+          test "$(git hash-object sdk/protocol/contracts/EpochEntropy.sol)" = 5bbbfa296748202da0c710729d16b51d868d13ce
+          test "$(git hash-object sdk/protocol/contracts/D20BeaconVerifier.sol)" = 9736893a718d19ba9dcea0788b595bb20d0f27e0
+          test "$(git hash-object sdk/protocol/contracts/vendor/VRF.sol)" = 0aa7ffeb87a5c9d72657aa992639d54a2c9bc3b8
+          test "$(git hash-object sdk/scripts/fixtures/drand-evmnet/rounds.json)" = fdd79a6052014b7389fe1621613fa3b694253f72
+          node --check runner.mjs
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 hardhat@2.26.3 solc@0.8.28 @openzeppelin/contracts@5.6.1 @openzeppelin/contracts-upgradeable@5.6.1 @d20dao/vrf-sdk@0.6.2 @noble/curves@1.9.7
+      - name: Compile real provider contracts and exercise the drawing consumer locally
+        shell: bash
+        run: |
+          set -uo pipefail
+          cd "$RUNNER_TEMP/draw-coordinator"
+          result=0
+          node runner.mjs robinhood || result=1
+          node runner.mjs arc || result=1
+          exit "$result"
+      - name: Record precise scope
+        if: always()
+        shell: bash
+        run: |
+          printf '%s\n' 'Fresh local Hardhat chains only; no public RPC or transactions, private wallet keys, approvals or public deployment.' 'Actual pinned coordinator, proof verifier and Arc registry sources; public fixture VRF scalar, recorded drand signatures and artificial clock. Not a live D20 keeper fulfillment.' 'Main DailyDrawPrototype source is unchanged. Separate RecoveryProbe injects callback/refund failures. Robinhood ArbSys block number is a local shim; Arc native-USDC semantics are NOT simulated by this suite.' 'Reverted local sends are mined and checked as status-0 receipts. Estimation errors must remain EVM CALL_EXCEPTION; arbitrary provider errors are not passes.' 'Test amounts are fixtures. No production eligibility, ticket price, revenue split, escrow, participant-refund policy or provider approval is established.' >> "$GITHUB_STEP_SUMMARY"
