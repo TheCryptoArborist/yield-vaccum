@@ -51,6 +51,8 @@ The reader is an internal, synchronously invoked research component—not a prod
 
 ## Settlement boundary — next design gate
 
+A proposed, non-binding [settlement decision record](mss2-daily-draw-settlement-decision.md) now compares receipt-derived public status, operator-signed on-chain attestation, atomic escrow payout and receipt-proof verification. It recommends the receipt-first display model for review because a genuine gift from the chosen external sender cannot be trustlessly observed by the existing draw contract. **No alternative is approved; no production settlement code is enabled.**
+
 **A verified database credit is not an on-chain liability decrement.** The unchanged contract still records AwardPending and the full obligation. Outbox entries remain HeldForAuthorityReview. No signer, dispatcher, force-paid endpoint or new attestation/custody authority was introduced.
 
 The next scoped work is a settlement-authority design for developer/user review, preserving the chosen direct-wallet sender. A narrowly scoped reserve-signed accounting acknowledgment is operator-attested, not trustless receipt proof. Atomic escrow payout and verified receipt-proof designs have different custody, trust and implementation requirements. Do not silently choose one through a reader update.
