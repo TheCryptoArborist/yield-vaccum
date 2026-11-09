@@ -36,7 +36,7 @@ async function rpc(n,method,params) {
  const {value:r}=await read(n.rpc,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id,method,params})});
  assert.equal(r.jsonrpc,'2.0');assert.equal(r.id,id);assert(!r.error,`Read-only RPC failed: ${r.error?.code}`);assert(Object.hasOwn(r,'result'));return r.result;
 }
-const report={createdAt:new Date().toISOString(),scope:'Pinned live deployment and getter observations only; NOT a VRF proof replay, own consumer request, audited cryptography, provider liveness guarantee or release approval.',mainnetTransactionsSubmitted:0,livePaymentEnabled:false,networks:{}};
+const report={createdAt:new Date().toISOString(),scope:'Pinned live deployment and selected getter observations only; NOT a VRF proof replay, complete role/upgrade review, own consumer request, audited cryptography, provider liveness guarantee or release approval.',mainnetTransactionsSubmitted:0,livePaymentEnabled:false,networks:{}};
 const before=posts;for(const method of ['eth_sendTransaction','eth_sendRawTransaction','eth_sign','personal_sign','wallet_sendCalls'])await assert.rejects(()=>rpc(networks[0],method,[]));assert.equal(posts,before);report.writeMethodsRejected=5;
 for(const n of networks) {
  const o=report.networks[n.key]={status:'blocked',checks:[],observations:{},discrepancies:[]};
@@ -61,7 +61,13 @@ for(const n of networks) {
   if(n.key==='arc')await proxy('registry',m.registry,m.epochImplementation,m.registryCodeHash,m.epochImplementationCodeHash);
   for(const role of ['beaconVerifier','proofVerifier','mappingLibrary'])if(m[role])await code(role,m[role],m[role+'CodeHash']);
   const view=async(name,args=[])=>{const f=iface.getFunction(name);assert(f&&['view','pure'].includes(f.stateMutability),'Only SDK-declared getters allowed');return iface.decodeFunctionResult(f,await rpc(n,'eth_call',[{to:m.coordinator,data:iface.encodeFunctionData(f,args)},b.number]));};
-  for(const name of ['owner','feeRecipient','keeper']){const value=(await view(name))[0];o.observations[name]=value;check(name,value,m[name]);}
+  for(const name of ['owner','feeRecipient']){const value=(await view(name))[0];o.observations[name]=value;check(name,value,m[name]);}
+  if(n.key==='robinhood'){
+   const value=(await view('keeper'))[0];o.observations.keeper=value;check('keeper',value,m.keeper);
+  }else{
+   assert.equal(iface.hasFunction('keeper'),false,'Review changed Arc coordinator ABI');
+   o.authorizationScope='Arc epoch coordinator does not expose keeper(). This check does not validate epoch committer/backup authorization, registry owner, or historical request-specific authority; separate review required.';
+  }
   const pricing=Array.from(await view('pricing')),expected=m.pricing??m;
   for(const [i,name] of ['minFeeWei','feeMultiplier','fulfillGasOverhead'].entries())check(name,pricing[i],expected[name]);
   o.observations.pricing=pricing;
@@ -69,9 +75,12 @@ for(const n of networks) {
   const quote=(await view('quoteFeeAt',[120000,BigInt(b.baseFeePerGas)]))[0],calculated=pricing[1]*BigInt(b.baseFeePerGas)*(pricing[2]+120000n);
   assert.equal(quote,calculated>pricing[0]?calculated:pricing[0]);o.observations.quoteFor120kCallbackNativeRaw=quote;
   for(const name of ['RESPONSE_TIMEOUT','MIN_CALLBACK_GAS','MAX_CALLBACK_GAS','protocolConfigurationHash','keyHash','epochRegistry','registry','proofVerifier','mappingLibrary'])if(iface.hasFunction(name)&&iface.getFunction(name).inputs.length===0)o.observations[name]=Array.from(await view(name));
+  for(const name of ['protocolConfigurationHash','keyHash','proofVerifier'])if(m[name]!==undefined&&o.observations[name])check(name,o.observations[name][0],m[name]);
+  if(o.observations.MIN_CALLBACK_GAS&&o.observations.MAX_CALLBACK_GAS){assert(120000n>=o.observations.MIN_CALLBACK_GAS[0]);assert(120000n<=o.observations.MAX_CALLBACK_GAS[0]);}
   assert.equal((await rpc(n,'eth_getBlockByNumber',[b.number,false])).hash,b.hash,'Anchor changed');assert.equal(BigInt(await rpc(n,'eth_chainId',[])),BigInt(n.id));
-  o.status=o.discrepancies.length?'manifest_discrepancy':'deployment_getters_matched';
+  o.anchorRechecked=true;
+  o.status=o.discrepancies.length?'manifest_discrepancy':'selected_deployment_checks_matched';
  }catch(e){o.error=String(e.shortMessage??e.message).slice(0,900);}
 }
 await writeFile('randomness-live-observation.json',serial(report)+'\n');console.log('BEGIN_RANDOMNESS_OBSERVATION');console.log(serial(report));console.log('END_RANDOMNESS_OBSERVATION');
-if(Object.values(report.networks).some(n=>n.status!=='deployment_getters_matched'))process.exitCode=1;
+if(Object.values(report.networks).some(n=>n.status!=='selected_deployment_checks_matched'))process.exitCode=1;
