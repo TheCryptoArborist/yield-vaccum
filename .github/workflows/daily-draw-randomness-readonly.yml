@@ -19,8 +19,8 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/draw-randomness"
           cd "$RUNNER_TEMP/draw-randomness"
-          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/84f943e7af4d43810a1e193f68a0d729a43a1d2d/scripts/daily-draw-randomness-readonly.mjs -o observe.mjs
-          test "$(git hash-object observe.mjs)" = 65ec9b2cdc0541bda2dcacfdaea9bf1cbc2e0ab1
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/17d98a3889ff5a0f455fc7d2f7f11af37213ec71/scripts/daily-draw-randomness-readonly.mjs -o observe.mjs
+          test "$(git hash-object observe.mjs)" = 7b81a79cd68d0d16fa1a81192b822e3235bd41af
           node --check observe.mjs
           npm init -y >/dev/null
           npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 @d20dao/vrf-sdk@0.6.2
@@ -34,4 +34,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          printf '%s\n' 'Only bounded public reads and ABI-declared view calls. No consumer requests, private keys, paid services, or transaction submission.' 'A matching deployment manifest is not a cryptographic audit, a historical proof replay, consumer fulfillment, provider liveness proof, or release approval.' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'Only bounded public reads and ABI-declared view calls. No consumer requests, private keys, paid services, or transaction submission.' 'Matching selected deployment checks is not a complete role review, cryptographic audit, historical proof replay, consumer fulfillment, provider liveness proof, or release approval. Detected configuration discrepancies keep the check failing.' >> "$GITHUB_STEP_SUMMARY"
