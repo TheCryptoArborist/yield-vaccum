@@ -18,8 +18,8 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/provider-evidence"
           cd "$RUNNER_TEMP/provider-evidence"
-          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/e9a37837824b5f97f9ee85477e5cd7e91e3b55ad/scripts/daily-draw-provider-evidence.mjs -o verify.mjs
-          test "$(git hash-object verify.mjs)" = a28131a7a95e7adbd3ff9837a544165b21a5e135
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/48cf7aaa067484f6574ca083745db3de0f2d771b/scripts/daily-draw-provider-evidence.mjs -o verify.mjs
+          test "$(git hash-object verify.mjs)" = b6a42ef04068f6e122cbcd3902ff408d596b2d9d
           node --check verify.mjs
           npm init -y >/dev/null
           npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 @d20dao/vrf-sdk@0.6.2
