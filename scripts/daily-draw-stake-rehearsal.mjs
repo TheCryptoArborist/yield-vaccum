@@ -1,10 +1,13 @@
 /** Research only. Mainnet requests are read-only. Transactions execute exclusively
  * inside an in-process Hardhat fork with no private keys and no live write provider.
  * Run from an isolated temporary directory with ethers 6.15.0 / hardhat 2.26.3.
+ * Non-blob staking tests use explicit zero defaults for absent blob header fields.
+ * This is an EVM state-fork model, not a validation of either network's consensus.
  */
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile, writeFile } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { Interface, AbiCoder, getAddress, keccak256, toBeHex, zeroPadValue } from 'ethers';
 
 const TOKEN = '0x091F0c7e675A787A4018eb47c30BeD3FA2013B65';
@@ -25,15 +28,27 @@ const network = NETWORKS[key];
 const report = {
   network: key, chainId: network.id, sender: SENDER, createdAt: new Date().toISOString(),
   status: 'blocked', livePaymentEnabled: false, mainnetTransactionsSubmitted: 0,
-  scope: 'Isolated staking-path rehearsal only. No stablecoin swap, drawing, wallet-control proof, audit or release approval.',
+  scope: 'Isolated staking-path EVM state-fork rehearsal only. No stablecoin swap, drawing, consensus-equivalence claim, wallet-control proof, audit or release approval.',
   syntheticState: ['Native gas balance on fork only', 'Impersonation on fork only', 'Explicit capacity fixtures use verified storage layout on fork only'],
+  headerCompatibility: { scope: 'Non-blob staking calls only; missing blobGasUsed/excessBlobGas default to zero for local Cancun EVM execution. Raw mainnet anchor checks are not modified.', fieldsDefaulted: [] },
   tests: [],
 };
-let gateway, hre, seq = 0;
+let gateway, hre, seq = 0, queue = Promise.resolve();
+const readCache = new Map();
 const serial = x => JSON.stringify(x, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2);
 const safeError = e => String(e?.shortMessage ?? e?.message ?? 'Unknown error').slice(0, 1400);
 async function getJson(url, options = {}) {
-  const response = await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(25000) });
+  let response;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    response = await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(25000) });
+    if (![429, 503].includes(response.status) || attempt === 3) break;
+    const retryHeader = response.headers.get('retry-after');
+    const numericWait = Number(retryHeader);
+    const wait = retryHeader && Number.isFinite(numericWait) ? numericWait * 1000 : Math.max(0, Date.parse(retryHeader ?? '') - Date.now()) || 2000 * 2 ** attempt;
+    await response.body?.cancel();
+    if (wait > 60000) throw Error('Provider requested a long backoff; stop this bounded rehearsal');
+    await delay(Math.max(1000, wait));
+  }
   if (!response.ok) { const error = new Error(`HTTP ${response.status}`); error.status = response.status; throw error; }
   assert(response.body, 'Response body missing');
   const reader = response.body.getReader(), chunks = []; let length = 0;
@@ -43,11 +58,20 @@ async function getJson(url, options = {}) {
 }
 async function upstream(method, params) {
   assert(READ_METHODS.has(method), 'Mainnet write/sign method blocked');
-  const id = ++seq;
-  const response = await getJson(network.rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id, method, params }) });
-  assert.equal(response.id, id); assert.equal(response.jsonrpc, '2.0');
-  if (response.error) throw new Error(`Read-only RPC: ${String(response.error.message).slice(0, 700)}`);
-  assert(Object.hasOwn(response, 'result')); return response.result;
+  const cacheable = ['eth_getCode', 'eth_getStorageAt', 'eth_getBalance', 'eth_getTransactionCount', 'eth_call'].includes(method) && /^0x[0-9a-f]+$/i.test(params.at(-1));
+  const cacheKey = JSON.stringify([method, params]);
+  if (cacheable && readCache.has(cacheKey)) return readCache.get(cacheKey);
+  const job = queue.then(async () => {
+    await delay(400);
+    const id = ++seq;
+    const response = await getJson(network.rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id, method, params }) });
+    assert.equal(response.id, id); assert.equal(response.jsonrpc, '2.0');
+    if (response.error) throw new Error(`Read-only RPC: ${String(response.error.message).slice(0, 700)}`);
+    assert(Object.hasOwn(response, 'result')); return response.result;
+  });
+  queue = job.catch(() => {});
+  if (cacheable) readCache.set(cacheKey, job);
+  try { return await job; } catch (e) { readCache.delete(cacheKey); throw e; }
 }
 async function source(chainId, address) {
   const a = getAddress(address), file = `source-${chainId}-${a}.json`;
@@ -79,7 +103,17 @@ async function startReadOnlyGateway() {
       for (const entry of requests) {
         if (!READ_METHODS.has(entry.method)) { blocked++; values.push({ jsonrpc: '2.0', id: entry.id, error: { code: -32601, message: 'Upstream writes and signing are forbidden' } }); continue; }
         forwarded++;
-        try { values.push({ jsonrpc: '2.0', id: entry.id, result: await upstream(entry.method, entry.params ?? []) }); }
+        try {
+          let result = await upstream(entry.method, entry.params ?? []);
+          if (['eth_getBlockByNumber', 'eth_getBlockByHash'].includes(entry.method) && result && typeof result === 'object') {
+            result = { ...result };
+            for (const field of ['blobGasUsed', 'excessBlobGas']) if (result[field] == null) {
+              result[field] = '0x0';
+              if (!report.headerCompatibility.fieldsDefaulted.includes(field)) report.headerCompatibility.fieldsDefaulted.push(field);
+            }
+          }
+          values.push({ jsonrpc: '2.0', id: entry.id, result });
+        }
         catch (e) { values.push({ jsonrpc: '2.0', id: entry.id, error: { code: -32000, message: safeError(e) } }); }
       }
       response.end(JSON.stringify(Array.isArray(body) ? values : values[0]));
@@ -123,6 +157,10 @@ async function main() {
   }
   report.proxy = await matchRuntime(staking, proxySource, anchor.number);
   const end = await upstream('eth_getBlockByNumber', [anchor.number, false]); assert.equal(end.hash, anchor.hash);
+  // Independently compare the genuine upstream eth_call return before the local EVM model.
+  const rawCall = await upstream('eth_call', [{ from: SENDER, to: TOKEN, data: tokenAbi.encodeFunctionData('airdropStake', [[RECIPIENT], [ONE]]), gas: '0x989680' }, anchor.number]);
+  assert.equal(tokenAbi.decodeFunctionResult('airdropStake', rawCall)[0], ONE);
+  report.mainnetEthCall = { offeredRaw: ONE, acceptedRaw: ONE, persistedState: false };
   const forkUrl = await startReadOnlyGateway();
   const config = { defaultNetwork: 'hardhat', networks: { hardhat: { chainId: network.id, hardfork: 'cancun', chains: { [network.id]: { hardforkHistory: { cancun: 0 } } }, forking: { url: forkUrl, blockNumber: Number(BigInt(anchor.number)) }, accounts: [], loggingEnabled: false } } };
   await writeFile('hardhat.config.cjs', `module.exports = ${JSON.stringify(config)};\n`);
