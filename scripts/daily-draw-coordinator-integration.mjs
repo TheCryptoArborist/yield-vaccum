@@ -28,7 +28,7 @@ const abi=AbiCoder.defaultAbiCoder();
 const beaconFixture=JSON.parse(await readFile('sdk/scripts/fixtures/drand-evmnet/rounds.json','utf8'));
 const beacon=beaconFixture.info, sample=beaconFixture.rounds[0], target=beaconFixture.rounds[2];
 const T=BigInt(beacon.genesis_time)+(BigInt(target.round)-1n)*BigInt(beacon.period);
-await writeFile('hardhat.config.cjs',`module.exports={defaultNetwork:'hardhat',networks:{hardhat:{chainId:${chainId},hardfork:'cancun',initialDate:'${new Date(Number(T-5000n)*1000).toISOString()}',initialBaseFeePerGas:1000000,blockGasLimit:30000000,loggingEnabled:false}}};\n`);
+await writeFile('hardhat.config.cjs',`module.exports={defaultNetwork:'hardhat',networks:{hardhat:{chainId:${chainId},hardfork:'cancun',initialDate:'${new Date(Number(T-5000n)*1000).toISOString()}',initialBaseFeePerGas:1000000,blockGasLimit:30000000,throwOnTransactionFailures:false,loggingEnabled:false}}};\n`);
 const hre=(await import('hardhat')).default;
 assert.equal(hre.network.name,'hardhat');
 assert.equal(hre.config.networks.hardhat.forking,undefined);
@@ -104,13 +104,14 @@ assert.deepEqual((output.errors??[]).filter(e=>e.severity==='error'),[],'Compila
 const linked={};
 const artifact=(file,name)=>output.contracts[file][name];
 function bytecode(a){let hex=a.evm.bytecode.object;for(const [file,libs]of Object.entries(a.evm.bytecode.linkReferences))for(const [name,refs]of Object.entries(libs)){const addr=linked[file+':'+name];assert(addr,'Missing linked library '+name);for(const r of refs)hex=hex.slice(0,r.start*2)+addr.slice(2).toLowerCase()+hex.slice((r.start+r.length)*2);}assert(/^[a-fA-F0-9]+$/.test(hex));return hex;}
-async function deploy(file,name,args=[]){const a=artifact(file,name);const c=await new ContractFactory(a.abi,bytecode(a),owner).deploy(...args,{gasLimit:15000000});await c.waitForDeployment();return c;}
+async function deploy(file,name,args=[]){const a=artifact(file,name);const c=await new ContractFactory(name==='LinkedRandomnessMapping'?[]:a.abi,bytecode(a),owner).deploy(...args,{gasLimit:15000000});await c.waitForDeployment();return c;}
 async function proxied(file,name,init,args,constructorArgs=[]){const impl=await deploy(file,name,constructorArgs);const p=await deploy('protocol/contracts/D20Proxy.sol','D20Proxy',[await impl.getAddress(),impl.interface.encodeFunctionData(init,args)]);return {instance:new Contract(await p.getAddress(),artifact(file,name).abi,owner),implementation:await impl.getAddress()};}
 const send=async promise=>(await promise).wait();
 const block=async()=>local('eth_getBlockByNumber',['latest',false]);
 const setNext=async t=>local('evm_setNextBlockTimestamp',[Number(t)]);
 const advance=async t=>{await setNext(t);await local('evm_mine');};
-const reject=async f=>{let error;try{const value=await f();if(value?.wait)await value.wait();}catch(e){error=e;}assert(error,'Expected EVM rejection');assert.equal(error.code,'CALL_EXCEPTION',String(error));};
+// Mined failures require an actual status-0 receipt; estimation failures must be EVM call exceptions.
+const reject=async f=>{let error;try{const value=await f();if(value?.wait)await value.wait();}catch(e){error=e;}assert(error,'Expected EVM rejection');assert.equal(error.code,'CALL_EXCEPTION',String(error));if(error.receipt)assert.equal(Number(error.receipt.status),0);else assert.equal(error.action,'estimateGas');};
 const beaconVerifier=await deploy('protocol/contracts/D20BeaconVerifier.sol','D20BeaconVerifier');
 let coordinator,registry,implementation;
 const minFee=1000000000000000n,callbackGas=120000,overhead=mode==='arc'?300000:405000;
@@ -157,7 +158,7 @@ async function prepareProof(id){
 }
 const fulfill=(id,proof)=>mode==='arc'?coordinator.fulfillRandomness(id,proof,{gasLimit:4000000}):coordinator.fulfillRandomness(id,proof,'0x'+target.signature,{gasLimit:4000000});
 function ticket(word,total){const threshold=(1n<<256n)%total;for(let cursor=0n;cursor<1000n;cursor++){const n=BigInt(keccak256(abi.encode(['bytes32','bytes32','uint256'],[keccak256(toUtf8Bytes('D20_MAP')),word,cursor])));if(n>=threshold)return n%total;}throw Error('Mapping bound');}
-const report={createdAt:new Date().toISOString(),mode,localChainId:chainId,sdkCommit:SDK_COMMIT,compiler:solc.version(),scope:'Actual pinned coordinator/registry/proof-verifier sources on fresh local Hardhat. Public test VRF scalar, historical public beacon signatures, synthetic native funds, fixture ticket token. Not public-chain, native-Arc accounting, live keeper, audit, escrow or release validation.',publicTransactions:0,publicRpcCalls:0,productionProviderApproved:false,livePaymentEnabled:false,unchangedDrawSha256:hash(sources[drawPath].content),providerSourceHashes:Object.fromEntries(Object.entries(sources).filter(([p])=>p.startsWith('protocol/')).map(([p,s])=>[p,hash(s.content)])),importHashes:imported,coordinator:C,implementation,coordinatorRuntimeHash:keccak256(await local('eth_getCode',[implementation,'latest'])),arbSysShim:mode==='robinhood',tests:[]};
+const report={createdAt:new Date().toISOString(),mode,localChainId:chainId,sdkCommit:SDK_COMMIT,compiler:solc.version(),scope:'Actual pinned coordinator/registry/proof-verifier sources on fresh local Hardhat. Public test VRF scalar, historical public beacon signatures, synthetic native funds, fixture ticket token. Not public-chain, native-Arc accounting, live keeper, audit, escrow or release validation.',publicTransactions:0,publicRpcCalls:0,productionProviderApproved:false,livePaymentEnabled:false,minedRevertReceipts:true,unchangedDrawSha256:hash(sources[drawPath].content),providerSourceHashes:Object.fromEntries(Object.entries(sources).filter(([p])=>p.startsWith('protocol/')).map(([p,s])=>[p,hash(s.content)])),importHashes:imported,coordinator:C,implementation,coordinatorRuntimeHash:keccak256(await local('eth_getCode',[implementation,'latest'])),arbSysShim:mode==='robinhood',tests:[]};
 let snap=await local('evm_snapshot');
 async function test(name,fn){assert.equal(await local('evm_revert',[snap]),true);snap=await local('evm_snapshot');try{const details=await fn();report.tests.push({name,status:'passed',...details});}catch(e){report.tests.push({name,status:'failed',error:String(e.shortMessage??e.message).slice(0,1200),data:e.data??null});}console.log('CASE',mode,name,report.tests.at(-1).status);}
 await test('actual_proof_delivers_to_unchanged_draw_and_selects_locked_owner',async()=>{
