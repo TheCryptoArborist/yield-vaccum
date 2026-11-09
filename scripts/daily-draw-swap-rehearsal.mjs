@@ -90,13 +90,15 @@ const pack=(tokens,ticks)=>{assert.equal(tokens.length,ticks.length+1);const typ
 async function main(){
  assert.equal(BigInt(await upstream('eth_chainId',[])),BigInt(n.id));anchor=await upstream('eth_getBlockByNumber',['latest',false]);report.anchor={number:anchor.number,hash:anchor.hash,finalized:false};
  const ri=await checked(ROUTER,'swap router'),qi=await checked(QUOTER,'quoter'),fi=await checked(FACTORY,'factory'),ti=await checked(TOKEN,'MSS2 token');
+ const routerSources=(await source(ROUTER)).sources;
+ assert(Object.values(routerSources).some(s=>/require\s*\(\s*_blockTimestamp\(\)\s*<=\s*deadline\s*\)\s*;/.test(s.content??'')),'Deadline validation source changed');report.deadlineValidation='Verified source uses require(_blockTimestamp() <= deadline) without a reason string.';
  assert.equal(getAddress((await readLive(ROUTER,ri,'factory'))[0]),FACTORY);assert.equal(getAddress((await readLive(QUOTER,qi,'factory'))[0]),FACTORY);
  const path=pack(n.tokens,n.ticks);report.route={payment:n.payment,symbol:n.symbol,router:ROUTER,spender:ROUTER,path,tokens:n.tokens,tickSpacings:n.ticks,recipient:SENDER,bridge:false,purchaseMode:'liquid',transactionValue:'0'};
- let poolAbi;
+ let poolAbi,poolImplementation;
  for(let i=0;i<n.ticks.length;i++){
   const p=getAddress((await readLive(FACTORY,fi,'getPool',[n.tokens[i],n.tokens[i+1],n.ticks[i]]))[0]);assert(BigInt(p)>0n);
   const code=await upstream('eth_getCode',[p,anchor.number]),clone=/^0x363d3d373d3d3d363d73([0-9a-f]{40})5af43d82803e903d91602b57fd5bf3$/i.exec(code);
-  assert(clone,'Pool proxy pattern not reviewed');const impl=getAddress('0x'+clone[1]);if(!poolAbi)poolAbi=await checked(impl,'CL pool implementation');
+  assert(clone,'Pool proxy pattern not reviewed');const impl=getAddress('0x'+clone[1]);if(!poolAbi){poolAbi=await checked(impl,'CL pool implementation');poolImplementation=impl;}else assert.equal(impl,poolImplementation,'Pool implementation differs');
   const t0=getAddress((await readLive(p,poolAbi,'token0'))[0]),t1=getAddress((await readLive(p,poolAbi,'token1'))[0]);assert.deepEqual([t0,t1].map(x=>x.toLowerCase()).sort(),[n.tokens[i],n.tokens[i+1]].map(x=>x.toLowerCase()).sort());assert.equal((await readLive(p,poolAbi,'tickSpacing'))[0],BigInt(n.ticks[i]));assert.equal(getAddress((await readLive(p,poolAbi,'factory'))[0]),FACTORY);
   report.pools.push({address:p,implementation:impl,tokens:[t0,t1],tickSpacing:n.ticks[i],feeRaw:(await readLive(p,poolAbi,'fee'))[0],liquidity:(await readLive(p,poolAbi,'liquidity'))[0],runtimeKeccak:keccak256(code)});
  }
@@ -122,7 +124,9 @@ async function main(){
  const quote=async(p,amount)=>(await call(QUOTER,qi,'quoteExactInput',[p,amount]))[0];
  const approve=async(amount)=>{await send(n.payment,erc,'approve',[ROUTER,amount]);assert.equal((await call(n.payment,erc,'allowance',[SENDER,ROUTER]))[0],amount);};
  if(key==='robinhood'){
-  const wi=await checked(WETH,'wrapped ETH');await send(WETH,wi,'deposit',[],ONE);await send(WETH,erc,'approve',[ROUTER,ONE]);const reverse=pack([WETH,n.payment],[50]);const q=await quote(reverse,ONE);assert(q>100000000n,'USDG fixture too small');await send(ROUTER,ri,'exactInput',[[reverse,SENDER,await deadline(),ONE,q*99n/100n]]);report.fixture='Deposited 1 synthetic local ETH to real WETH and swapped WETH to actual USDG on the fork. This setup is not part of the prize purchase.';
+  await checked(WETH,'wrapped ETH proxy');const ws=await upstream('eth_getStorageAt',[WETH,SLOT,anchor.number]);assert(/^0x0{24}[0-9a-fA-F]{40}$/.test(ws)&&BigInt(ws)>0n,'Invalid WETH implementation');const wi=await checked(getAddress('0x'+ws.slice(-40)),'wrapped ETH implementation');assert(wi.hasFunction('deposit()'),'Verified WETH implementation has no deposit');
+  const beforeWrapped=await bal(WETH);await send(WETH,wi,'deposit',[],ONE);assert.equal(await bal(WETH)-beforeWrapped,ONE,'Local WETH funding mismatch');
+  await send(WETH,erc,'approve',[ROUTER,ONE]);const reverse=pack([WETH,n.payment],[50]);const q=await quote(reverse,ONE);assert(q>100000000n,'USDG fixture too small');await send(ROUTER,ri,'exactInput',[[reverse,SENDER,await deadline(),ONE,q*99n/100n]]);report.fixture='Deposited 1 synthetic local ETH through the verified WETH implementation and swapped WETH to actual USDG on the fork. This setup is not part of the prize purchase.';
  }else{assert.equal(await native()/10n**12n,await bal(n.payment),'USDC native/ERC20 balance relation');report.fixture='10000 synthetic local native USDC; ERC20 balance checked against the same underlying native balance.';}
  await approve(0n);const base=await local('evm_snapshot');let snapshot=base;
  async function reset(){assert(await local('evm_revert',[snapshot]));snapshot=await local('evm_snapshot');}
@@ -139,7 +143,11 @@ async function main(){
   return {inputRaw:amount,quotedOutputRaw:q,minimumOutputRaw:min,receivedLiquidMssRaw:received,stakeUnchanged:true,allowanceRemainingRaw:after.allowance,gasCostNativeRaw:gasCost,localReceiptStatus:receipt.status};
  });
  await expectRevert('minimum_output_enforced',async()=>[path,SENDER,await deadline(),1000000n,(await quote(path,1000000n))*2n],'Too little received');
- await expectRevert('expired_purchase_rejected',async()=>[path,SENDER,1n,1000000n,1n],'Transaction too old');
+ await test('expired_purchase_rejected',async()=>{
+  await approve(1000000n);const params=[path,SENDER,await deadline(),1000000n,1n];const control=(await call(ROUTER,ri,'exactInput',[params]))[0];assert(control>0n,'Fresh-deadline positive control failed');const before=await captured();let rejected=false;
+  try{await call(ROUTER,ri,'exactInput',[[...params.slice(0,2),1n,...params.slice(3)]]);}catch(e){assert(/revert|VM Exception|execution/i.test(String(e.message)),'Not an EVM revert');rejected=true;}
+  assert(rejected,'Expired transaction did not revert');assert.deepEqual(await captured(),before,'Deadline rejection changed state');return {freshDeadlineControlPassed:true,onlyDeadlineChanged:true,checkedStateUnchanged:true,sourceRule:'require(_blockTimestamp() <= deadline); no reason string',scope:'Paired eth_call on local fork, not mined failed transaction'};
+ });
  await test('missing_approval_rejected',async()=>{const before=await captured();let rejected=false;try{await call(ROUTER,ri,'exactInput',[[path,SENDER,await deadline(),1000000n,1n]]);}catch(e){assert(/revert|VM Exception|execution/i.test(e.message));rejected=true;}assert(rejected);assert.deepEqual(await captured(),before);return {checkedStateUnchanged:true};});
  await test('purchased_liquid_tokens_then_exact_winner_stake',async()=>{
   const amount=1000000n;assert.equal((await stake(RECIPIENT))[0],0n);await approve(amount);const beforeMss=await bal(TOKEN),beforeStake=await stake();const q=await quote(path,amount);await send(ROUTER,ri,'exactInput',[[path,SENDER,await deadline(),amount,q*99n/100n]]);const bought=await bal(TOKEN)-beforeMss;assert(bought>=ONE);assert.deepEqual(await stake(),beforeStake);const recipientLiquid=await bal(TOKEN,RECIPIENT),reserveLiquid=await bal(TOKEN);const receipt=await send(TOKEN,ti,'airdropStake',[[RECIPIENT],[bought]]);assert.equal(reserveLiquid-await bal(TOKEN),bought);assert.equal((await stake(RECIPIENT))[0],bought);assert.equal(await bal(TOKEN,RECIPIENT),recipientLiquid);assert.equal(await bal(TOKEN),beforeMss,'Payout consumed unrelated reserve MSS2');const gifts=receipt.logs.filter(l=>l.address.toLowerCase()===staking.toLowerCase()).flatMap(l=>{try{return [si.parseLog(l)];}catch{return [];}}).filter(l=>l?.name==='StakeGifted');assert.equal(gifts.length,1);assert.equal(getAddress(gifts[0].args.sender),SENDER);assert.equal(getAddress(gifts[0].args.recipient),getAddress(RECIPIENT));assert.equal(gifts[0].args.amount,bought);return {purchasedMssRaw:bought,winnerStakeIncreaseRaw:bought,unrelatedReserveMssUnchanged:true,recipientLiquidIncreaseRaw:'0'};
