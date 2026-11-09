@@ -1,0 +1,51 @@
+{
+  "recordedDate": "2026-11-09",
+  "scope": "Isolated real Postgres; synthetic receipt evidence in local-chain namespaces; no public-chain transactions or application database changes",
+  "acceptedRun": 42626166537,
+  "acceptedJob": 129190400734,
+  "workflowCommit": "9618241888ddcc17029e650923a9eee567e3976b",
+  "sourceCommit": "adfe3471c6c04e22caaf63477da553fd0f1fb233",
+  "runConclusion": "success",
+  "database": "PostgreSQL 16.6 (Debian 16.6-1.pgdg120+1)",
+  "databaseChecks": {
+    "perLocalChainCategories": 29,
+    "localChainIds": [31337, 31338],
+    "sharedChecks": 4,
+    "passed": 62,
+    "failed": 0
+  },
+  "separateDatabaseServerRestartCheck": "passed",
+  "processCrashTests": "SIGKILL immediately before and immediately after transaction COMMIT, repeated in both local-chain namespaces",
+  "artifact": {
+    "id": 13678741787,
+    "name": "daily-draw-persistence-42626166537",
+    "sha256": "c6928bcff3c41510e630820e21866c62858c5ebabc069720e8b905f3b3c28de8",
+    "downloadedDigestVerified": true,
+    "githubRetentionDays": 30
+  },
+  "sha256": {
+    "research/daily-draw/payout-store/schema.sql": "d232271c4fc3bf119c24d6c177a5f92c6efc5b3d6e3cd0261b7517341bea5253",
+    "research/daily-draw/payout-store/store.mjs": "598b89d554a314000e76f9c17089fdb5698037eb5dfa11fbd94a8790d05aa601",
+    "scripts/daily-draw-persistence.mjs": "c5080f49252f30d78f24819fcdbed37dfa1d5f0c0da8ce3961f53482617f3acb",
+    "research/daily-draw/stake-award-reconciliation.mjs": "ac6e4cf1466de7e0577e8c9a958346c8cf7d00dab72a4bd2a152c1ada9f6b1ce",
+    "isolated-package-lock.json": "81b1935ea4e236aa93bbf90170e55a55bb64883f5d4626d61afe21ec36bcacdf"
+  },
+  "unchangedReceiptVerifierGitBlob": "c4b9bdddb57a12984d46018dee7ceefa98e061c9",
+  "directDependencies": {"ethers": "6.15.0", "pg": "8.16.3"},
+  "publicTransactions": 0,
+  "productionDatabaseAccess": false,
+  "automaticMigrationAdded": false,
+  "onChainSettlementImplemented": false,
+  "settlementOutboxState": "HeldForAuthorityReview",
+  "providerApproved": false,
+  "livePaymentEnabled": false,
+  "limitations": [
+    "No new fork, actual-provider or website integration run in this milestone",
+    "Stored selection and transaction inputs must come from trusted server-side chain readers; no public API or authorization layer exists here",
+    "Reorg handling reverses only contradicted local credit and freezes the sender lane; no automatic unlock or reviewed recovery procedure implemented",
+    "No production RPC watcher, replacement discovery service, signer, on-chain liability decrement or receipt-inclusion proof",
+    "Application/database process restarts tested, not storage loss, geographic failover or backup restoration",
+    "Database constraints do not stop independently sent wallet transactions or a privileged database administrator",
+    "Current on-chain controller still records full AwardPending liability"
+  ]
+}
