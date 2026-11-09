@@ -1,0 +1,71 @@
+{
+  "recordedUTC": "2026-11-09",
+  "acceptedRun": 42621984190,
+  "conclusion": "success",
+  "workflowCommit": "d1012f24cdfedb7574635609036c4287e255f228",
+  "sourceCommit": "05f954e7c6b4b0600e806f4f6f1dfeea08e5e50b",
+  "launcherBlob": "43488a86352f83e5fce0142f420ab5f9567b708d",
+  "originalSwapRunnerBlob": "5223d49fad11e0e5e314b4c47ff1e9d683e07e0c",
+  "productionEnabled": false,
+  "mainnetTransactionsSubmitted": 0,
+  "deterministicFixtureRandomness": true,
+  "onchainSettlementImplemented": false,
+  "durableDuplicateProtection": false,
+  "scope": "Real token/router/staking code in private forks and unchanged draw/fee prototypes; deterministic mock coordinator. Receipt book is local in-memory research, not production payout authorization or on-chain settlement. Anchors are not asserted finalized.",
+  "sourceSHA256": {
+    "DailyDrawIntegratedPrototype.sol": "7746355a44e1d4b906449d15fb4efa6cf82844914d6255ce8526f49efe1e3076",
+    "DailyDrawOperatingFeesPrototype.sol": "a470605471052b9c4b0428b1bd9d9b6a0577cfbfbf11534eef2c73b0a21f9482",
+    "DailyDrawTopazPurchasePrototype.sol": "6eb83dd1d64fc9441142568c784470d238fbdb7d88e85a556aaa8385e5d14c47",
+    "stake-award-reconciliation.mjs": "ac6e4cf1466de7e0577e8c9a958346c8cf7d00dab72a4bd2a152c1ada9f6b1ce",
+    "daily-draw-market-ledger-cases.mjs": "decebd2c8359b5ddccc1acf2fb6a9b37884922512ef818b13377043ae644a2ef"
+  },
+  "resolvedDependencyLockSHA256": "88230302a70117882d7f63ba96cadb629c97be5615d2b5fadc51d00e46c85bf3",
+  "downloadedArtifactDigestsChecked": true,
+  "contractsCasesAndReceiptVerifierUnchangedBetweenInitialAndAcceptedArtifacts": true,
+  "results": {
+    "robinhood": {
+      "jobId": 129176184531,
+      "sourceChainId": 4663,
+      "localExecutionChainId": 31337,
+      "passed": 23,
+      "failed": 0,
+      "newIntegratedCases": 16,
+      "priorSwapCasesRerun": 7,
+      "alteredEvidenceRejectionsIncludedInOneCase": 12,
+      "engine": "Hardhat 2.26.3; local transaction timestamps explicitly latest + 1; missing blob header defaults retained",
+      "anchor": {"number": "0x68fa417", "hash": "0x53b867bc4725fbf3ebdea76e65e2e340a9162b4bf61d601ec46f0c6a547c47c2", "finalized": false},
+      "gateway": {"deniedWriteChecks": 5, "writeRequestsForwarded": 0},
+      "artifact": {"id": 13675689515, "sha256": "7c6fd847d109dff3893d2a1fb9b066baae4611c107002968582e9ff0f9d3b474"},
+      "localGiftEvidence": {"transactionHash": "0x3ce5d93ae2024075c8b3e8433b7dde212d3fcfb1a182c64cd51efc0aa3f35469", "creditedRaw": "658660167900846099694", "localUnpaidRaw": "0", "onchainAwardStillPending": true}
+    },
+    "arc": {
+      "jobId": 129176184833,
+      "sourceChainId": 5042,
+      "localExecutionChainId": 31338,
+      "passed": 23,
+      "failed": 0,
+      "newIntegratedCases": 16,
+      "priorSwapCasesRerun": 7,
+      "alteredEvidenceRejectionsIncludedInOneCase": 12,
+      "engine": "Circle Arc Foundry v0.8.0-4; network explicitly asserted arc",
+      "anchor": {"number": "0x1cf2584", "hash": "0xd6ba8dc29e53ca5544d7fd5feafd6d99c41d59015978fc2c9cde31ece8c060ce", "finalized": false},
+      "gateway": {"deniedWriteChecks": 5, "writeRequestsForwarded": 0},
+      "artifact": {"id": 13675604823, "sha256": "39605ba9f091a9b13584df216014af419209f73479403ffb55d3b6e638c8f9dc"},
+      "nativeSharedBalanceAccountingExercised": true,
+      "localGiftEvidence": {"transactionHash": "0x0b883180f3fbdc68c33939a5c564b9cf9fbac7fb8bbdeecb746399ae297f1cc9", "creditedRaw": "619715510670774100309", "localUnpaidRaw": "0", "onchainAwardStillPending": true}
+    }
+  },
+  "initialRun": {
+    "id": 42620946853,
+    "arc": {"passed": 23, "failed": 0, "artifactId": 13675223680, "sha256": "343acabb2250b6eeb5e6b9c41d812f7055ee4207e0bb68c25a1a8f614bfe4f37"},
+    "robinhood": {"passed": 10, "failed": 13, "artifactId": 13676121898, "sha256": "bc876923fe96b9c167d4c0ac1a26821666f6c55dbad0fb8730dd8fcae8034155"},
+    "correction": "Later restored-snapshot Robinhood cases hit InvalidInput (0xb4fa3fb3). The launcher now explicitly timestamps each local mined send at latest local timestamp + 1, preventing wall-clock jumps across snapshot fixtures. No public timestamp, contract, case assertion or receipt verifier changed. Initial failures are retained."
+  },
+  "remaining": [
+    "Durable atomic payout reservations, multi-process/restart recovery and nonce/replacement monitoring",
+    "Reviewed on-chain/off-chain settlement authority and liability decrement; current on-chain awards remain pending",
+    "Full actual-provider plus market plus settlement combined acceptance, rather than combining unlike historical tests",
+    "Production finality/reorg policy, current deployment/governance review and real wallet authority",
+    "Economic/eligibility policy, backed participant refunds, cap-shortfall rules and independent release review"
+  ]
+}
