@@ -1,12 +1,12 @@
 /** Research only: bounded HTTPS reads and view calls; never requests randomness or sends a transaction. */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Interface, getAddress, keccak256 } from 'ethers';
-const SDK='https://raw.githubusercontent.com/d20dao/d20-sdk/fc4b546c06017703b0508ef2182d2030d789c966';
+const SDK_COMMIT='fc4b546c06017703b0508ef2182d2030d789c966';
 const SLOT='0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
-const HOSTS=new Set(['d20dao.org','raw.githubusercontent.com','rpc.mainnet.chain.robinhood.com','rpc.mainnet.arc.io']);
+const HOSTS=new Set(['d20dao.org','rpc.mainnet.chain.robinhood.com','rpc.mainnet.arc.io']);
 const METHODS=new Set(['eth_chainId','eth_getBlockByNumber','eth_getCode','eth_getStorageAt','eth_call']);
 const networks=[
  {key:'robinhood',id:4663,rpc:'https://rpc.mainnet.chain.robinhood.com',proxy:'0xEc8b95B168c87294c45727Bd2ac903d09316D132',abi:'D20VRFCoordinatorRobinhood',abiHash:'f5024b52cb169375f50df1df09a9663f5abca72324c8986382ac42840702f0f8'},
@@ -14,13 +14,13 @@ const networks=[
 ];
 let sequence=0,posts=0;
 const serial=x=>JSON.stringify(x,(_,v)=>typeof v==='bigint'?v.toString():v,2);
-async function read(url, options={}) {
+async function read(url,options={}) {
  const u=new URL(url);assert.equal(u.protocol,'https:');assert(HOSTS.has(u.hostname));assert(!u.username&&!u.password);
  let r;
  for(let attempt=0;attempt<3;attempt++) {
   r=await fetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(20000)});
   if(![429,503].includes(r.status)||attempt===2)break;
-  const header=r.headers.get('retry-after');const seconds=Number(header);
+  const header=r.headers.get('retry-after'),seconds=Number(header);
   const wait=header&&Number.isFinite(seconds)?seconds*1000:Math.max(0,Date.parse(header??'')-Date.now())||2000*(attempt+1);
   await r.body?.cancel();if(wait>30000)throw Error('Provider requested longer backoff; bounded check stopped');await delay(Math.max(wait,1000));
  }
@@ -45,8 +45,11 @@ for(const n of networks) {
   const {value:m,sha256:manifestSha256}=await read(manifestURL);
   assert.equal(Number(m.chainId),n.id);assert.equal(getAddress(m.coordinator),getAddress(n.proxy));
   o.manifest={url:manifestURL,sha256:manifestSha256};
-  const a=await read(`${SDK}/abi/${n.abi}.json`);assert.equal(a.sha256,n.abiHash,'Pinned SDK ABI hash mismatch');
-  const iface=new Interface(a.value);o.abi={sdkCommit:SDK.split('/').at(-1),sha256:a.sha256};
+  // ABIs are generated package exports, not checked-in files at the repository URL.
+  // Read data only; do not execute SDK entrypoints. Match the documented 0.6.2 ABI hashes.
+  const abiRaw=await readFile(new URL(import.meta.resolve(`@d20dao/vrf-sdk/abi/${n.abi}.json`)));
+  const abiHash=createHash('sha256').update(abiRaw).digest('hex');assert.equal(abiHash,n.abiHash,'Pinned SDK ABI hash mismatch');
+  const iface=new Interface(JSON.parse(abiRaw.toString('utf8')));o.abi={packageVersion:'0.6.2',sdkCommit:SDK_COMMIT,sha256:abiHash};
   assert.equal(BigInt(await rpc(n,'eth_chainId',[])),BigInt(n.id));
   const b=await rpc(n,'eth_getBlockByNumber',['latest',false]);assert(b&&b.hash&&b.number&&b.baseFeePerGas);o.anchor={number:b.number,hash:b.hash,timestamp:b.timestamp,finalized:false};
   const check=(label,actual,expected)=>{assert.notEqual(expected,undefined,`Missing manifest ${label}`);const same=String(actual).toLowerCase()===String(expected).toLowerCase();o.checks.push({label,actual,expected,matched:same});if(!same)o.discrepancies.push(label);};
@@ -59,13 +62,14 @@ for(const n of networks) {
   for(const role of ['beaconVerifier','proofVerifier','mappingLibrary'])if(m[role])await code(role,m[role],m[role+'CodeHash']);
   const view=async(name,args=[])=>{const f=iface.getFunction(name);assert(f&&['view','pure'].includes(f.stateMutability),'Only SDK-declared getters allowed');return iface.decodeFunctionResult(f,await rpc(n,'eth_call',[{to:m.coordinator,data:iface.encodeFunctionData(f,args)},b.number]));};
   for(const name of ['owner','feeRecipient','keeper']){const value=(await view(name))[0];o.observations[name]=value;check(name,value,m[name]);}
-  const pricing=Array.from(await view('pricing'));const expected=m.pricing??m;
+  const pricing=Array.from(await view('pricing')),expected=m.pricing??m;
   for(const [i,name] of ['minFeeWei','feeMultiplier','fulfillGasOverhead'].entries())check(name,pricing[i],expected[name]);
   o.observations.pricing=pricing;
   for(const name of ['refundBps','keeperFeeBps']){const value=(await view(name))[0];o.observations[name]=value;check(name,value,expected[name]);}
-  const quote=(await view('quoteFeeAt',[120000,BigInt(b.baseFeePerGas)]))[0];const calculated=pricing[1]*BigInt(b.baseFeePerGas)*(pricing[2]+120000n);assert.equal(quote,calculated>pricing[0]?calculated:pricing[0]);o.observations.quoteFor120kCallbackNativeRaw=quote;
-  for(const name of ['RESPONSE_TIMEOUT','MIN_CALLBACK_GAS','MAX_CALLBACK_GAS','protocolConfigurationHash','keyHash','epochRegistry','registry','proofVerifier','mappingLibrary'])if(iface.hasFunction(name)&&iface.getFunction(name).inputs.length===0){const values=Array.from(await view(name));o.observations[name]=values;}
-  const checkBlock=await rpc(n,'eth_getBlockByNumber',[b.number,false]);assert.equal(checkBlock.hash,b.hash,'Anchor changed');assert.equal(BigInt(await rpc(n,'eth_chainId',[])),BigInt(n.id));
+  const quote=(await view('quoteFeeAt',[120000,BigInt(b.baseFeePerGas)]))[0],calculated=pricing[1]*BigInt(b.baseFeePerGas)*(pricing[2]+120000n);
+  assert.equal(quote,calculated>pricing[0]?calculated:pricing[0]);o.observations.quoteFor120kCallbackNativeRaw=quote;
+  for(const name of ['RESPONSE_TIMEOUT','MIN_CALLBACK_GAS','MAX_CALLBACK_GAS','protocolConfigurationHash','keyHash','epochRegistry','registry','proofVerifier','mappingLibrary'])if(iface.hasFunction(name)&&iface.getFunction(name).inputs.length===0)o.observations[name]=Array.from(await view(name));
+  assert.equal((await rpc(n,'eth_getBlockByNumber',[b.number,false])).hash,b.hash,'Anchor changed');assert.equal(BigInt(await rpc(n,'eth_chainId',[])),BigInt(n.id));
   o.status=o.discrepancies.length?'manifest_discrepancy':'deployment_getters_matched';
  }catch(e){o.error=String(e.shortMessage??e.message).slice(0,900);}
 }
