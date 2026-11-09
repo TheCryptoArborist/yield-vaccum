@@ -19,10 +19,10 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draw-coordinator/research/daily-draw" "$RUNNER_TEMP/draw-coordinator/sdk"
           cd "$RUNNER_TEMP/draw-coordinator"
           fetch() { curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 90 "$1" -o "$2"; }
-          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/1d2c384be418f6775774fd316a44519200f520fb
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/8f578a26bb941aded203fe3494da4014ba09359e
           fetch "$ROOT/scripts/daily-draw-coordinator-integration.mjs" runner.mjs
           fetch "$ROOT/research/daily-draw/DailyDrawPrototype.sol" research/daily-draw/DailyDrawPrototype.sol
-          test "$(git hash-object runner.mjs)" = bc866a1df76dc9c11609c99219f35eabab164267
+          test "$(git hash-object runner.mjs)" = 4c01949f6034a2ff21c0193c9bb8a886d0ac9c79
           test "$(git hash-object research/daily-draw/DailyDrawPrototype.sol)" = 7c6471f8154d9b71d19aad1d3ad5c463135c5d9a
           fetch https://codeload.github.com/d20dao/d20-sdk/tar.gz/fc4b546c06017703b0508ef2182d2030d789c966 provider.tar.gz
           tar -xzf provider.tar.gz --strip-components=1 -C sdk
@@ -48,4 +48,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          printf '%s\n' 'Fresh local Hardhat chains only; no public RPC or transactions, private wallet keys, approvals or deployment.' 'Actual pinned coordinator, proof verifier and Arc registry sources; public fixture VRF scalar, recorded drand signatures and artificial clock. Not a live D20 keeper fulfillment.' 'Main DailyDrawPrototype source is unchanged. Separate RecoveryProbe injects callback/refund failures. Robinhood ArbSys block number is a local shim; Arc native-USDC semantics are NOT simulated by this suite.' 'Test amounts are fixtures. No production eligibility, ticket price, revenue split, escrow, participant-refund policy or provider approval is established.' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'Fresh local Hardhat chains only; no public RPC or transactions, private wallet keys, approvals or public deployment.' 'Actual pinned coordinator, proof verifier and Arc registry sources; public fixture VRF scalar, recorded drand signatures and artificial clock. Not a live D20 keeper fulfillment.' 'Main DailyDrawPrototype source is unchanged. Separate RecoveryProbe injects callback/refund failures. Robinhood ArbSys block number is a local shim; Arc native-USDC semantics are NOT simulated by this suite.' 'Reverted local sends are mined and checked as status-0 receipts. Estimation errors must remain EVM CALL_EXCEPTION; arbitrary provider errors are not passes.' 'Test amounts are fixtures. No production eligibility, ticket price, revenue split, escrow, participant-refund policy or provider approval is established.' >> "$GITHUB_STEP_SUMMARY"
