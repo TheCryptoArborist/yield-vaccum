@@ -1,0 +1,35 @@
+name: Daily Draw historical provider evidence
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-provider-evidence.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-provider-evidence
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch pinned read-only checker and isolated dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/provider-evidence"
+          cd "$RUNNER_TEMP/provider-evidence"
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/e9a37837824b5f97f9ee85477e5cd7e91e3b55ad/scripts/daily-draw-provider-evidence.mjs -o verify.mjs
+          test "$(git hash-object verify.mjs)" = a28131a7a95e7adbd3ff9837a544165b21a5e135
+          node --check verify.mjs
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 @d20dao/vrf-sdk@0.6.2
+      - name: Verify historical proofs and public-chain context without transactions
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/provider-evidence"
+          node verify.mjs
+      - name: Record scope
+        if: always()
+        run: |
+          printf '%s\n' 'Read-only RPC allowlist; no keys, live requests, wallet approvals or transaction submission.' 'Pinned SDK fixture replays plus separately retrieved receipts and historical state. No production integration, independent crypto implementation, finality or audit claim.' 'Ownership bisection locates an observed transition, not complete ownership history or authorization of real-world controller identity. Provider approval remains false.' >> "$GITHUB_STEP_SUMMARY"
