@@ -1,0 +1,169 @@
+{
+  "recordedDate": "2026-11-09",
+  "runId": 42628540736,
+  "result": "success",
+  "workflowCommit": "35a1f2974939ffb9105e64eac958acbc063abbb5",
+  "sourceCommit": "5cff077d71796b4ce3f9c2f141d179d320bee2b3",
+  "productionEnabled": false,
+  "publicTransactions": 0,
+  "onChainSettlementImplemented": false,
+  "sourceFiles": {
+    "research/daily-draw/payout-store/chain-reader.mjs": {
+      "sha256": "a79280e929dddd040488b92255d5183e5343f907cfd24aa674c0cff0b0abd7b3",
+      "gitBlob": "b4614fc721a0c6cc5585ce6b3426931a9d574aa6"
+    },
+    "research/daily-draw/payout-store/reader-store.mjs": {
+      "sha256": "d8a17f7c64f52d2caae7b79d700c6e6284347ec452b755f39e53c1bb7a803a94",
+      "gitBlob": "babef1f7943b9d157fad730f609a28ea8e7f40db"
+    },
+    "scripts/daily-draw-worker-cases.mjs": {
+      "sha256": "f91134c904054208fe842886a8bf48ca2ebaa2561ae510d11a3dd2e6fa57949a",
+      "gitBlob": "db684240adddc91f6a959f16a04003acdbedc2df"
+    },
+    "scripts/daily-draw-worker-fork.mjs": {
+      "sha256": "ce68cd1a893175153c2a8f77866d65013fb274c0b271e8ff01333d89ae06fc44",
+      "gitBlob": "348d344b5430674c77c060a5b014b4ababee07e8"
+    }
+  },
+  "modes": {
+    "robinhood": {
+      "jobId": 129198517611,
+      "artifactId": 13680525665,
+      "artifactSha256": "11b0d29029def2ab810d71841684f7c471c44c6fbfbc38be50d5d6401de2f47c",
+      "anchor": {
+        "number": "0x6900b7f",
+        "hash": "0xedf637a48d992590237ffe1076f124208845adfa905c77c50f8768f3bf7ad9d5",
+        "finalized": false
+      },
+      "engine": {
+        "name": "Hardhat 2.26.3",
+        "scope": "EVM fork; absent blob headers defaulted, not rollup consensus/gas equivalence"
+      },
+      "newCases": 20,
+      "retainedCases": 23,
+      "totalPassed": 43,
+      "failed": 0,
+      "dependencyLockSha256": "603e9b61654f09b3a9da8f2f9964e2d22c84368d8195c50bdb0d1ea4c56ceade",
+      "readMethods": ["eth_call", "eth_chainId", "eth_getBlockByNumber", "eth_getCode", "eth_getStorageAt", "eth_getTransactionByHash", "eth_getTransactionReceipt"],
+      "allListedCategoriesPassed": true,
+      "selectedOutcomes": [
+        {
+          "name": "market_ledger_durable_imports_locked_award_and_exact_real_gift_receipt",
+          "status": "passed",
+          "actualForkReceipt": "0x4c8e59d32309da2215b881aafc7682ad9fd614722075c04bd9f0f7214d13fa11",
+          "creditedRaw": "661502125903583247654",
+          "lockedSelection": "0x64659943835640640eeef4674a30160f3ca69e0baa6609320026ef7b4d03a9ab",
+          "onchainLiabilityUnchanged": true
+        },
+        {
+          "name": "market_ledger_durable_partial_gift_preserves_exact_unpaid_award",
+          "status": "passed",
+          "localCapacityFixture": true,
+          "receipt": "0x4c8e59d32309da2215b881aafc7682ad9fd614722075c04bd9f0f7214d13fa11",
+          "unpaidRaw": "661002125903583247654"
+        },
+        {
+          "name": "market_ledger_durable_zero_credit_success_is_not_recorded_as_paid",
+          "status": "passed",
+          "localCapacityFixture": true,
+          "receipt": "0x4c8e59d32309da2215b881aafc7682ad9fd614722075c04bd9f0f7214d13fa11"
+        },
+        {
+          "name": "market_ledger_durable_real_fork_reorg_reverses_archived_credit_once_and_freezes",
+          "status": "passed",
+          "localSnapshotReorganization": true,
+          "originalReceipt": "0x4c8e59d32309da2215b881aafc7682ad9fd614722075c04bd9f0f7214d13fa11",
+          "restoredOwedRaw": "661502125903583247654"
+        }
+      ]
+    },
+    "arc": {
+      "jobId": 129198517127,
+      "artifactId": 13680550887,
+      "artifactSha256": "234058e3880e3d78f6482bc1e52029d412ea7b0741f3a7165b8e17a0c12d1c4f",
+      "anchor": {
+        "number": "0x1cf3a58",
+        "hash": "0x237ebb74b8eeffd080d2ea1c030d836ac32a31d67b8088a4739710cd6d9b9e0e",
+        "finalized": false
+      },
+      "engine": {
+        "name": "Circle Arc Foundry v0.8.0-4",
+        "network": "arc",
+        "scope": "Arc execution on forked state; not real network finality or transaction competition"
+      },
+      "newCases": 20,
+      "retainedCases": 23,
+      "totalPassed": 43,
+      "failed": 0,
+      "dependencyLockSha256": "603e9b61654f09b3a9da8f2f9964e2d22c84368d8195c50bdb0d1ea4c56ceade",
+      "readMethods": ["eth_call", "eth_chainId", "eth_getBlockByNumber", "eth_getCode", "eth_getStorageAt", "eth_getTransactionByHash", "eth_getTransactionReceipt"],
+      "allListedCategoriesPassed": true,
+      "selectedOutcomes": [
+        {
+          "name": "market_ledger_durable_imports_locked_award_and_exact_real_gift_receipt",
+          "status": "passed",
+          "actualForkReceipt": "0xc2c83cfef1e2b0212c2d6c5d2ce7ec16e8b476448401529d03236cc62f1a15ea",
+          "creditedRaw": "619715604349961428323",
+          "lockedSelection": "0xd7e86557f2eb7cdf1e435f18b4a1427556547b1e3c43b755d03d332dc377bd20",
+          "onchainLiabilityUnchanged": true
+        },
+        {
+          "name": "market_ledger_durable_partial_gift_preserves_exact_unpaid_award",
+          "status": "passed",
+          "localCapacityFixture": true,
+          "receipt": "0xc2c83cfef1e2b0212c2d6c5d2ce7ec16e8b476448401529d03236cc62f1a15ea",
+          "unpaidRaw": "619215604349961428323"
+        },
+        {
+          "name": "market_ledger_durable_zero_credit_success_is_not_recorded_as_paid",
+          "status": "passed",
+          "localCapacityFixture": true,
+          "receipt": "0xc2c83cfef1e2b0212c2d6c5d2ce7ec16e8b476448401529d03236cc62f1a15ea"
+        },
+        {
+          "name": "market_ledger_durable_real_fork_reorg_reverses_archived_credit_once_and_freezes",
+          "status": "passed",
+          "localSnapshotReorganization": true,
+          "originalReceipt": "0xc2c83cfef1e2b0212c2d6c5d2ce7ec16e8b476448401529d03236cc62f1a15ea",
+          "restoredOwedRaw": "619715604349961428323"
+        }
+      ]
+    }
+  },
+  "scope": "Actual private-fork assets/router/staking, deterministic mock randomness, durable local Postgres. No production signer, provider fulfillment, custody, finality proof or security audit.",
+  "snapshotIsolation": "Each scenario resets its private fork and disposable database tables. Identical transaction hashes across scenarios are not distinct public payments.",
+  "separatePersistenceRegression": {
+    "passed": 62,
+    "failed": 0,
+    "serverRestart": {
+      "status": "passed",
+      "scope": "Actual Postgres service restart; pending reservation and hash remain durable",
+      "award": "0x230b08aeeb92542d8ea477e5f50821f21e20e9408b5b1b5e5ce58b1a9b4aff51",
+      "attempt": "720f575c-8528-4390-89cf-80c002cb8465"
+    },
+    "executedOnceIn": "robinhood CI job; regression itself covers both local chain namespaces",
+    "syntheticReceiptEvidence": true
+  },
+  "scenarioCategories": [
+    "market_ledger_durable_imports_locked_award_and_exact_real_gift_receipt",
+    "market_ledger_durable_idempotent_award_import_does_not_reset_paid_credit",
+    "market_ledger_durable_caller_cannot_supply_winner_amount_or_confirmation_override",
+    "market_ledger_durable_wrong_round_selection_is_rejected_before_registration",
+    "market_ledger_durable_selection_confirmations_required_before_registration",
+    "market_ledger_durable_runtime_pin_mismatch_prevents_import",
+    "market_ledger_durable_partial_gift_preserves_exact_unpaid_award",
+    "market_ledger_durable_zero_credit_success_is_not_recorded_as_paid",
+    "market_ledger_durable_client_restart_retains_reserved_intent_before_observation",
+    "market_ledger_durable_client_restart_retains_paid_credit_and_receipt_uniqueness",
+    "market_ledger_durable_concurrent_readers_credit_actual_receipt_once",
+    "market_ledger_durable_unseen_transaction_keeps_reservation_blocked",
+    "market_ledger_durable_actual_receipt_waits_for_stored_confirmation_policy",
+    "market_ledger_durable_temporary_missing_paid_receipt_freezes_without_reversal",
+    "market_ledger_durable_real_fork_reorg_reverses_archived_credit_once_and_freezes",
+    "market_ledger_durable_contradictory_header_height_does_not_credit_or_reverse",
+    "market_ledger_durable_changed_runtime_during_payout_is_held_for_review",
+    "market_ledger_durable_chain_switch_during_observation_cannot_credit",
+    "market_ledger_durable_read_boundary_blocks_signing_and_public_chain_configuration",
+    "market_ledger_durable_read_errors_never_create_credit_or_unlock_attempt"
+  ]
+}
