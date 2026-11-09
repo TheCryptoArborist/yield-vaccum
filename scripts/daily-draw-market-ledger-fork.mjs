@@ -1,6 +1,6 @@
 /** Read-only public access; only private local fork writes. No credentials or live signer.
  * Retains the seven original swap assertions. Mechanical edits below change local IDs,
- * request the source storage layout, and insert one explicitly scoped extension.
+ * request source storage layout, stabilize the local snapshot clock, and insert the extension.
  * Workflow copies this launcher to the working directory root before execution.
  */
 import assert from 'node:assert/strict';
@@ -18,9 +18,19 @@ replace("hardhat:{chainId:n.id,hardfork:'cancun'","hardhat:{chainId:LOCAL_ID,har
 replace("['--fork-url',gatewayURL","['--network','arc','--chain-id',String(LOCAL_ID),'--fork-url',gatewayURL");
 replace("if(BigInt(await local('eth_chainId'))===BigInt(n.id))","if(BigInt(await local('eth_chainId'))===BigInt(LOCAL_ID))");
 replace("assert.equal(BigInt(await local('eth_chainId')),BigInt(n.id));","assert.equal(BigInt(await local('eth_chainId')),BigInt(LOCAL_ID));report.localChainId=LOCAL_ID;");
+// Restoring a historical snapshot must not let wall-clock time jump past a fixture's opening time.
+// Only local mined transactions use this deterministic clock; public headers are never rewritten here.
+replace("if(key==='robinhood'){assert(hre&&hre.network.name==='hardhat','No external write provider');return hre.network.provider.request({method,params});}",`if(key==='robinhood'){
+ assert(hre&&hre.network.name==='hardhat','No external write provider');
+ if(method==='eth_sendTransaction'){
+  const head=await hre.network.provider.request({method:'eth_getBlockByNumber',params:['latest',false]});
+  await hre.network.provider.request({method:'evm_setNextBlockTimestamp',params:[Number(BigInt(head.timestamp)+1n)]});
+  report.deterministicLocalTransactionClock='latest local timestamp + 1; public timestamps unchanged';
+ }
+ return hre.network.provider.request({method,params});
+}`);
 replace(" assert.equal((await upstream('eth_getBlockByNumber',[anchor.number,false])).hash,anchor.hash);assert.equal(BigInt(await upstream('eth_chainId',[])),BigInt(n.id));report.passed=",` await runMarketLedgerCases({key,n,report,anchor,local,source,checked,bal,stake,call,send,sendData,deadline,quote,path,erc,ti,si,ri,staking,SENDER,TOKEN,ROUTER,QUOTER,FACTORY,WETH,prefix,reset,localChainId:LOCAL_ID});
  assert.equal((await upstream('eth_getBlockByNumber',[anchor.number,false])).hash,anchor.hash);assert.equal(BigInt(await upstream('eth_chainId',[])),BigInt(n.id));report.passed=`);
-// No original scenario is removed, changed to an expected pass or suppressed.
 assert.equal((code.match(/await test\(/g)||[]).length,5,'Original explicit scenario definitions changed');
 await writeFile('market-ledger-executed.mjs',code);
 await writeFile('market-ledger-harness-edits.json',JSON.stringify({originalBlob:blob,edits,localOnly:true,mainnetTransactionsSubmitted:0},null,2));
