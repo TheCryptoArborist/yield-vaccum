@@ -1,0 +1,103 @@
+name: Daily Draw authoritative public source inspection
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-authoritative-source.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-authoritative-source-research
+  cancel-in-progress: false
+jobs:
+  inspect:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect public sources with bounded GET requests only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, re, html, hashlib, urllib.request, urllib.error
+          from urllib.parse import urlparse, urljoin
+          TOKEN='0x091F0c7e675A787A4018eb47c30BeD3FA2013B65'
+          HOSTS={'robin.etherscan.io','arc.etherscan.io','sourcify.dev','www.mintstakeshare.com'}
+          LIMIT=6_000_000
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,headers,newurl):
+                  return None
+          opener=urllib.request.build_opener(NoRedirect())
+          def read(url):
+              p=urlparse(url)
+              if p.scheme!='https' or p.hostname not in HOSTS or p.username or p.password:
+                  raise ValueError('URL outside public source allowlist')
+              req=urllib.request.Request(url,headers={'User-Agent':'YieldVacuum-ReadOnly-Contract-Research/1.0','Accept':'text/html,application/json'},method='GET')
+              try:
+                  with opener.open(req,timeout=20) as r:
+                      b=r.read(LIMIT+1)
+                      if len(b)>LIMIT: return {'url':url,'status':'oversized'},''
+                      return {'url':url,'httpStatus':r.status,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()},b.decode('utf-8')
+              except urllib.error.HTTPError as e:
+                  return {'url':url,'httpStatus':e.code,'status':'unavailable'},''
+              except Exception:
+                  return {'url':url,'status':'transport_or_decode_failed'},''
+          def emit(v):
+              print('BEGIN_SOURCE_OBSERVATION')
+              print(json.dumps(v,ensure_ascii=True))
+              print('END_SOURCE_OBSERVATION')
+          for chain,host in [(4663,'robin.etherscan.io'),(5042,'arc.etherscan.io')]:
+              obs,text=read(f'https://{host}/address/{TOKEN}#code')
+              obs['chainId']=chain
+              obs['scope']='Public explorer page only; not compiled, bytecode-matched, or simulated.'
+              if text:
+                  title=re.search(r'<title[^>]*>(.*?)</title>',text,re.S|re.I)
+                  obs['title']=html.unescape(title.group(1)).strip() if title else None
+                  abi=re.search(r'<pre\b[^>]*\bid=[\"\x27]js-copytextarea2[\"\x27][^>]*>(.*?)</pre>',text,re.S|re.I)
+                  if abi:
+                      try:
+                          a=json.loads(html.unescape(re.sub('<[^>]*>','',abi.group(1))))
+                          obs['abiEntries']=len(a)
+                          obs['relevantAbi']=[x for x in a if re.search('gift|stake|staking|refer|cap',str(x.get('name','')),re.I)]
+                      except Exception:obs['abiParse']='failed'
+                  obs['sourceIndicators']=[]
+                  for pat in ['editor_contractJsonData','js-sourcecopyarea','function gift','function airdrop','Contract Source Code Verified']:
+                      at=text.find(pat)
+                      if at>=0:obs['sourceIndicators'].append({'pattern':pat,'excerpt':text[max(0,at-120):at+2400]})
+              emit(obs)
+              obs,text=read(f'https://sourcify.dev/server/v2/contract/{chain}/{TOKEN}?fields=all')
+              obs['scope']='Single contract lookup; service-reported verification is not a local rehearsal.'
+              if text:
+                  try:
+                      v=json.loads(text)
+                      obs['keys']=list(v)
+                      for k in ['address','chainId','match','runtimeMatch','creationMatch','verifiedAt','compilation','proxyResolution']:
+                          if k in v:obs[k]=v[k]
+                      a=v.get('abi',[])
+                      if isinstance(a,list):
+                          obs['abiEntries']=len(a)
+                          obs['relevantAbi']=[x for x in a if isinstance(x,dict) and re.search('gift|stake|staking|refer|cap',str(x.get('name','')),re.I)]
+                      obs['sourceExcerpts']=[]
+                      for path,src in v.get('sources',{}).items():
+                          s=src.get('content','') if isinstance(src,dict) else str(src)
+                          if re.search(r'function\s+\w*(gift|airdrop)',s,re.I):
+                              obs['sourceExcerpts'].append({'path':path,'sha256':hashlib.sha256(s.encode()).hexdigest(),'text':s[:45000],'truncated':len(s)>45000})
+                  except Exception:obs['parse']='unusable JSON'
+              emit(obs)
+          obs,text=read('https://www.mintstakeshare.com/docs/contracts')
+          scripts=[]
+          if text:
+              for src in re.findall(r'<script\b[^>]*\bsrc=[\"\x27]([^\"\x27]+)',text,re.I):
+                  u=urljoin('https://www.mintstakeshare.com',src)
+                  if urlparse(u).hostname=='www.mintstakeshare.com' and urlparse(u).path.startswith('/assets/') and urlparse(u).path.endswith('.js'):
+                      scripts.append(u)
+          obs['publicScripts']=scripts[:6]
+          emit(obs)
+          for url in scripts[:6]:
+              obs,s=read(url)
+              obs['scope']='Published website ABI hints only, not explorer-verified source; downloaded JavaScript is never executed.'
+              obs['giftSnippets']=[]
+              for m in list(re.finditer(r'giftStake|giftStakes|airdropStake|name:[\"\x27](?:gift|airdrop)[^\"\x27]*',s))[:12]:
+                  obs['giftSnippets'].append(s[max(0,m.start()-350):m.end()+1100])
+              emit(obs)
+          print('INSPECTION_ONLY: no signing, approvals, swaps, gifts, winner selection, or release authorization.')
+          PY
