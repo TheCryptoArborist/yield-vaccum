@@ -1,0 +1,134 @@
+{
+  "kind": "Normalized summary transcribed from completed GitHub Actions output; not raw proofs or independent consensus evidence",
+  "recordedDateUtc": "2026-11-09",
+  "providerApproved": false,
+  "task3Complete": false,
+  "livePaymentEnabled": false,
+  "mainnetTransactionsSubmitted": 0,
+  "acceptedRun": {
+    "id": 42566437894,
+    "jobId": 128993827671,
+    "conclusion": "success",
+    "completedAtUtc": "2026-11-09T05:23:00Z",
+    "url": "https://github.com/TheCryptoArborist/yield-vaccum/actions/runs/42566437894",
+    "workflowCommit": "a1465eae4cfd42132a279877a1732974a69e255e",
+    "checkerCommit": "32b0d96f1d7e065f7a4b83b3023e7744d0720f47",
+    "checkerBlob": "32118afea1081324039f0a947fba649f1f17aedd",
+    "sdkVersion": "0.6.2",
+    "sdkCommit": "fc4b546c06017703b0508ef2182d2030d789c966",
+    "additionalFetchPacingMs": 1400,
+    "positiveHistoricalSamplesPassed": 4,
+    "alteredEvidenceCasesRejected": 20,
+    "writeMethodsRejectedBeforeNetwork": 5,
+    "negativeCasesPerSample": ["altered VRF scalar", "altered recorded result", "altered client seed", "acceptance after deadline", "altered beacon signature or packet"]
+  },
+  "robinhood": {
+    "chainId": 4663,
+    "rpc": "https://robinhood.rpc.pinax.network",
+    "headerCorroborationRpc": "https://rpc.mainnet.chain.robinhood.com",
+    "status": "samples_passed_review_required",
+    "anchor": {"block": "0x68b8901", "hash": "0x389e9466b57d5a9ed74950c6bb8daa5bddf2d3e1d33fe353bfbbefb162523457", "rechecked": true, "finalized": false},
+    "coordinator": "0xEc8b95B168c87294c45727Bd2ac903d09316D132",
+    "historicalImplementation": "0xC8Cd79B9092AEA38f3434388F291eb861b148f45",
+    "implementationRuntimeHash": "0xe692b447c02225cb95c921ed29952edb566f2afdfe28ff929452b4909460e8f6",
+    "samples": [
+      {
+        "requestId": "1", "mathematicalReplayPassed": true, "implementedHistoricalChecksPassed": true, "negativeCasesRejected": 5,
+        "requestBlock": "84221365", "acceptanceBlock": "84221414",
+        "requestTransaction": "0x1e682b3ccdbb2522b3162a24cf96f9292eb0116106c975568888d5444069a39e",
+        "fulfillmentTransaction": "0x14cc0107d23916a0b7510d76cf7e630c2efdb0aa9e99294714f2f379cc4dcd43",
+        "acceptanceBlockHash": "0x5e447e36a0c89a79cd428e85c3ca7682d08a1f525d236fdd4233e923b8175c42",
+        "fixtureSha256": "12a4ab99c54ff35ead76698bc613d9a631ef2d1a23afaba39d9af80cc6d57acb",
+        "mappedResult": ["18"], "receiptBlockHashesCorroborated": true, "beaconScheduleRebuiltFromChain": true
+      },
+      {
+        "requestId": "2", "mathematicalReplayPassed": true, "implementedHistoricalChecksPassed": true, "negativeCasesRejected": 5,
+        "requestBlock": "84221531", "acceptanceBlock": "84221592",
+        "requestTransaction": "0x01e441f29e7f5a91a48c83b7ced99b5f26589ac9374090fc9b0dd705c51eda1a",
+        "fulfillmentTransaction": "0xccca0e45da73c4ddf0a556ac895c577164344a3e31e7362fe3697a1ef3a1a446",
+        "acceptanceBlockHash": "0xb8f704121d27bbf50548814b28be5c19d32ac5c16a48a8e106577e4dbda3f2d0",
+        "fixtureSha256": "06d7a2ace01caeab82770c8c09c117de0d77ddd2c21d129a872a685b3894b015",
+        "mappedResult": ["1", "4", "10"], "receiptBlockHashesCorroborated": true, "beaconScheduleRebuiltFromChain": true
+      }
+    ],
+    "governance": {
+      "manifestOwner": "0x7ad78fc8097DFEA5c12DBb503D6EB6E60f34B40B",
+      "observedOwner": "0xE953671bf063CF21F89BbA3bfdB4AFc5FE71078A",
+      "manifestStillDiffers": true,
+      "onchainTransitionExplained": true,
+      "completeOwnershipHistoryScanned": false,
+      "transferBlock": "94329459",
+      "transferTimeUtc": "2026-10-21T13:49:33Z",
+      "transferTransaction": "0xa01c7700727aefe777701df47104cf1e88745179ab29f71b2f91475341835966",
+      "transferBlockHash": "0x0f16d7c5594f8d6db016cbc9d51bb73a5317ea63ba1eba30b7086e5ef272b47d",
+      "priorOwnerAndPendingOwnerChecked": true,
+      "transferReceiptAndEventChecked": true,
+      "transferHeaderCorroborated": true,
+      "transferImplementationRuntimeChecked": true,
+      "reportedOwnerCount": 2,
+      "reportedThreshold": "2",
+      "reportedMasterCopy": "0xEdd160fEBBD92E350D4D398fb636302fccd67C7e",
+      "ownerContractSourceLookup": "HTTP 404; effective multisig authorization not audited"
+    }
+  },
+  "arc": {
+    "chainId": 5042,
+    "rpc": "https://rpc.drpc.mainnet.arc.io",
+    "headerCorroborationRpc": "https://rpc.mainnet.arc.io",
+    "status": "samples_passed_review_required",
+    "anchor": {"block": "0x1ce4ff0", "hash": "0x762a02573fbe39c0c13c2daeccaabe5e89a7662685bb18a837e9ef9ebbb6568f", "rechecked": true, "finalized": false},
+    "coordinator": "0xd20da057469C45928912d983F45790C41e290571",
+    "historicalImplementation": "0xD20da000125643B4db5A6A36A3b853c17745DF44",
+    "implementationRuntimeHash": "0x3dda400d8360d7e03b8dacd8ba1ffad7ad672e07628bee7de4542d754dd5348c",
+    "registry": "0xd20Da048C1A68fa3Bc0B5f5Bc454D1530062C82D",
+    "historicalRegistryImplementation": "0xD20dA0853a6f894c0cdc9018fD4F8F67Eac15704",
+    "epochPublicationTransaction": "0x9d2441174c0ed0fc5ecc184ca3c66f91bc0581c3e4c140ff1775bd5125fb8876",
+    "epochPublicationBlock": "23731100",
+    "samples": [
+      {
+        "requestId": "40", "mathematicalReplayPassed": true, "implementedHistoricalChecksPassed": true, "negativeCasesRejected": 5,
+        "requestBlock": "23731099", "acceptanceBlock": "23731104",
+        "requestTransaction": "0x9505205cd664db05c2beb3a18ed6cb934091dccc33b71f3aaca1e13fd49f5ecc",
+        "fulfillmentTransaction": "0xa16b1b9db54e5fdb6682ef38f1fba99aaec80c7f5f514d4dae03d03a4130772e",
+        "acceptanceBlockHash": "0x0490b4d908a9946628fbd34ddf33d5e177d6f58117c7274b09d058a4744096ed",
+        "fixtureSha256": "08cc8794e7cecbcc0929deef29d449ddedda0c26b6c49cfda0ad9fb445481c63",
+        "receiptBlockHashesCorroborated": true, "historicalEpochCatalogAndBeaconChecked": true
+      },
+      {
+        "requestId": "41", "mathematicalReplayPassed": true, "implementedHistoricalChecksPassed": true, "negativeCasesRejected": 5,
+        "requestBlock": "23731227", "acceptanceBlock": "23731229",
+        "requestTransaction": "0x37a27984da65b5ae48fb8525d63bf288fa6baa6d43afa5a7c66c7baca90b24d9",
+        "fulfillmentTransaction": "0xe3eca09079e7c4d0a9e3d54f0e4dc058acb9348b37b8c8804d5a8f813e97b530",
+        "acceptanceBlockHash": "0x23055010bd3ed5fb330a8c73f781b2e22ba277fa6751281d7d72a3830dbd3201",
+        "fixtureSha256": "afa7eddb5e4f60ea88aa0e9210f69cacb58c6930c42db978ed1cc555ede72949",
+        "mappedResult": ["11"], "receiptBlockHashesCorroborated": true, "historicalEpochCatalogAndBeaconChecked": true
+      }
+    ],
+    "governance": {
+      "coordinatorAndRegistryOwner": "0xB57f656149749eff6b496dF090336491f977E744",
+      "manifestOwnerMatched": true,
+      "reportedOwnerCount": 2,
+      "reportedThreshold": "2",
+      "reportedMasterCopy": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+      "primaryCommitter": "0xA5496Bb35905Bfe0Bac7D23Ca18c008F5E6Eb13e",
+      "reportedBackupCommitterCount": "1",
+      "fullBackupAndHistoricalAuthorizationReviewComplete": false
+    }
+  },
+  "retainedPriorRuns": [
+    {"id":42565416479,"conclusion":"failure","scope":"Initial harness defects, corrected without removing evidence assertions"},
+    {"id":42565646661,"conclusion":"failure","scope":"Mathematical replays passed; default RPC historical state/receipt access gaps"},
+    {"id":42566022679,"conclusion":"success","scope":"Endpoint availability probe only; not proof-verification success"},
+    {"id":42566220668,"conclusion":"failure","scope":"Ownership and full Arc evidence passed; Robinhood public archive rate limit respected"}
+  ],
+  "limitations": [
+    "Provider SDK cryptographic replay, not an independently authored verifier or audit",
+    "Four selected historical requests do not establish liveness, absence of selective withholding or broad statistical fairness",
+    "RPC header corroboration is not consensus/finality, cryptographic inclusion-proof or provider-operator independence proof",
+    "Recorded implementation fingerprints were checked; no independent recompilation was performed",
+    "Owner-contract getters do not prove independent signers or rule out modules/alternate authorization paths",
+    "Own Daily Draw consumer has not made a genuine provider request; current tests are not full application integration",
+    "No new provider randomness requests, real approvals, purchases, airdrops, public deployments or merges"
+  ],
+  "nextMilestone": "Exercise the Daily Draw consumer against actual coordinator behavior in an isolated no-real-funds environment, including fee handling, same-result retry and expiry recovery; retain production approval gates"
+}
