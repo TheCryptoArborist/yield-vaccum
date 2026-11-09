@@ -24,12 +24,13 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draw-market/scripts" "$RUNNER_TEMP/draw-market/research/daily-draw" "$RUNNER_TEMP/draw-market/sdk" "$RUNNER_TEMP/draw-market/bin"
           cd "$RUNNER_TEMP/draw-market"
           fetch() { curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 90 "$1" -o "$2"; }
-          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/653d7df1b3e176d05d8119d3b7a5462f835954e6
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/05f954e7c6b4b0600e806f4f6f1dfeea08e5e50b
           for f in scripts/daily-draw-market-ledger-fork.mjs scripts/daily-draw-market-ledger-cases.mjs research/daily-draw/DailyDrawIntegratedPrototype.sol research/daily-draw/DailyDrawOperatingFeesPrototype.sol research/daily-draw/DailyDrawTopazPurchasePrototype.sol research/daily-draw/stake-award-reconciliation.mjs; do fetch "$ROOT/$f" "$f"; done
           fetch "$ROOT/scripts/daily-draw-swap-rehearsal.mjs" base-swap.mjs
           test "$(git hash-object base-swap.mjs)" = 5223d49fad11e0e5e314b4c47ff1e9d683e07e0c
           test "$(git hash-object research/daily-draw/DailyDrawIntegratedPrototype.sol)" = 57ae893df611287a4168f80f952cdbca5bada24b
           test "$(git hash-object research/daily-draw/DailyDrawOperatingFeesPrototype.sol)" = 37c4a19ae733387c41bf10b18d21334b9f2e6ef8
+          test "$(git hash-object scripts/daily-draw-market-ledger-fork.mjs)" = 43488a86352f83e5fce0142f420ab5f9567b708d
           fetch https://codeload.github.com/d20dao/d20-sdk/tar.gz/fc4b546c06017703b0508ef2182d2030d789c966 provider.tar.gz
           tar -xzf provider.tar.gz --strip-components=1 -C sdk
           cp scripts/daily-draw-market-ledger-fork.mjs run.mjs
@@ -67,4 +68,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          printf '%s\n' 'Only read-only calls reach public RPC. All transactions execute on private forks with local IDs 31337/31338.' 'Real forked payment, MSS2, Topaz router and staking; explicitly deterministic fixture coordinator, NOT genuine D20 randomness.' 'The integrated draw and fee component remain unchanged. New narrow fixed-route adapter; no public deployment or paid entries.' 'Receipt reconciliation is an in-memory research record, not durable production payout deduplication or an on-chain mark-paid mechanism.' 'Arc execution must explicitly report network arc. Synthetic local native funding and capacity fixtures are recorded.' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'Only read-only calls reach public RPC. All transactions execute on private forks with local IDs 31337/31338.' 'Real forked payment, MSS2, Topaz router and staking; explicitly deterministic fixture coordinator, NOT genuine D20 randomness.' 'The integrated draw and fee component remain unchanged. New narrow fixed-route adapter; no public deployment or paid entries.' 'Receipt reconciliation is an in-memory research record, not durable production payout deduplication or an on-chain mark-paid mechanism.' 'Arc execution must explicitly report network arc. Synthetic local native funding and capacity fixtures are recorded.' 'Local Robinhood sends use latest local timestamp + 1 across snapshots; original public timestamps and every test assertion remain unchanged.' >> "$GITHUB_STEP_SUMMARY"
