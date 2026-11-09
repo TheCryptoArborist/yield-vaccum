@@ -20,8 +20,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draw-swap/bin"
           cd "$RUNNER_TEMP/draw-swap"
           curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 \
-            https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/196019090b7cad8325ad1d5d9ed61a6aed5b0089/scripts/daily-draw-swap-rehearsal.mjs -o rehearsal.mjs
-          test "$(git hash-object rehearsal.mjs)" = 07c7b7772e96181732539b8ecd951d32a3f32673
+            https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/3912142e347b576704f5a37cebc2b0b12df093f4/scripts/daily-draw-swap-rehearsal.mjs -o rehearsal.mjs
+          test "$(git hash-object rehearsal.mjs)" = 5223d49fad11e0e5e314b4c47ff1e9d683e07e0c
           node --check rehearsal.mjs
           npm init -y >/dev/null
           npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 hardhat@2.26.3
