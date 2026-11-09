@@ -20,8 +20,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draw-fork"
           cd "$RUNNER_TEMP/draw-fork"
           curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 30 \
-            https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/cb576bf04e56c20447d64e2057febbc662bb1959/scripts/daily-draw-stake-rehearsal.mjs -o rehearsal.mjs
-          test "$(git hash-object rehearsal.mjs)" = 87e4f8113e6c72f486c9b68da6342f33af1b7050
+            https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/cd5e9ac0c404d8c3e66541e891b1afa22ac07622/scripts/daily-draw-stake-rehearsal.mjs -o rehearsal.mjs
+          test "$(git hash-object rehearsal.mjs)" = 3f14c88d69d94485680476788dae5692d11f86fe
           node --check rehearsal.mjs
           npm init -y >/dev/null
           npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 hardhat@2.26.3
