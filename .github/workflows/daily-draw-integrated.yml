@@ -23,7 +23,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draw-integrated/research/daily-draw" "$RUNNER_TEMP/draw-integrated/sdk"
           cd "$RUNNER_TEMP/draw-integrated"
           fetch() { curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 90 "$1" -o "$2"; }
-          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/1c92d87bb07473366abb5dc6c60068b8b4baa68f
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/02ee08804abf7e4989166185f22a93cb2669e957
           fetch "$ROOT/scripts/daily-draw-integrated.mjs" integrated.mjs
           fetch "$ROOT/scripts/daily-draw-operating-fees.mjs" fee-regression.mjs
           fetch "$ROOT/scripts/daily-draw-fee-test-environment.mjs" daily-draw-fee-test-environment.mjs
@@ -32,7 +32,7 @@ jobs:
           test "$(git hash-object integrated.mjs)" = 9a4b8a287979e9fae6f04e59f4da0c610e3752f6
           test "$(git hash-object fee-regression.mjs)" = 6d39235feb575f538a3a824dac5b23a2e000685f
           test "$(git hash-object daily-draw-fee-test-environment.mjs)" = 58de49be9ef50b3c199cfa72763fe30b380b671d
-          test "$(git hash-object research/daily-draw/DailyDrawIntegratedPrototype.sol)" = 917f2a83533620b1e66dbe25ce1b70cb3aa92e83
+          test "$(git hash-object research/daily-draw/DailyDrawIntegratedPrototype.sol)" = 57ae893df611287a4168f80f952cdbca5bada24b
           test "$(git hash-object research/daily-draw/DailyDrawOperatingFeesPrototype.sol)" = 37c4a19ae733387c41bf10b18d21334b9f2e6ef8
           fetch https://codeload.github.com/d20dao/d20-sdk/tar.gz/fc4b546c06017703b0508ef2182d2030d789c966 provider.tar.gz
           tar -xzf provider.tar.gz --strip-components=1 -C sdk
