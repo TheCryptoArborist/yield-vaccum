@@ -10,7 +10,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Fetch pinned read-only checker and isolated dependencies
         shell: bash
@@ -23,13 +23,22 @@ jobs:
           node --check verify.mjs
           npm init -y >/dev/null
           npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 @d20dao/vrf-sdk@0.6.2
-      - name: Verify historical proofs and public-chain context without transactions
+      - name: Verify historical proofs with additional read pacing
         shell: bash
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP/provider-evidence"
-          node verify.mjs
+          cat > paced-runner.mjs <<'JS'
+          import {setTimeout as delay} from 'node:timers/promises';
+          // Only add delay. Do not reroute, filter, rewrite or synthesize request/response data.
+          // The imported pinned script still enforces host/method restrictions and every assertion.
+          const originalFetch=globalThis.fetch;
+          globalThis.fetch=async(...args)=>{await delay(1400);return originalFetch(...args);};
+          console.log('Additional 1400ms pacing before each fetch; original bounded Retry-After handling retained.');
+          await import('./verify.mjs');
+          JS
+          node paced-runner.mjs
       - name: Record scope
         if: always()
         run: |
-          printf '%s\n' 'Read-only RPC allowlist; no keys, live requests, wallet approvals or transaction submission.' 'Pinned SDK fixture replays plus separately retrieved receipts and historical state. Historical block hashes corroborated through another documented endpoint; not consensus or finality proof.' 'Ownership bisection locates an observed transition, not complete ownership history or authorization of real-world controller identity. Provider approval remains false.' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'Read-only RPC allowlist; no keys, live requests, wallet approvals or transaction submission.' 'Pinned SDK fixture replays plus separately retrieved receipts and historical state. Historical block hashes corroborated through another documented endpoint; not consensus or finality proof.' 'Ownership bisection locates an observed transition, not complete ownership history or authorization of real-world controller identity. Provider approval remains false.' 'An additional 1400ms delay per HTTP request respects public provider limits without changing validation or ignoring requested backoff.' >> "$GITHUB_STEP_SUMMARY"
