@@ -1,0 +1,53 @@
+name: Daily Draw read-only network evidence
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-readonly.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-readonly-research
+  cancel-in-progress: false
+jobs:
+  observe:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fetch reviewed public scripts at the triggering commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          mkdir -p "$RUNNER_TEMP/daily-draw-readonly/scripts"
+          cd "$RUNNER_TEMP/daily-draw-readonly"
+          for file in daily-draw-readiness.mjs daily-draw-readiness.test.mjs; do
+            curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 30 \
+              "https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/$GITHUB_SHA/scripts/$file" -o "scripts/$file"
+          done
+          test "$(git hash-object scripts/daily-draw-readiness.mjs)" = 9c1dba913a0483b5529ca97bfc95e996af533022
+          test "$(git hash-object scripts/daily-draw-readiness.test.mjs)" = df8ce3b77e933821e9fff0fe061485ba14282f4f
+          node --version
+          node -e 'if (Number(process.versions.node.split(".")[0]) < 22) process.exit(1)'
+      - name: Run read-only checker fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/daily-draw-readonly"
+          node --test scripts/daily-draw-readiness.test.mjs
+      - name: Observe public mainnet metadata without transactions
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/daily-draw-readonly"
+          node scripts/daily-draw-readiness.mjs observations.json
+      - name: Print bounded public evidence and scope
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/daily-draw-readonly"
+          if test -f observations.json; then
+            node --input-type=module -e 'import {readFileSync} from "node:fs"; const s=readFileSync("observations.json","utf8"); if(s.length>131072)throw Error("Oversized evidence"); const r=JSON.parse(s); console.log("BEGIN_DAILY_DRAW_READONLY_EVIDENCE"); console.log(JSON.stringify(r,null,2)); console.log("END_DAILY_DRAW_READONLY_EVIDENCE");'
+          fi
+          printf '%s\n' 'No secrets, repository checkout credentials, package installs, transactions or deployment steps are used.' 'Metadata observations are not swap/payout simulations or release approval.' >> "$GITHUB_STEP_SUMMARY"
