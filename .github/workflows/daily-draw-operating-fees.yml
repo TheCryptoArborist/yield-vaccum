@@ -23,11 +23,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draw-fees/research/daily-draw" "$RUNNER_TEMP/draw-fees/sdk"
           cd "$RUNNER_TEMP/draw-fees"
           fetch() { curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 90 "$1" -o "$2"; }
-          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/4191025553887e301a7c36643bf64f9ab20b52d6
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/077f680a6a38eb3e5e6655deb444cc15106b5507
           fetch "$ROOT/scripts/daily-draw-operating-fees.mjs" runner.mjs
           fetch "$ROOT/scripts/daily-draw-fee-test-environment.mjs" daily-draw-fee-test-environment.mjs
           fetch "$ROOT/research/daily-draw/DailyDrawOperatingFeesPrototype.sol" research/daily-draw/DailyDrawOperatingFeesPrototype.sol
-          test "$(git hash-object runner.mjs)" = f4dd0b95323d0ffcee2d07c046dfedf78dcc5a95
+          test "$(git hash-object runner.mjs)" = 6d39235feb575f538a3a824dac5b23a2e000685f
           test "$(git hash-object daily-draw-fee-test-environment.mjs)" = 58de49be9ef50b3c199cfa72763fe30b380b671d
           test "$(git hash-object research/daily-draw/DailyDrawOperatingFeesPrototype.sol)" = 37c4a19ae733387c41bf10b18d21334b9f2e6ef8
           fetch https://codeload.github.com/d20dao/d20-sdk/tar.gz/fc4b546c06017703b0508ef2182d2030d789c966 provider.tar.gz
@@ -68,4 +68,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          printf '%s\n' 'Local native operating funds only. No public RPC, live tickets, keys, approvals, real swaps or payouts.' 'Actual provider source, public test VRF scalar and recorded historical beacon signatures. Not a live keeper request, native-Arc accounting or security audit.' 'New fee component is not yet wired into the original DailyDrawPrototype. Prices, splits, payers and limits have no approved production values.' 'Refund-account rejection is explicitly injected in one local recovery scenario, then the original account code is restored byte-for-byte. Module and coordinator code are not changed.' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'Local native operating funds only. No public RPC, live tickets, keys, approvals, real swaps or payouts.' 'Actual provider source, public test VRF scalar and recorded historical beacon signatures. Not a live keeper request, native-Arc accounting or security audit.' 'New fee component is not yet wired into the original DailyDrawPrototype. Prices, splits, payers and limits have no approved production values.' 'Refund-account rejection is explicitly injected in one local recovery scenario, then the original account code is restored byte-for-byte. Module and coordinator code are not changed.' 'Decoded budget values are normalized to plain objects; all fields and negative assertions are retained.' >> "$GITHUB_STEP_SUMMARY"
