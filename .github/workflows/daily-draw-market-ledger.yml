@@ -1,0 +1,70 @@
+name: Daily Draw market-ledger and stake receipt forks
+on:
+  push:
+    branches: [research/mss2-daily-draw-readiness]
+    paths: [.github/workflows/daily-draw-market-ledger.yml]
+permissions: {}
+concurrency:
+  group: daily-draw-market-ledger-research
+  cancel-in-progress: false
+jobs:
+  fork:
+    if: github.repository == 'TheCryptoArborist/yield-vaccum'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [robinhood, arc]
+    steps:
+      - name: Fetch immutable research and isolated dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/draw-market/scripts" "$RUNNER_TEMP/draw-market/research/daily-draw" "$RUNNER_TEMP/draw-market/sdk" "$RUNNER_TEMP/draw-market/bin"
+          cd "$RUNNER_TEMP/draw-market"
+          fetch() { curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 90 "$1" -o "$2"; }
+          ROOT=https://raw.githubusercontent.com/TheCryptoArborist/yield-vaccum/653d7df1b3e176d05d8119d3b7a5462f835954e6
+          for f in scripts/daily-draw-market-ledger-fork.mjs scripts/daily-draw-market-ledger-cases.mjs research/daily-draw/DailyDrawIntegratedPrototype.sol research/daily-draw/DailyDrawOperatingFeesPrototype.sol research/daily-draw/DailyDrawTopazPurchasePrototype.sol research/daily-draw/stake-award-reconciliation.mjs; do fetch "$ROOT/$f" "$f"; done
+          fetch "$ROOT/scripts/daily-draw-swap-rehearsal.mjs" base-swap.mjs
+          test "$(git hash-object base-swap.mjs)" = 5223d49fad11e0e5e314b4c47ff1e9d683e07e0c
+          test "$(git hash-object research/daily-draw/DailyDrawIntegratedPrototype.sol)" = 57ae893df611287a4168f80f952cdbca5bada24b
+          test "$(git hash-object research/daily-draw/DailyDrawOperatingFeesPrototype.sol)" = 37c4a19ae733387c41bf10b18d21334b9f2e6ef8
+          fetch https://codeload.github.com/d20dao/d20-sdk/tar.gz/fc4b546c06017703b0508ef2182d2030d789c966 provider.tar.gz
+          tar -xzf provider.tar.gz --strip-components=1 -C sdk
+          cp scripts/daily-draw-market-ledger-fork.mjs run.mjs
+          node --check run.mjs
+          node --check scripts/daily-draw-market-ledger-cases.mjs
+          node --check research/daily-draw/stake-award-reconciliation.mjs
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --save-exact ethers@6.15.0 hardhat@2.26.3 solc@0.8.28 @openzeppelin/contracts@5.6.1 @openzeppelin/contracts-upgradeable@5.6.1
+          curl --fail --location --silent --show-error --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 180 https://github.com/circlefin/arc-foundry/releases/download/v0.8.0-4/arc-foundry-v0.8.0-4-x86_64-unknown-linux-gnu.tar.gz -o arc-foundry.tar.gz
+          echo '78330505af7dc0d2c9b55fc1aed00d9d063581bb57054949d31ef1c1b4bdbc5e  arc-foundry.tar.gz' | sha256sum -c -
+          tar -xzf arc-foundry.tar.gz -C bin anvil
+          ./bin/anvil --version
+      - name: Execute only on read-gateway-backed private forks
+        shell: bash
+        env:
+          LOCAL_MODE: ${{ matrix.mode }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/draw-market"
+          ARC_ANVIL="$RUNNER_TEMP/draw-market/bin/anvil" node run.mjs "$LOCAL_MODE" 2>&1 | tee run.log
+      - name: Preserve raw evidence and executed code
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: daily-draw-market-ledger-${{ matrix.mode }}-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/draw-market/*.json
+            ${{ runner.temp }}/draw-market/*.mjs
+            ${{ runner.temp }}/draw-market/*.log
+            ${{ runner.temp }}/draw-market/scripts/*.mjs
+            ${{ runner.temp }}/draw-market/research/daily-draw/*
+      - name: Record scope
+        if: always()
+        shell: bash
+        run: |
+          printf '%s\n' 'Only read-only calls reach public RPC. All transactions execute on private forks with local IDs 31337/31338.' 'Real forked payment, MSS2, Topaz router and staking; explicitly deterministic fixture coordinator, NOT genuine D20 randomness.' 'The integrated draw and fee component remain unchanged. New narrow fixed-route adapter; no public deployment or paid entries.' 'Receipt reconciliation is an in-memory research record, not durable production payout deduplication or an on-chain mark-paid mechanism.' 'Arc execution must explicitly report network arc. Synthetic local native funding and capacity fixtures are recorded.' >> "$GITHUB_STEP_SUMMARY"
