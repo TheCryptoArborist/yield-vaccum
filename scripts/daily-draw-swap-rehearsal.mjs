@@ -74,7 +74,7 @@ async function local(method,params=[]){
 }
 async function engine(gatewayURL){
  if(key==='robinhood'){
-  const c={defaultNetwork:'hardhat',networks:{hardhat:{chainId:n.id,hardfork:'cancun',chains:{[n.id]:{hardforkHistory:{cancun:0}}},forking:{url:gatewayURL,blockNumber:Number(BigInt(anchor.number))},accounts:[],loggingEnabled:false}};
+  const c={defaultNetwork:'hardhat',networks:{hardhat:{chainId:n.id,hardfork:'cancun',chains:{[n.id]:{hardforkHistory:{cancun:0}}},forking:{url:gatewayURL,blockNumber:Number(BigInt(anchor.number))},accounts:[],loggingEnabled:false}}};
   await writeFile('hardhat.config.cjs','module.exports = '+JSON.stringify(c)+';\n');hre=(await import('hardhat')).default;
   report.engine={name:'Hardhat 2.26.3',scope:'EVM fork; absent blob headers defaulted, not rollup consensus/gas equivalence'};
  }else{
