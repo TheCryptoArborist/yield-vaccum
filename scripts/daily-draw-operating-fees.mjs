@@ -13,7 +13,8 @@ const report={createdAt:new Date().toISOString(),mode,localChainId:chainId,compi
  sourceHashes:e.sourceHashes,importHashes:e.importHashes,tests:[]};
 let snapshot=await local('evm_snapshot');
 async function test(name,fn){assert.equal(await local('evm_revert',[snapshot]),true);snapshot=await local('evm_snapshot');try{const details=await fn();report.tests.push({name,status:'passed',...details});}catch(error){report.tests.push({name,status:'failed',error:String(error.shortMessage??error.message).slice(0,1600),data:error.data??null});}console.log('FEE_CASE',mode,name,report.tests.at(-1).status);}
-const bb=(id=1)=>b.budgets(id);
+// Compare all named decoded field values, not ethers Result proxy identities.
+const bb=async(id=1)=>(await b.budgets(id)).toObject();
 async function ready(){await authorize();await setNext(T-3n);const id=await request(),p=await prepareProof(id);await send(fulfill(id,p.proof));return {id,...p};}
 
 await test('exact_fee_forwarded_excess_backed_and_seed_bound',async()=>{
